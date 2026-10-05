@@ -1,0 +1,22 @@
+# Owner: Shared
+# หน้าที่: ไฟล์/โฟลเดอร์ที่ไม่ต้องเข้า git (secrets, build output, ไฟล์ DB local)
+# TODO: เพิ่มเมื่อมีไฟล์ที่ไม่ควร commit เพิ่ม
+
+node_modules/
+dist/
+out/
+
+.env
+.env.*
+!.env.example
+
+*.sqlite
+*.sqlite3
+*.db
+
+supabase/.temp/
+supabase/.branches/
+
+*.log
+.DS_Store
+Thumbs.db

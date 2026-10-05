@@ -1,0 +1,3 @@
+-- Owner: Backend
+-- หน้าที่: schema SQLite ฝั่ง local
+-- TODO: สร้าง tasks, classroom_sync_state, pomodoro_sessions, notification_log, settings ตาม PROJECT_v0.13 section 19 (ห้ามเพิ่ม field นอก spec)
