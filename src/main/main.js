@@ -1,10 +1,12 @@
 // Owner: Backend
-// หน้าที่: entry point ของ Electron main process — เปิดหน้าต่างหลัก (ตอนนี้เป็นหน้าต่างเปล่า)
-// TODO: เรียก initDatabase(), registerAllIpc(), startScheduler(), startSync() เมื่อ service พร้อม
+// หน้าที่: entry point ของ Electron main process — เปิด DB, ลงทะเบียน IPC, เปิดหน้าต่างหลัก
+// TODO: เรียก startScheduler() (ข้อ 5), startSync() (ข้อ 7) เมื่อ service พร้อม
 'use strict';
 
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
+const { initDatabase, closeDatabase } = require('./db/database');
+const { registerAllIpc } = require('./ipc');
 
 const isDev = process.argv.includes('--dev');
 
@@ -26,18 +28,26 @@ function createMainWindow() {
   if (isDev) {
     win.webContents.openDevTools({ mode: 'detach' });
   }
-
-  return win;
 }
 
 app.whenReady().then(() => {
-  createMainWindow();
+  // เปิด DB และลงทะเบียน IPC ก่อนเปิดหน้าต่าง เพราะหน้าจอเรียก window.api.invoke ได้ตั้งแต่โหลดหน้า
+  try {
+    initDatabase();
+    registerAllIpc(ipcMain);
+  } catch (error) {
+    dialog.showErrorBox('StudyFlow', `เปิดฐานข้อมูลไม่สำเร็จ\n\n${error.message}`);
+    app.quit();
+    return;
+  }
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
-  });
+  createMainWindow();
 });
 
 app.on('window-all-closed', () => {
   app.quit();
+});
+
+app.on('before-quit', () => {
+  closeDatabase();
 });

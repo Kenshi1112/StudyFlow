@@ -3,7 +3,7 @@
 ไฟล์นี้คือแผนทำงานทีละขั้นและบันทึกว่าทำอะไรไปแล้ว ใช้เป็นจุดต่อเวลาเปลี่ยน session
 Spec หลักคือ `docs/PROJECT_v0.13.md` ถ้าไฟล์นี้ขัดกับ spec ให้ยึด spec
 
-อัปเดตล่าสุด: 2026-10-05
+อัปเดตล่าสุด: 2026-10-06
 
 ---
 
@@ -33,14 +33,15 @@ Spec หลักคือ `docs/PROJECT_v0.13.md` ถ้าไฟล์นี�
 
 ทำแล้ว:
 - สร้างโครงโฟลเดอร์และไฟล์ stub ทั้งหมด (header 3 บรรทัดทุกไฟล์) + `package.json`, `.gitignore`, `.env.example`, `.prettierrc`, `main.js`, `preload.js`, `ipc-channels.js`, `constants.js`, `README.md`
-- วาง `docs/PROJECT_v0.13.md` แล้ว (แทน v0.12 ซึ่งลบออกแล้ว และประวัติ git ถูกรวมเป็น commit เดียว จึงไม่มี v0.12 ใน repo อีก) ต้องอัปโหลดฉบับ v0.13 ขึ้น Claude Project ให้ตรงกับในโฟลเดอร์
+- วาง `docs/PROJECT_v0.13.md` แล้ว (แทน v0.12 ซึ่งลบออกแล้ว และประวัติ git ถูกรวมเป็น commit เดียว จึงไม่มี v0.12 ใน repo อีก) และ Claude Project ใช้ v0.13 ตรงกับในโฟลเดอร์แล้ว
+- `docs/ipc-contract.md` ตัดสินครบ, `TASK_PRIORITY` อยู่ใน `constants.js`, `docs/UX-UI-Design-Review_v0.13.md` อัปเดตเรื่อง Priority/Course แล้ว
+- push `main`, `backend`, `frontend` ขึ้น GitHub แล้ว (commit เดียว `initial commit`, เบล force push เอง)
 - `npm install` และ `npm run dev` ผ่าน: หน้าต่างเปล่าขึ้น, `window.api` มี `channels/invoke/on`, `invoke('foo:bar')` ถูกปฏิเสธตาม whitelist
+- ข้อ 1 ครบ (1.1-1.7): SQLite (`schema.sql`, `database.js`), `task.service.js` (CRUD, Deadline State, Urgency Score), `tasks:*` IPC ต่อใน `main.js` เช็คใน Electron แล้ว (ยังไม่ commit และยังไม่มีเทสใน `tests/` ยกเว้น `schema.test.js` ดูบันทึกการทำงานแถวล่างสุด)
 
 ยังไม่ได้ทำ / ยังไม่ยืนยัน:
-- git: init + commit แรก + branch `backend`/`frontend` เสร็จในเครื่อง แต่ยังไม่ push (ข้อ 0.1)
-- คุย IPC contract กับเพื่อน (ข้อ 0.4)
-- SQLite binding: เลือก `better-sqlite3` แล้ว แต่ยังไม่ได้ติดตั้ง
-- ยังไม่มีโค้ด feature จริงเลย ทุก service/ipc เป็น stub ว่าง
+- เพื่อนเพิ่มช่อง Priority/Course ในฟอร์ม task (เหลือของข้อ 0.4) และทำ `index.html` ตามวิธีสลับหน้าที่ตัดสินแล้ว (ข้อ 0.5)
+- ที่เหลือ (ข้อ 2 เป็นต้นไป) ทุก service/ipc ยังเป็น stub ว่าง
 
 ### ข้อสังเกตเรื่องโครงที่สร้างไว้ (ควรรู้ก่อนทำต่อ)
 
@@ -51,37 +52,44 @@ Spec หลักคือ `docs/PROJECT_v0.13.md` ถ้าไฟล์นี�
 - หน้า `pages/pomodoro/` มีอยู่ แต่ spec §15 บอกว่าเข้าจาก task เท่านั้น ไม่มี session แบบไม่ผูก task
 - header ของไฟล์อ้างเลข section ของ spec (v0.13 ไม่ได้เลื่อนเลข section จาก v0.12) ถ้าขึ้นเวอร์ชันแล้วเลขเลื่อน ต้อง grep แก้
 - Electron ที่ใช้ `^44.5.1`, electron-builder `^26.15.3`
+- `better-sqlite3` ที่ใช้คือ `^13.0.3` (N-API) มีไบนารีสำเร็จรูปในแพ็กเกจ **ไม่ต้อง rebuild และไม่ต้องลง Visual Studio** ห้ามรัน `electron-builder install-app-deps` หรือเพิ่มเป็น `postinstall` (มันพยายาม compile เองแล้วพังด้วย error `Could not find any Visual Studio installation`)
+- ข้อ 9.2: `npm run build` อาจเจอ error เดียวกันเพราะ electron-builder ลอง rebuild native module ให้ตั้ง `"npmRebuild": false` ใน `build` ของ `package.json`
+- `better-sqlite3` 13 ต้องใช้ Node 22 ขึ้นไป
 
 ---
 
 ## ข้อ 0: เตรียมก่อนเริ่ม (ทำกับเพื่อน)
 
-- [ ] 0.1 `git init`, push ขึ้น GitHub, แยก branch `backend` / `frontend`, merge เข้า `main` ผ่าน PR
-  - ทำแล้วในเครื่อง: `git init -b main`, รวมประวัติเป็น commit เดียว (เบลตั้งชื่อเอง), สร้าง branch `backend` / `frontend`, ตั้ง `origin` = `https://github.com/Kenshi1112/StudyFlow.git`
-  - เหลือ: เบล push เอง (`main`, `backend`, `frontend`) และเปิด PR แรกเพื่อลองวิธี merge
+- [x] 0.1 `git init`, push ขึ้น GitHub, แยก branch `backend` / `frontend`, merge เข้า `main` ผ่าน PR
+  - เสร็จแล้ว: `git init -b main`, รวมประวัติเป็น commit เดียว (`initial commit`), branch `backend` / `frontend`, ตั้ง `origin` = `https://github.com/Kenshi1112/StudyFlow.git`, force push ทั้งสาม branch แล้ว (2026-10-06)
+  - ทำงานบน branch `backend` (เบล) / `frontend` (เพื่อน) แล้วเปิด PR ไปที่ `main` ตอนจบแต่ละข้อ PR แรกจะเกิดตอนจบข้อ 1.1 เพราะตอนนี้ทุก branch เหมือน `main` เปิด PR ไม่ได้
 - [x] 0.2 วาง `PROJECT_v0.12.md` ลง `docs/` (ตอนนี้ใช้ `PROJECT_v0.13.md` แทนแล้ว)
 - [x] 0.3 `npm install` + `npm run dev` ขึ้นหน้าต่างเปล่า, preload ทำงาน
 - [x] 0.4 นั่งดู `ipc-channels.js` กับเพื่อน ตัด/แก้ channel แล้วเขียน payload shape ของ `tasks:*` ลง `docs/ipc-contract.md` (field ต้องตรง §19)
   - เสร็จ: `docs/ipc-contract.md` ตัดสินครบแล้ว (เบลตัดสิน 2026-10-05) เก็บ channel ตีความทั้ง 4 ตัว ถ้าเพื่อนค้านให้แก้ไฟล์นั้นแล้วบอกกัน
   - spec v0.13 ยืนยันแล้ว (เบล 2026-10-05): Priority ผู้ใช้ใส่เองเข้าสูตร Urgency Score (0.4/0.24/0.16/0.2), `classroom_course_name` เปลี่ยนเป็น `course_name` และ `ipc-contract.md` อัปเดตตามแล้ว ข้อ 1.2 และ 1.6 เริ่มได้
   - เพิ่ม `TASK_PRIORITY` ใน `src/shared/constants.js` แล้ว (เบลตัดสินเพิ่มเลย เพราะอาจารย์สั่ง และเป็นการเพิ่มค่าใหม่ ไม่ได้แก้ของเดิม)
+  - ตัดสินแล้ว: `due_date` เก็บเป็น ISO 8601 วัน+เวลา (เพราะ LINE เก็บเวลาด้วย) spec §26 ปล่อยให้ตอน implement จึงไม่ต้องขึ้นเวอร์ชัน spec
   - เหลือ: เพื่อนต้องเพิ่มช่อง Priority กับ Course (ไม่บังคับ) ในฟอร์ม task
-- [ ] 0.5 ตัดสินใจ: SQLite binding (Backend), วิธีสลับหน้า (Frontend)
+- [x] 0.5 ตัดสินใจ: SQLite binding (Backend), วิธีสลับหน้า (Frontend)
   - Backend ตัดสินแล้ว: ใช้ `better-sqlite3` (ติดตั้งจริงในข้อ 1.1)
-  - เหลือ: วิธีสลับหน้า (Frontend) รอเพื่อน
+  - Frontend ตัดสินแล้ว (เบล 2026-10-06): แยกหน้า (multi-page) แต่ละหน้าเป็นไฟล์ HTML ของตัวเองตามโครง `pages/*/` สลับหน้าด้วย `location.href` ไม่ต้องเขียน router `index.html` แค่ redirect ไป `pages/room/room.html` (เพื่อนเป็นคนทำ)
+  - ข้อควรระวังของวิธีนี้: ตัวแปร JS หายทุกครั้งที่เปลี่ยนหน้า ของที่ต้องจำข้ามหน้า (เช่น "popup Classroom แสดงไปแล้วใน session นี้") ต้องเก็บใน `sessionStorage` หรือฝั่ง main process ไม่เก็บเป็นตัวแปรในหน้า
 - [x] 0.6 commit `package-lock.json` (อยู่ใน commit แรก)
 
 ## ข้อ 1: ฐานข้อมูลและ Task
 
-- [ ] 1.1 เลือกและติดตั้ง SQLite binding (โมดูล native ต้อง rebuild ให้ตรงกับ Electron) เช็ค: require ได้ใน main process
-- [ ] 1.2 เขียน `schema.sql` ตาม §19 (v0.13: `tasks` มี `course_name` และ `priority`): `tasks`, `classroom_sync_state`, `pomodoro_sessions`, `notification_log`, `settings`
-- [ ] 1.3 เขียน `database.js`: `initDatabase` (ไฟล์ใน `app.getPath('userData')`), `runMigrations` เช็ค: เปิดแอป 2 ครั้ง ตารางไม่ถูกสร้างซ้ำ
-- [ ] 1.4 `task.service.js` ส่วน CRUD + soft delete (`deleted_at`) + ตั้ง `completed_at` ตอนเป็น Completed
-- [ ] 1.5 `computeDeadlineState` ตามตาราง §9.2 + unit test ใน `tests/`
-- [ ] 1.6 `computeUrgencyScore` ตามสูตร §9.5 (v0.13 มี 4 เทอม รวม Priority Factor) + unit test
-- [ ] 1.7 `tasks.ipc.js`, `ipc/index.js`, เรียก `initDatabase()` + `registerAllIpc()` ใน `main.js` เช็ค: `window.api.invoke('tasks:list')` ใน DevTools ได้ข้อมูล
+- [x] 1.1 เลือกและติดตั้ง SQLite binding เช็ค: require ได้ใน main process
+  - เสร็จ: ติดตั้ง `better-sqlite3@^13.0.3` (ไม่ต้อง rebuild ดูหมายเหตุด้านบน) และเช็คใน Electron แล้ว (2026-10-06): `npm run dev` main ไม่ error, `window.api.invoke('tasks:list')` ตอบ `[]`, `tasks:create` แล้ว `tasks:list` เห็น task
+- [x] 1.2 เขียน `schema.sql` ตาม §19 (v0.13: `tasks` มี `course_name` และ `priority`): `tasks`, `classroom_sync_state`, `pomodoro_sessions`, `notification_log`, `settings`
+- [x] 1.3 เขียน `database.js`: `initDatabase` (ไฟล์ใน `app.getPath('userData')`), `runMigrations` เช็ค: เปิดแอป 2 ครั้ง ตารางไม่ถูกสร้างซ้ำ
+- [x] 1.4 `task.service.js` ส่วน CRUD + soft delete (`deleted_at`) + ตั้ง `completed_at` ตอนเป็น Completed
+- [x] 1.5 `computeDeadlineState` ตามตาราง §9.2 + unit test ใน `tests/`
+- [x] 1.6 `computeUrgencyScore` ตามสูตร §9.5 (v0.13 มี 4 เทอม รวม Priority Factor) + unit test
+- [x] 1.7 `tasks.ipc.js`, `ipc/index.js`, เรียก `initDatabase()` + `registerAllIpc()` ใน `main.js` เช็ค: `window.api.invoke('tasks:list')` ใน DevTools ได้ข้อมูล
 
-จุดนัดกับเพื่อน: เสร็จข้อ 1.7 เพื่อนต่อ Task Board กับข้อมูลจริงได้
+ข้อตัดสินใจของเบลที่ spec ไม่ได้ระบุ (ตัดสินแล้ว 2026-10-06):
+  - Deadline State: task ที่ `completed` ให้เป็น `completed` ทุกกรณีที่มี due_date (§9.2 ระบุแค่กรณี completed + due_date ผ่านไปแล้ว) ไม่มี due_date ยังเป็น `no_deadline`
 
 ## ข้อ 2: Settings
 
@@ -166,3 +174,6 @@ Deadline State, Urgency Score, Time-to-Start Lag, LWW เป็นแกนข�
 | 2026-10-05 | 0.2, 0.3 | สร้างโครง skeleton ทั้งหมด, `npm install`, `npm run dev` ผ่าน, ตรวจ preload ใน DevTools ผ่าน | ยังไม่ได้ทำ 0.1 (git), 0.4 (คุย IPC กับเพื่อน), 0.5 (เลือก SQLite binding) |
 | 2026-10-05 | 0.1, 0.4, 0.5, 0.6 | `git init`/commit แรก/branch `backend`+`frontend`/ตั้ง remote, ร่าง `docs/ipc-contract.md` (tasks:*), เลือก `better-sqlite3`, `package-lock.json` เข้า commit แรก | (1) ต้อง push เอง (2) ipc-contract ตัดสินครบแล้ว (เพื่อนค้านได้ ให้แก้ไฟล์) (3) **spec gap**: §14.3 อ้าง `course_name` ใน `tasks` แต่ §19 ไม่มี field นี้ (มีแค่ `classroom_course_name`) ต้องแก้ spec ก่อนทำ course ของ manual/LINE task (4) ข้อ 1.1: ติดตั้ง `better-sqlite3` ต้องรันบน Windows เอง (`node_modules` เป็นของ Windows) และเช็คว่ามี prebuilt สำหรับ Electron 44.5.1 ถ้าไม่มีต้องมี build tools |
 | 2026-10-05 | spec | เปลี่ยนมาใช้ `PROJECT_v0.13.md` (Priority เข้าสูตร Urgency Score, `course_name` ใช้กับทุก source), ลบ `PROJECT_v0.12.md`, เปลี่ยนการอ้างอิงใน 21 ไฟล์ (README, comment โค้ด, ROADMAP), อัปเดต `ipc-contract.md` | (1) อัปโหลด v0.13 ขึ้น Claude Project (2) เพิ่ม `TASK_PRIORITY` ใน `constants.js` แล้ว แจ้งเพื่อนตอน PR (3) UX-UI-Design-Review ต้องเพิ่ม Priority ในฟอร์ม/การ์ด และช่อง Course ในฟอร์ม manual |
+| 2026-10-06 | 0.1, 0.4, 0.5, spec, UX | เพิ่ม `TASK_PRIORITY` ใน `constants.js`, อัปเดต `docs/UX-UI-Design-Review_v0.13.md` (Priority/Course และส่วน LINE ของ v0.12: การ์ด LINE ใน Settings, source icon ตัวที่ 3, filter Source), ซิงก์เอกสารใน Claude Project เป็น v0.13, ล้างประวัติ git เหลือ commit เดียวแล้ว force push (`main`/`backend`/`frontend`), ตัดสินวิธีสลับหน้า (multi-page) และ `due_date` = วัน+เวลา | (1) ข้อ 1.1: รัน `npm install better-sqlite3` ใน PowerShell บน Windows เอง แล้วทำต่อ 1.2 (2) เพื่อนยังต้องเพิ่มช่อง Priority/Course ในฟอร์ม และทำ `index.html` ตามวิธีสลับหน้า (3) PR แรกเปิดตอนจบข้อ 1.1 |
+| 2026-10-06 | 1.1 | `npm install better-sqlite3` ได้เวอร์ชัน 13.0.3 (N-API มีไบนารีสำเร็จรูปในแพ็กเกจ ไม่ต้อง rebuild) ถอยโค้ด 1.2-1.7 ที่ Claude เขียนล่วงหน้าไปเก็บใน `_claude-draft/` (ไม่ commit) เพราะเบลจะเขียนเอง | (1) ห้ามรัน `electron-builder install-app-deps` (2) เช็ค `require('better-sqlite3')` ใน main ตอนทำ 1.3 (3) ข้อ 9.2 ตั้ง `npmRebuild: false` |
+| 2026-10-06 | 1.2-1.7 (ติ๊กแล้ว) | เขียนโค้ดข้อ 1 ทั้งชุดแบบเรียบง่าย: `schema.sql` (5 ตาราง), `database.js` (เปิด DB ใน userData แล้วรัน schema.sql, ไม่มีระบบ migration แบบมีเลข version), `task.service.js` (CRUD + soft delete + `computeDeadlineState` + `computeUrgencyScore`), `tasks.ipc.js`, `ipc/index.js`, ต่อ `initDatabase()` + `registerAllIpc()` + `closeDatabase()` ใน `main.js` ทดสอบใน `_claude-draft` ก่อน (66 เทสผ่าน รวมตัวอย่าง Urgency Score = 55.2) แล้วย้ายลง `src/` และ smoke test กับไฟล์จริง จากนั้นเบลเช็คใน Electron เอง: `tasks:list` ได้ `[]`, `tasks:create` แล้ว `tasks:list` เห็น task | (1) ยังไม่ commit/PR: ทำบน branch `backend` แล้วเปิด PR ไป `main` (2) เทสของ draft อยู่ที่ `_claude-draft/tests/` (ไม่ commit) ยังไม่ copy ลง `tests/` ตามที่ข้อ 1.5/1.6 เขียนไว้ มีแต่ `tests/schema.test.js` ที่ยังไม่ track ต้องตัดสินใจว่าจะเอาลงไหม (3) เช็ค 'เปิดแอป 2 ครั้งแล้วตารางไม่ซ้ำ' ของ 1.3 ผมทดสอบด้วย smoke test แล้ว ส่วนใน Electron เบลยังไม่ได้ยืนยันหลังปิด-เปิดแอปใหม่ (4) ถ้าแก้ `schema.sql` ต้องลบไฟล์ `studyflow.sqlite` ใน userData ก่อน เพราะไม่มีระบบ migration (5) เบลต้องอ่านและอธิบายโค้ดได้ โดยเฉพาะ Deadline State กับ Urgency Score (6) เพื่อนต้อง `npm install` ใหม่หลัง merge (มี `better-sqlite3` เพิ่ม ต้อง Node 22+) และห้ามรัน `electron-builder install-app-deps` (7) ข้อถัดไป: ข้อ 2 Settings |
