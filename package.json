@@ -23,5 +23,8 @@
     "win": {
       "target": "nsis"
     }
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3"
   }
 }
