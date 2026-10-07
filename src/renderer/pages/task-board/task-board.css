@@ -1,3 +1,130 @@
 /* Owner: Frontend */
 /* หน้าที่: สไตล์เฉพาะหน้า Task Board */
-/* TODO: ใช้ตัวแปรจาก styles/tokens.css */
+
+.tb {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--space-5);
+}
+
+.tb__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.tb__title {
+  flex: 1;
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.tb__mock,
+.tb__empty {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-muted);
+}
+
+.tb__error {
+  margin: 0 0 var(--space-4);
+  color: var(--color-error);
+}
+
+.tb__body {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-5);
+}
+
+.tb__list {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tb-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  text-align: left;
+  cursor: pointer;
+}
+
+.tb-card[aria-expanded='true'] {
+  border-color: var(--color-accent);
+}
+
+.tb-card__title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.tb-card__course {
+  color: var(--color-text-muted);
+  font-size: 0.9em;
+}
+
+/* ธง High: ไอคอนเล็กโทนกลาง ไม่ใช่ chip ไม่ใช้สีแดง/ส้ม (UX Review §2) */
+.tb-card__flag {
+  color: var(--color-text-muted);
+}
+
+.tb__detail {
+  width: 360px;
+  flex-shrink: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.tb__detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.tb__detail-title {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+/* โมดัลสร้าง task ใช้ <dialog> (ได้ focus trap + Esc ของเบราว์เซอร์) */
+.tb-dialog {
+  width: min(520px, calc(100vw - 32px));
+  padding: var(--space-5);
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.tb-dialog::backdrop {
+  background: var(--color-backdrop);
+}
+
+.tb-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.tb-dialog__title {
+  margin: 0;
+  font-size: 1.2rem;
+}

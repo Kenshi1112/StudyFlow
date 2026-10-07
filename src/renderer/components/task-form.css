@@ -1,0 +1,89 @@
+/* Owner: Frontend */
+/* หน้าที่: สไตล์ฟอร์ม task (ใช้ร่วมกันทั้งโมดัลสร้างและแผง Detail) รวม segmented control ของ Priority */
+
+.task-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.task-form__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.task-form__row > label,
+.task-form__label {
+  font-weight: 600;
+}
+
+.task-form input[type='text'],
+.task-form input[type='date'],
+.task-form input[type='time'],
+.task-form input[type='number'],
+.task-form textarea {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.task-form__inline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.task-form__inline input[type='number'] {
+  width: 6em;
+}
+
+.task-form__inline input[type='date'],
+.task-form__inline input[type='time'] {
+  width: auto;
+}
+
+.task-form__help {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.9em;
+}
+
+.task-form__error {
+  margin: 0;
+  color: var(--color-error);
+}
+
+.task-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* Priority segmented control: โทนกลาง ไม่ใช้สีแดง/ส้ม (สงวนให้ Deadline State) */
+.seg {
+  display: inline-flex;
+  align-self: flex-start;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.seg__btn {
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.seg__btn:last-child {
+  border-right: 0;
+}
+
+.seg__btn[aria-checked='true'] {
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+}

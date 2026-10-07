@@ -2,8 +2,23 @@
 <!-- หน้าที่: ส่วนเนื้อหา (fragment) ของหน้า Task Board: รายการ task เรียงตาม Urgency Score, ปุ่ม Sync now, popup review งานจาก Classroom
      router.js โหลดไฟล์นี้เข้า #app จึงไม่ใช่เอกสาร HTML เต็ม (ไม่มี html/head/body) -->
 <!-- TODO: ทำ UI ตาม PROJECT_v0.13 section 9, 13.2, 13.5 และ UX-UI-Design-Review -->
+<!-- ตอนนี้ทำเฉพาะ: รายการ task, ปุ่ม + New Task (โมดัลฟอร์ม), แผง Task Detail (ข้อ 0.4)
+     ยังไม่ทำ: จัดกลุ่มตาม Deadline State, ค้นหา/ฟิลเตอร์, Sync Now, popup Classroom, ปุ่ม quick action บนการ์ด -->
 
-<section id="page-task-board" aria-label="Task Board">
-  <!-- ชั่วคราว: ปุ่มกลับห้อง ไว้ทดสอบ router จะเปลี่ยนตามดีไซน์ -->
-  <a href="#/room">กลับห้อง</a>
+<section id="page-task-board" class="tb" aria-labelledby="tb-title">
+  <header class="tb__header">
+    <!-- ชั่วคราว: ปุ่มกลับห้อง ไว้ทดสอบ router จะเปลี่ยนตามดีไซน์ -->
+    <a href="#/room">กลับห้อง</a>
+    <h1 id="tb-title" class="tb__title">Task Board</h1>
+    <button type="button" id="tb-new" class="btn btn--primary">+ New Task</button>
+  </header>
+
+  <p id="tb-mock" class="tb__mock" hidden>ข้อมูลจำลอง: Backend ยังไม่เชื่อมต่อ (tasks:* ยังไม่มี handler)</p>
+  <p id="tb-error" class="tb__error" role="alert" hidden></p>
+  <p id="tb-empty" class="tb__empty" hidden>No tasks yet. Create your first task with “+ New Task”.</p>
+
+  <div class="tb__body">
+    <ul id="tb-list" class="tb__list"></ul>
+    <aside id="tb-detail" class="tb__detail" aria-label="Task detail" hidden></aside>
+  </div>
 </section>

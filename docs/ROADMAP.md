@@ -65,7 +65,7 @@ Spec หลักคือ `docs/PROJECT_v0.13.md` ถ้าไฟล์นี�
   - เสร็จ: `docs/ipc-contract.md` ตัดสินครบแล้ว (เบลตัดสิน 2026-10-05) เก็บ channel ตีความทั้ง 4 ตัว ถ้าเพื่อนค้านให้แก้ไฟล์นั้นแล้วบอกกัน
   - spec v0.13 ยืนยันแล้ว (เบล 2026-10-05): Priority ผู้ใช้ใส่เองเข้าสูตร Urgency Score (0.4/0.24/0.16/0.2), `classroom_course_name` เปลี่ยนเป็น `course_name` และ `ipc-contract.md` อัปเดตตามแล้ว ข้อ 1.2 และ 1.6 เริ่มได้
   - เพิ่ม `TASK_PRIORITY` ใน `src/shared/constants.js` แล้ว (เบลตัดสินเพิ่มเลย เพราะอาจารย์สั่ง และเป็นการเพิ่มค่าใหม่ ไม่ได้แก้ของเดิม)
-  - เหลือ: เพื่อนต้องเพิ่มช่อง Priority กับ Course (ไม่บังคับ) ในฟอร์ม task
+  - Frontend ทำแล้ว (2026-10-07): ฟอร์ม task ที่ใช้ร่วมกัน `src/renderer/components/task-form.js` + `.css` มีช่อง Priority (segmented control ไม่มีค่าเริ่มต้น กดซ้ำเพื่อล้าง) และ Course (ไม่บังคับ) ใช้ทั้งโมดัลสร้าง (create) และแผงข้าง (edit) ในหน้า Task Board
 - [x] 0.5 ตัดสินใจ: SQLite binding (Backend), วิธีสลับหน้า (Frontend)
   - Backend ตัดสินแล้ว: ใช้ `better-sqlite3` (ติดตั้งจริงในข้อ 1.1)
   - Frontend ตัดสินแล้ว (2026-10-07): ทาง A หน้าเดียว + hash router (`src/renderer/router.js`, route `#/room`, `#/task-board`, `#/dashboard`, `#/calendar`, `#/settings`, `#/pomodoro?task=<id>`) แต่ละหน้าเป็น fragment + ลงทะเบียน `window.pages[name] = { mount(root, params), unmount() }`
@@ -149,6 +149,8 @@ Spec หลักคือ `docs/PROJECT_v0.13.md` ถ้าไฟล์นี�
 
 ## แทร็กของเพื่อน (Frontend) ทำขนานกัน
 
+ความคืบหน้า (2026-10-07): Room ทำแล้วตาม Figma (`pages/room/`, ฉาก 1920x1080 ย่อตามหน้าต่าง, จุดคลิกไป Task Board/Dashboard/Calendar/Settings, รูปหน้าต่างเปลี่ยนตามเวลาเครื่อง); Task Board ทำแค่ฟอร์ม + รายการแบบบาง ๆ ยังต้องทำต่อหลังข้อ 1.7
+
 ลำดับแนะนำ: Room, Task Board (หลังข้อ 1.7), Settings, Pomodoro + widget (หลังข้อ 3), Dashboard (หลังข้อ 4), Calendar
 ระหว่างรอ backend ใช้ข้อมูลจำลองใน renderer ได้ แต่ต้องเรียกผ่าน `window.api.invoke` ตาม contract
 
@@ -167,3 +169,4 @@ Deadline State, Urgency Score, Time-to-Start Lag, LWW เป็นแกนข�
 | 2026-10-05 | 0.1, 0.4, 0.5, 0.6 | `git init`/commit แรก/branch `backend`+`frontend`/ตั้ง remote, ร่าง `docs/ipc-contract.md` (tasks:*), เลือก `better-sqlite3`, `package-lock.json` เข้า commit แรก | (1) ต้อง push เอง (2) ipc-contract ตัดสินครบแล้ว (เพื่อนค้านได้ ให้แก้ไฟล์) (3) **spec gap**: §14.3 อ้าง `course_name` ใน `tasks` แต่ §19 ไม่มี field นี้ (มีแค่ `classroom_course_name`) ต้องแก้ spec ก่อนทำ course ของ manual/LINE task (4) ข้อ 1.1: ติดตั้ง `better-sqlite3` ต้องรันบน Windows เอง (`node_modules` เป็นของ Windows) และเช็คว่ามี prebuilt สำหรับ Electron 44.5.1 ถ้าไม่มีต้องมี build tools |
 | 2026-10-05 | spec | เปลี่ยนมาใช้ `PROJECT_v0.13.md` (Priority เข้าสูตร Urgency Score, `course_name` ใช้กับทุก source), ลบ `PROJECT_v0.12.md`, เปลี่ยนการอ้างอิงใน 21 ไฟล์ (README, comment โค้ด, ROADMAP), อัปเดต `ipc-contract.md` | (1) อัปโหลด v0.13 ขึ้น Claude Project (2) เพิ่ม `TASK_PRIORITY` ใน `constants.js` แล้ว แจ้งเพื่อนตอน PR (3) UX-UI-Design-Review ต้องเพิ่ม Priority ในฟอร์ม/การ์ด และช่อง Course ในฟอร์ม manual |
 | 2026-10-07 | 0.5 (Frontend) | เขียน `router.js` แบบ hash router, เปลี่ยน `index.html` เป็นหน้าเดียว, แปลง stub 6 หน้าเป็น fragment + `mount/unmount`, ทดสอบด้วยเบราว์เซอร์จำลอง (สลับหน้า, back, route ผิด, สลับรัว ๆ) ผ่าน | (1) ยังไม่ได้ลองใน Electron จริง: ต้องรัน `npm run dev` เช็คว่า `fetch` ไฟล์ `file://` โหลด fragment ได้ (2) ปุ่ม/ลิงก์ใน room.html และปุ่มกลับห้องในหน้าอื่นเป็นของชั่วคราวไว้ทดสอบ router (3) งานต่อ: หน้า Room ตามดีไซน์ Figma, ฟอร์ม Priority/Course (0.4) (4) ตอนนี้ working tree อยู่บน `main` ยังไม่ได้ย้ายไป branch `frontend` และไฟล์ทั้ง repo โชว์ว่าแก้เพราะ line ending (CRLF) ไม่ใช่เนื้อหา |
+| 2026-10-07 | 0.4 (Frontend), Room | ทำฟอร์ม Priority/Course ที่ใช้ร่วม (`task-form.js`), หน้า Task Board แบบบาง (สร้างในโมดัล/แก้ในแผงข้าง), `api-client.js` + `dev-mock-tasks.js` (mock เฉพาะเมื่อ main ยังไม่มี handler), ย้ายไป branch `frontend`, ทำหน้า Room ตาม Figma 4 เฟรม (รูป 33 ไฟล์ใน `src/renderer/assets/room/`) ดูใน Electron จริงแล้วตรงแบบ | (1) `dev-mock-tasks.js` ลบได้หลัง Backend ทำข้อ 1.7 (`deadline_state`/`urgency_score` ในนั้นเป็นค่าประมาณ ไม่ใช่สูตร §9) (2) สมมติฐานที่ยังไม่ยืนยัน: เวลาเริ่มต้นของ due = 23:59, ป้ายในฟอร์มเป็นภาษาอังกฤษ, ช่วงเวลาเช้า/กลางวัน/เย็น/ค่ำ = 05/11/16/19 น., ปุ่ม Settings แสดงทุกช่วงเวลา (Figma เฟรมเช้าไม่มี), token สีใน `tokens.css` ยังเป็นค่าชั่วคราว (3) `window-evening.png` ขนาด 14.7 MB ควรขอไฟล์เล็กลงจากดีไซเนอร์ (4) ยังไม่ทำตัวบอกงานด่วนบนกระดาน (spec แค่อนุญาต) (5) ลบ `download-room-assets.ps1` แล้ว ห้าม commit (6) ไฟล์ใน repo โชว์ว่าแก้เพราะ line ending (CRLF) ไม่ใช่เนื้อหา |
