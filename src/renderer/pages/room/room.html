@@ -1,19 +1,14 @@
 <!-- Owner: Frontend -->
-<!-- หน้าที่: โครง HTML ของหน้า Room: หน้าแรก Interactive Room เป็นแค่ชั้นนำทางไปหน้าอื่น ไม่มี business logic -->
+<!-- หน้าที่: ส่วนเนื้อหา (fragment) ของหน้า Room: หน้าแรก Interactive Room เป็นแค่ชั้นนำทางไปหน้าอื่น ไม่มี business logic
+     router.js โหลดไฟล์นี้เข้า #app จึงไม่ใช่เอกสาร HTML เต็ม (ไม่มี html/head/body) -->
 <!-- TODO: วาง object ของห้อง (Task Board, Monitor, Calendar ...) ตาม PROJECT_v0.13 section 7 -->
 
-<!doctype html>
-<html lang="th">
-<head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:" />
-  <title>StudyFlow - Room</title>
-  <link rel="stylesheet" href="../../styles/tokens.css" />
-  <link rel="stylesheet" href="../../styles/global.css" />
-  <link rel="stylesheet" href="room.css" />
-</head>
-<body>
-  <main id="page-room"></main>
-  <script src="room.js"></script>
-</body>
-</html>
+<section id="page-room" aria-label="Room">
+  <!-- ชั่วคราว: ลิงก์ไว้ทดสอบ router เท่านั้น จะแทนด้วย object ของห้อง (กระดาน/จอ/ปฏิทิน/ปุ่ม Settings) -->
+  <nav aria-label="ทดสอบการนำทาง">
+    <a href="#/task-board">Task Board</a>
+    <a href="#/dashboard">Dashboard</a>
+    <a href="#/calendar">Calendar</a>
+    <a href="#/settings">Settings</a>
+  </nav>
+</section>
