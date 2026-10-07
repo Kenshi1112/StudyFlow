@@ -1,10 +1,10 @@
-# IPC Contract: `tasks:*`
+# IPC Contract: `tasks:*` และ `settings:*`
 
 หน้าจอ (Frontend) ไม่แตะฐานข้อมูลตรง ต้องขอผ่าน `window.api.invoke(channel, payload)` เท่านั้น (spec §17.2)
 ไฟล์นี้คือข้อตกลงว่าแต่ละ channel รับอะไร ส่งอะไรกลับ ถ้าไฟล์นี้ขัดกับ spec (`PROJECT_v0.13.md`) ให้ยึด spec
 
 **สถานะ: ตกลงแล้ว** (เบลตัดสิน 2026-10-05) ถ้าเพื่อนอยากเปลี่ยน ให้แก้ไฟล์นี้แล้วบอกกัน
-ครอบคลุมเฉพาะ `tasks:*` กลุ่มอื่นจะเพิ่มเมื่อถึงข้อของมัน
+ครอบคลุม `tasks:*` และ `settings:*` (ดูท้ายไฟล์) กลุ่มอื่นจะเพิ่มเมื่อถึงข้อของมัน
 
 ## ตัวอย่างการใช้
 
@@ -28,7 +28,7 @@ await window.api.invoke('tasks:delete', { id: task.id });
 3. **ย้อน status จาก `completed`:** main ล้าง `completed_at` เป็น `null`
 4. **course และ priority (spec v0.13):** `classroom_course_name` เปลี่ยนชื่อเป็น `course_name` ใช้กับทุก source ส่วน `priority` เป็น `'low'` | `'medium'` | `'high'` | `null` (ผู้ใช้ใส่เอง `null` = ไม่ตั้ง) ทั้งสอง field ส่งตอนสร้างและแก้ได้ (ไม่บังคับ) ค่า `urgency_score` รวม priority แล้ว ฝั่งหน้าจอเรียงตามค่านี้เหมือนเดิม ไม่ต้องคิดเอง
 5. **วันที่/เวลาทุก field** เป็น ISO 8601 string, `id` ให้มองเป็น string ทึบ ๆ
-6. **Channel ที่เป็นการตีความของเรา** เก็บไว้ทั้งหมด: `classroom:get-status`, `settings:get`, `settings:set`, `line:get-status` (รายละเอียด payload ค่อยกำหนดตอนถึงข้อของมัน)
+6. **Channel ที่เป็นการตีความของเรา** เก็บไว้ทั้งหมด: `classroom:get-status`, `settings:get`, `settings:set`, `line:get-status` (`settings:*` กำหนด payload แล้ว ดูท้ายไฟล์ ที่เหลือค่อยกำหนดตอนถึงข้อของมัน)
 7. ไม่มี event ของ tasks ถ้า task ใหม่เข้ามาจาก sync/LINE ให้เรียก `tasks:list` ใหม่ตอนเปิดหน้า
 
 ## Channels
@@ -75,3 +75,31 @@ field ตรงกับตาราง `tasks` ใน spec §19 ทั้งห
 ค่า enum ใช้จาก `src/shared/constants.js`
 
 หมายเหตุ: ค่า `priority` ใช้จาก `TASK_PRIORITY` ใน `src/shared/constants.js` (`LOW`, `MEDIUM`, `HIGH`)
+
+---
+
+## `settings:*` (ข้อ 2, เบลตัดสิน 2026-10-06)
+
+เก็บใน table `settings` (local only ไม่ sync §19) มีแค่ 3 key ตาม spec
+
+| channel | ส่งไป | ได้กลับ |
+|---|---|---|
+| `settings:get` | ไม่มี | object ครบทั้ง 3 key (key ที่ยังไม่เคยตั้ง = ค่า default) |
+| `settings:set` | `{ key, value }` ทีละ key | object ครบทั้ง 3 key หลังอัปเดต |
+
+```js
+await window.api.invoke('settings:get')
+// { has_seen_first_run_prompt: false, classroom_cutoff_date: null, reminder_window_days: 1 }
+await window.api.invoke('settings:set', { key: 'reminder_window_days', value: 3 })
+// { has_seen_first_run_prompt: false, classroom_cutoff_date: null, reminder_window_days: 3 }
+```
+
+| key | type | default | ที่มา |
+|---|---|---|---|
+| `has_seen_first_run_prompt` | boolean | `false` | §19, §13.1 |
+| `classroom_cutoff_date` | ISO 8601 วัน+เวลา \| `null` (เช่น `2026-08-01T00:00:00.000Z`) | `null` | §13.1 |
+| `reminder_window_days` | จำนวนเต็ม ≥ 1 (วัน) | `1` | §11.1 |
+
+- key ไม่อยู่ในตารางนี้ หรือ value ผิดชนิด = reject (ชื่อ key `classroom_cutoff_date` / `reminder_window_days` เป็นชื่อที่เราตั้งเอง spec ไม่ได้ระบุ และ spec ไม่ได้กำหนดช่วงของ reminder window ขั้นต่ำ 1 เป็นการตัดสินของเรา)
+- `classroom_cutoff_date` ต้องมีวัน+เวลา (ไม่รับ `2026-08-01` เฉย ๆ) เหมือน `due_date`
+- การบังคับให้ตั้ง cutoff ก่อน fetch ครั้งแรก (§13.1) เป็นหน้าที่ของ `classroom:*` (ข้อ 6) ไม่ใช่ channel นี้
