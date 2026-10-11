@@ -1,7 +1,7 @@
 # IPC Contract: `tasks:*` และ `settings:*`
 
 หน้าจอ (Frontend) ไม่แตะฐานข้อมูลตรง ต้องขอผ่าน `window.api.invoke(channel, payload)` เท่านั้น (spec §17.2)
-ไฟล์นี้คือข้อตกลงว่าแต่ละ channel รับอะไร ส่งอะไรกลับ ถ้าไฟล์นี้ขัดกับ spec (`PROJECT_v0.13.md`) ให้ยึด spec
+ไฟล์นี้คือข้อตกลงว่าแต่ละ channel รับอะไร ส่งอะไรกลับ ถ้าไฟล์นี้ขัดกับ spec (`PROJECT_v0.14.md`) ให้ยึด spec
 
 **สถานะ: ตกลงแล้ว** (เบลตัดสิน 2026-10-05) ถ้าเพื่อนอยากเปลี่ยน ให้แก้ไฟล์นี้แล้วบอกกัน
 ครอบคลุม `tasks:*` และ `settings:*` (ดูท้ายไฟล์) กลุ่มอื่นจะเพิ่มเมื่อถึงข้อของมัน
@@ -66,6 +66,7 @@ field ตรงกับตาราง `tasks` ใน spec §19 ทั้งห
 | `classroom_last_updated` | string \| null | ไม่ได้ |
 | `completed_at` | string \| null | ไม่ได้ (main ตั้งเอง) |
 | `deleted_at` | string \| null | ไม่ได้ |
+| `first_started_at` | string \| null | ไม่ได้ (Pomodoro ตั้งครั้งแรกครั้งเดียว ไม่เขียนทับ, v0.14) |
 | `last_focus_started_at` | string \| null | ไม่ได้ (Pomodoro ตั้ง) |
 | `created_at` | string | ไม่ได้ |
 | `updated_at` | string | ไม่ได้ (ใช้กับ sync เท่านั้น ห้ามใช้เป็นสัญญาณ activity §19) |

@@ -1,8 +1,17 @@
 # UI/UX Design Review
-### Academic Task Manager — based on PROJECT_v0.13.md
+### Academic Task Manager — based on PROJECT_v0.14.md
 **Reviewer stance:** Senior Product / UX / Desktop App Designer
-**Scope:** Presentation layer only. No features added, removed, or redefined. Every recommendation below maps to something already confirmed in PROJECT_v0.13.md (cited by section).
+**Scope:** Presentation layer only. No features added, removed, or redefined. Every recommendation below maps to something already confirmed in PROJECT_v0.14.md (cited by section).
 **Target:** Desktop (Windows, Electron, HTML/CSS/JS). Deliverable-ready for Figma.
+
+---
+
+## Revision Note — v0.14 changes (applied on top of the v0.13 pass below)
+
+| PROJECT_v0.14 change | Where it affects this document |
+|---|---|
+| "Longest Inactive Assignment" is removed; the Dashboard has six metrics (Section 10.2) | **Section 3 (Dashboard)** — Needs Attention strip now holds Overdue only, layout sketch redrawn, the "link to the task's detail" bullet removed, and "seven metrics" changed to "six" in the hierarchy text, the avoid list, the information-density list and the top-priorities summary |
+| Time-to-Start Lag counts from the first "Start Working" press (`first_started_at`) (Sections 10.3, 15.3) | No visual change; the Time-to-Start Lag card and its plain-language example stay as they are |
 
 ---
 
@@ -404,12 +413,12 @@ The Deadline State chip is the single strongest visual element on each card. The
 ### Purpose & primary actions
 Per Section 10, this page exists to build self-awareness of *workload and behavior*, not to be a report generator. Primary action is mostly passive: glance, understand, occasionally change the time-range filter.
 
-### Visual & information hierarchy — placing the seven metrics
-The seven metrics (Section 10.2) are not all the same *kind* of information:
+### Visual & information hierarchy — placing the six metrics
+The six metrics (Section 10.2) are not all the same *kind* of information:
 
 | Group | Metrics | Behavior |
 |---|---|---|
-| **Needs attention now** (pinned, filter-independent) | Overdue Assignments, Longest Inactive Assignment | Always real-time; does not change with the time-range filter |
+| **Needs attention now** (pinned, filter-independent) | Overdue Assignments | Always real-time; does not change with the time-range filter |
 | **Filtered overview** | Total Assignments, Completed Assignments, Remaining Assignments, % Completed Before Deadline | Recalculates on filter change |
 | **Filtered, behavioral** | Average Time-to-Start Lag | Recalculates on filter change; expressed as a percentage with a supporting plain-language example |
 
@@ -419,9 +428,9 @@ The seven metrics (Section 10.2) are not all the same *kind* of information:
 │  Dashboard                                                   │
 │                                                               │
 │  ⚠ Needs Attention (always current)                          │
-│  ┌─────────────────┐  ┌───────────────────────────────┐     │
-│  │ Overdue: 2       │  │ Longest inactive: "Essay" 6d   │     │
-│  └─────────────────┘  └───────────────────────────────┘     │
+│  ┌─────────────────┐                                          │
+│  │ Overdue: 2       │                                         │
+│  └─────────────────┘                                          │
 │  ───────────────────────────────────────────────────────    │
 │  This period:  ( This Week | This Month | All Time )         │
 │  ┌────────┐ ┌────────┐ ┌────────┐ ┌──────────────────┐      │
@@ -453,11 +462,10 @@ The seven metrics (Section 10.2) are not all the same *kind* of information:
 - Mixing the always-current metrics into the same filter-reactive KPI row.
 - A calendar-style heatmap.
 - Displaying Time-to-Start Lag as a raw percentage with no context.
-- Adding an Urgency Score tile or chart here. **(v0.13)** The same goes for any Priority breakdown: Priority is not one of the seven metrics (Section 10.2) and does not affect them.
+- Adding an Urgency Score tile or chart here. **(v0.13)** The same goes for any Priority breakdown: Priority is not one of the six metrics (Section 10.2) and does not affect them.
 
 ### Reducing cognitive load & clicks
 - The time-range filter should be a simple 3-way segmented control.
-- "Longest Inactive Assignment" should link directly to that task's detail.
 - Keep the whole page as close to the fold as reasonably possible.
 
 ### What should receive visual emphasis
@@ -658,7 +666,7 @@ Standard desktop settings conventions apply well here: left category rail + righ
 
 ### Pages at risk of too much information
 - **Task Board**, at realistic scale. **(v0.13)** Priority and course on every card would add to that risk, which is why only High priority is shown on the card and Medium / Low are left to the Detail panel.
-- **Dashboard**, if all seven metrics and multiple charts are given equal size/weight.
+- **Dashboard**, if all six metrics and multiple charts are given equal size/weight.
 
 ### Pages at risk of missing hierarchy
 - **The Room**, if all three objects are rendered with identical visual weight regardless of state.
@@ -676,7 +684,7 @@ Standard desktop settings conventions apply well here: left category rail + righ
 ## Summary: top priorities if you only fix a handful of things
 
 1. Establish one shared color/token system for "urgent/overdue" and reuse it identically in the Room badge, Task Board chip, and Dashboard strip.
-2. Separate Dashboard's two always-current metrics from the five filtered ones; give Time-to-Start Lag its own wider card.
+2. Separate Dashboard's one always-current metric (Overdue) from the five filtered ones; give Time-to-Start Lag its own wider card.
 3. In Task Board, make Deadline State the one dominant chip per card; give Urgency Score **no chip at all**. **(Changed in v0.13)** Priority is a quiet neutral flag on High cards, never a chip.
 4. Default-collapse "No Deadline" and "Completed" buckets in Task Board.
 5. Build the Classroom Review Popup as a lightweight modal — per-item, instant Create/Ignore, dismissible without forcing a decision, no bulk-select step.

@@ -1,5 +1,8 @@
 # PROJECT.md
 
+**Version:** 0.14 (Dashboard Trimmed to Six Metrics; Time-to-Start Lag Captured from the First "Start Working" Press; Urgency Score No Longer Presented as a Highlight)
+**Status (v0.14):** Three targeted changes made after a scope review before the final exam; no new integrations, services, tables or sections. (1) A new nullable field `tasks.first_started_at` records the first time the user presses "Start Working" on a task and is never overwritten; Average Time-to-Start Lag is now computed from it instead of from "the first linked Pomodoro session" (Sections 10.2, 10.3, 15.3, 19). The press is the signal; the timer does not have to run to completion. (2) The dashboard metric "Longest Inactive Assignment" is removed, so the Dashboard has six metrics, not seven (Section 10.2): Task Board already lists every open task, and a tile that shows only one of them picks arbitrarily. `last_focus_started_at` is kept, since it still feeds the Urgency Score's Neglect Factor. (3) The Urgency Score formula, weights and Priority input are unchanged, but the defense framing no longer calls it part of the project's main contribution; it is described only as Task Board's default ordering, with untuned weights (Sections 9.5, 29). Nothing else changes: no change to Deadline State, notifications, Classroom, LINE, Pomodoro mechanics, or sync.
+
 **Version:** 0.13 (Priority Reinstated as an Urgency Score Input; Course Name Field Unified Across Task Sources)
 **Status (v0.13):** Two targeted changes, no new integrations or services. (1) The manual Priority field (Low / Medium / High), removed in v0.8, is reinstated following advisor feedback: because the Urgency Score was derived only from time, progress, and activity signals, long and large projects ranked below short tasks no matter how important they were, and the user had no way to say so. Priority now returns as an optional, user-set field, but only as one bounded component (weight 0.2) of the Urgency Score rather than as a standalone sort key, so the Urgency Score remains the sole signal driving Task Board's default ordering (Sections 9.3, 9.5). The Urgency Score weights are re-balanced accordingly. (2) A specification inconsistency is fixed: Section 14.3 referred to a `course_name` value on `tasks`, but the data model (Section 19) only had `classroom_course_name`. The field is renamed to `course_name` and now applies to tasks from every source, so manual and LINE-created tasks have somewhere to store their course (Section 19). Nothing else changes: no change to Deadline State, the Dashboard metrics, notifications, Classroom, LINE flow steps, Pomodoro, or sync mechanics.
 
@@ -14,7 +17,7 @@
 
 **Version:** 0.9 (First-Run Google-Connect Prompt Added; Two Known Limitations Documented — No-Backup-Without-Connection, Single-Account-Per-Device)
 **Status:** Active — This version adds a one-time, dismissible first-run prompt offering to connect Google Classroom (Section 13.1), so users who never open Settings are still made aware of the choice between connecting (Classroom sync + cloud backup) and staying local-only. Declining the prompt does not gate or delay entry into the app in any way — it is offered, never required, consistent with this project's existing low-friction and no-separate-account-system principles (Sections 6, 19). Two accepted limitations that were previously undocumented are now recorded explicitly: (1) a user who never connects Google Classroom has no cloud backup, since Supabase Auth relies exclusively on Google identity (Section 19); (2) switching Google accounts on the same device is not guarded against at the data layer and could mix local data across accounts (Section 19). Neither limitation changes existing behavior — both are pre-existing consequences of decisions already made in v0.5–v0.8 (single Classroom account, Google-only auth) that had not yet been written down. No business logic, data model field beyond one new `settings` key, or Classroom/Pomodoro/Dashboard behavior changes in this version.
-**Supersedes:** PROJECT.md v0.12
+**Supersedes:** PROJECT.md v0.13
 **Purpose:** This document is the Single Source of Truth for this project. It is not a thesis report. It exists so that any developer or AI assistant can understand the project's purpose, scope, and current decisions within a few minutes.
 
 ---
@@ -31,6 +34,7 @@
 - **(v0.9 note)** This version is a small, targeted addition on top of v0.8 — one new UX entry point (the first-run prompt, which reuses the existing OAuth/Settings connection flow rather than introducing a new one) and two documentation-only known-limitation entries. Nothing in Sections 9–17 (task logic, dashboard, notifications, Classroom mechanics, Pomodoro, sync mechanics) changes in this version.
 - **(v0.12 note)** Inserting the new Section 14 (LINE Integration) shifted every subsequent top-level section by one number relative to v0.11 (old Section 14 Pomodoro → new Section 15, and so on through old Section 28 Thesis Readiness → new Section 29). All cross-references within the *active* body of this document (Sections 1–29) have been updated to the new numbers. Changelog entries recorded under earlier versions (Section 28) retain the section numbers as they were at the time each entry was written, since they are a historical record of past edits, not live cross-references — treat any section number inside a changelog row as relative to that row's own version, not the current document.
 - **(v0.13 note)** No section is added, removed, or renumbered in this version; Section 9.3 is reused for the reinstated Priority field (kept at the same number it held before v0.8) and the section numbering from v0.12 is unchanged. Derived documents (UX-UI-Design-Review, Database-Design, DFD) must be brought in line with this version before they are relied on again: Priority selector on the task create/edit form and task card, an optional Course field on the manual task form, and the renamed `course_name` column.
+- **(v0.14 note)** No section is added, removed, or renumbered. One data-model field is added (`tasks.first_started_at`, Section 19) and one Dashboard metric is removed (Section 10.2). Derived documents must be brought in line before they are relied on again: UX-UI-Design-Review (Dashboard: six metrics, Needs Attention strip holds Overdue only), `schema.sql`, the Supabase `tasks` migration, and the Dashboard service and its tests. The SQLite file in `userData` must be deleted after `schema.sql` changes, since the project has no migration system.
 
 ---
 
@@ -268,10 +272,9 @@ The dashboard supports filtering its charts and statistics by:
 | Remaining Assignments | Count of tasks with `due_date` in range and status ≠ Completed. | `due_date` | Yes |
 | Overdue Assignments | Count of tasks currently in the Overdue deadline state (Section 9.2). | n/a — real-time | **No** |
 | % Completed Before Deadline | Among tasks with `due_date` in range and status = Completed: percentage where `completed_at` ≤ `due_date`. | `due_date` | Yes |
-| Longest Inactive Assignment | The in-progress task with the oldest `last_focus_started_at` (excluding tasks where it is null). | n/a — real-time | **No** |
-| Average Time-to-Start Lag | Among tasks with `due_date` in the selected range that have at least one linked Pomodoro session, and where `due_date` occurs after `created_at`: the mean `start_percentage`. | `due_date` | Yes |
+| Average Time-to-Start Lag | Among tasks with `due_date` in the selected range that have a recorded `first_started_at`, and where `due_date` occurs after `created_at`: the mean `start_percentage`. | `due_date` | Yes |
 
-**Rationale:** Overdue Assignments and Longest Inactive Assignment are both "what needs my attention right now" indicators, not historical statistics. Urgency Score (Section 9.5) is a related but separate concept and is not included in this table.
+**Rationale:** Overdue Assignments is the one "what needs my attention right now" indicator, not a historical statistic, so it ignores the time-range filter. **(v0.14)** A "Longest Inactive Assignment" metric was removed: Task Board already lists every open task, and a tile that shows a single task picks one of many without a reason. Urgency Score (Section 9.5) is a related but separate concept and is not included in this table.
 
 ### 10.3 Average Time-to-Start Lag — Rationale and Edge Cases
 
@@ -279,24 +282,26 @@ The dashboard supports filtering its charts and statistics by:
 
 **Why percentage instead of a raw day count:** normalizing delay as a percentage of each task's own available time window removes distortion from comparing tasks of very different lengths.
 
-**What this metric measures:** the gap between when a task entered the system and when the student first touched it, using the first Pomodoro session linked to that task as the "first touch" signal, expressed as a proportion of the task's total available time.
+**What this metric measures:** the gap between when a task entered the system and when the student first touched it, using the first press of "Start Working" on that task (stored once in `tasks.first_started_at`, Section 19) as the "first touch" signal, expressed as a proportion of the task's total available time.
 
-**Not to be confused with `last_focus_started_at` (Section 19):** this metric uses the **earliest** linked session; `last_focus_started_at` tracks the **most recent** session start.
+**Not to be confused with `last_focus_started_at` (Section 19):** this metric uses `first_started_at` (the **first** press of Start Working, set once and never overwritten); `last_focus_started_at` tracks the **most recent** press.
 
 **Computation:**
 - `window_total = due_date − created_at`
-- `elapsed_to_start = first_session.started_at − created_at`
+- `elapsed_to_start = first_started_at − created_at`
 - `start_percentage = (elapsed_to_start / window_total) × 100`
 - Negative `elapsed_to_start` is clamped to `0`.
 - No upper clamp — values above 100% are retained.
 - The dashboard reports the mean `start_percentage` across qualifying tasks.
 
 **Exclusion rules:**
-- A task with no linked Pomodoro session is excluded entirely (not counted as 0%).
+- A task with no `first_started_at` (Start Working never pressed) is excluded entirely (not counted as 0%).
 - A task where `due_date` does not occur strictly after `created_at` is excluded.
 - A task with no `due_date` is excluded.
 
 **Accepted limitation:** averaging across very different window lengths is statistically imperfect; documented as an accepted limitation.
+
+**Accepted limitation (v0.14):** the metric measures when the user pressed Start Working, not when they actually began working. Someone who works on a task without using the app's timer will show a larger lag than the real one. This is documented rather than solved.
 
 **Display recommendation (non-binding, deferred to UX-UI-Design-Review.md):** pair the raw percentage with a plain-language example.
 
@@ -491,7 +496,7 @@ Both directions below are implemented as Supabase Edge Functions — serverless 
 
 **Confirmed decision (Revised in v0.8):** Pomodoro is reached exclusively through a task. There is no standalone Pomodoro page and no general, task-less focus session.
 
-**Rationale for removing the general-session entry point:** every signal that depends on Pomodoro data needs a task link to mean anything — Time-to-Start Lag, Neglect Factor, and Longest Inactive Assignment all require `task_id`. Removing the general session removes real weight from both UI and data model.
+**Rationale for removing the general-session entry point:** every signal that depends on Pomodoro data needs a task link to mean anything — Time-to-Start Lag and Neglect Factor both require `task_id`. Removing the general session removes real weight from both UI and data model.
 
 ### 15.1 Partial Sessions (Confirmed)
 
@@ -508,6 +513,7 @@ Pomodoro session data remains a **separate, display-only record**. It is never a
 **Side effects of pressing "Start Working" (New in v0.8):**
 1. `last_focus_started_at` is set to the current timestamp on every batch start.
 2. If status is still `Not Started`, it auto-transitions to `In Progress` (only the first time).
+3. **(New in v0.14)** If `first_started_at` is still null, it is set to the current timestamp (only the first time; never overwritten, and not cleared if that session is later stopped or recorded as partial).
 
 **Phase transition behavior:** focus → break → next focus, automatically, until the batch ends. The user can pause or stop at any point.
 
@@ -649,7 +655,8 @@ This section defines entities and key fields at a specification level. Exact SQL
 | classroom_last_updated | Nullable — Classroom's own `updateTime` (Section 13.3) |
 | completed_at | Nullable, set on transition to Completed |
 | deleted_at | Nullable — soft delete (Section 18.2) |
-| last_focus_started_at | Nullable. Set to the current timestamp whenever a Pomodoro session starts for this task (Section 15.3). Drives Neglect Factor (Section 9.5) and Longest Inactive Assignment (Section 10.2). |
+| first_started_at | Nullable. **(New in v0.14.)** Set to the current timestamp the first time "Start Working" is pressed for this task (Section 15.3), and never overwritten afterwards. Drives Average Time-to-Start Lag (Section 10.3). Synced like other task fields. |
+| last_focus_started_at | Nullable. Set to the current timestamp whenever a Pomodoro session starts for this task (Section 15.3). Drives Neglect Factor (Section 9.5). |
 | created_at / updated_at | `updated_at` is reserved for LWW sync conflict resolution only (Section 18.2). It must **not** be read as an activity/neglect signal. For Classroom-sourced tasks, `created_at` is the local import timestamp; for LINE-sourced tasks, it is the moment the LINE creation flow completes (Section 14.3). |
 
 **`classroom_sync_state`** — tracks assignments seen from Classroom, independent of whether they became tasks
@@ -782,7 +789,7 @@ The MVP is the complete set of features required for thesis submission. Every it
 - **(New in v0.12)** LINE integration: task creation via a structured chat flow, and deadline-state push notifications independent of whether the desktop app is running (Section 14)
 - Computed deadline state: Upcoming / Due Today / Overdue / No Deadline / Completed (Section 9.2)
 - Manual progress percentage and free-form notes (Section 12)
-- Dashboard with the seven finalized metrics and This Week / This Month / All Time filtering (Section 10)
+- Dashboard with the six finalized metrics and This Week / This Month / All Time filtering (Section 10)
 - Desktop notifications with default deadline-state-based rules (Section 11)
 - Pomodoro: task-linked sessions only, multi-session batches with phase-transition notifications and a persistent floating widget, partial-session recording (Section 15)
 - Background Supabase sync with LWW conflict resolution (Section 18)
@@ -817,8 +824,8 @@ The MVP is the complete set of features required for thesis submission. Every it
 - **(New in v0.12)** Task creation via LINE uses a structured, button-and-picker chat flow — never freeform natural-language parsing — and creates tasks directly, without passing through the Classroom review popup (Section 14.3).
 - **(New in v0.12)** Deadline notifications are pushed to LINE on a fixed cloud-side schedule, independent of whether the desktop app is running, mitigating (not eliminating) the accepted limitation that desktop notifications require the app to be open (Section 11.2, Section 14.4).
 - **(New in v0.12)** No AI/LLM component and no workflow-automation tool (e.g. n8n) are used anywhere in the LINE integration (Section 14.6).
-- Pomodoro is reached exclusively through a task — there is no general/task-less session and no Room entry point for it (the Clock object is removed, Section 7). Sessions run as configurable multi-session batches with automatic focus→break→next-focus progression, OS notifications at each phase transition, and a persistent always-on-top floating widget. Starting a task's first batch auto-transitions its status from Not Started to In Progress and sets `last_focus_started_at`.
-- Dashboard supports This Week / This Month / All Time filtering; Overdue and Longest Inactive Assignment are always real-time. Average Time-to-Start Lag is expressed as a percentage of each task's own available time window.
+- Pomodoro is reached exclusively through a task — there is no general/task-less session and no Room entry point for it (the Clock object is removed, Section 7). Sessions run as configurable multi-session batches with automatic focus→break→next-focus progression, OS notifications at each phase transition, and a persistent always-on-top floating widget. Starting a task's first batch auto-transitions its status from Not Started to In Progress and sets `last_focus_started_at` (and `first_started_at`, the first time).
+- Dashboard supports This Week / This Month / All Time filtering; Overdue Assignments is always real-time. Average Time-to-Start Lag is expressed as a percentage of each task's own available time window.
 - Deadline state is computed at read-time and includes a "No Deadline" state; completed tasks are never shown as Overdue.
 - Tasks imported from Google Classroom are assigned an initial status based on the corresponding `StudentSubmission.state`, checked at the moment of import confirmation. Tasks created via LINE always start at Not Started (Section 9.1).
 - **(New in v0.13)** Priority (Low / Medium / High, optional, user-set, no default) is reinstated, but only as one weighted component (0.2) of the Urgency Score, which remains the sole signal driving Task Board's default sort order (Sections 9.3, 9.5). It was originally removed in v0.8 as a standalone field.
@@ -912,6 +919,20 @@ This document overrides any conflicting assumptions from previous conversations.
 
 *(Section numbers referenced inside each changelog entry below reflect the numbering that was current **at the time that entry was written** — they are a historical record, not live cross-references. See Section 1 for the v0.12 renumbering note.)*
 
+### v0.13 → v0.14
+
+| Section | Change | Reason |
+|---|---|---|
+| Header | Version bumped to 0.14; Supersedes line updated to v0.13 | Team rule: change the spec version before the code |
+| 1 | Added a v0.14 note listing the one added field, the one removed metric, and the derived documents and files to update | Keeps derived documents and code in sync |
+| 10.2 | Removed the Longest Inactive Assignment metric (seven metrics to six); Average Time-to-Start Lag now requires a recorded `first_started_at`; rationale updated | A single-task tile duplicates Task Board and picks one of many open tasks arbitrarily |
+| 10.3 | First touch is the first Start Working press (`first_started_at`), not the first linked Pomodoro session; formula and exclusion rule updated; added a limitation (measures the press, not real work) | The press is the signal, and a stored field is simpler and does not change if a session row is edited or deleted |
+| 15 | Removed Longest Inactive Assignment from the task-link rationale; added `first_started_at` to the side effects of Start Working (15.3) | Keeps Section 15 in sync with Sections 10 and 19 |
+| 19 | Added `tasks.first_started_at`; removed Longest Inactive Assignment from the `last_focus_started_at` note | New field required by Section 10.3 |
+| 22, 23 | Seven metrics changed to six; Longest Inactive removed from the dashboard decision; Start Working also sets `first_started_at` | Keeps the MVP list and decision summary in sync |
+| 28 | Added this v0.13 → v0.14 changelog entry | Standard practice for this document |
+| 29 | Urgency Score no longer described as part of the project's main contribution; added a note on how to describe the focus timer at the defense | Avoids overclaiming; the advisor did not understand the timer's link to tasks |
+
 ### v0.12 → v0.13
 
 | Section | Change | Reason |
@@ -970,10 +991,12 @@ This document overrides any conflicting assumptions from previous conversations.
 
 **Implementation — Ready to begin, with one new, explicitly scoped addition.** Core modules have clear, non-contradictory business rules and a defined data model. **(v0.12 note)** The LINE integration (Section 14) is new implementation work — unlike the v0.9 first-run prompt, which reused an existing flow verbatim, this version adds two new Supabase Edge Functions, four new tables, and a second external API. It is scoped narrowly and deliberately (structured input only, no AI/LLM, no third-party workflow tool — Section 14.6) specifically so that its implementation risk stays bounded and estimable within the existing ~2-month post-defense timeline (Section 21); it is not a thin addition on the order of v0.9's prompt, and should be planned for accordingly rather than treated as trivial.
 
-**Thesis defense framing — Strengthened.** Average Time-to-Start Lag (Section 10.3) and Urgency Score (Section 9.5) remain the project's clearest academic contribution — one designed technique applied twice. **(v0.12 addition)** The LINE integration adds a second kind of contribution: a deliberate, documented decision *not* to reach for AI/LLM components where a structured, deterministic alternative achieves the same user-facing outcome with less risk and better testability (Section 14.6) — directly continuing the "exclude/document rather than silently guess or hide" posture already established for the rejected learned-Urgency-Score-weighting idea (Section 9.5) and the v0.9 known-limitation entries. This gives the defense a coherent, explicit position on AI/ML scope, rather than an implicit absence that could otherwise be read as an oversight.
+**Thesis defense framing — Strengthened.** **(v0.14)** Average Time-to-Start Lag (Section 10.3) is the project's own design contribution: a behavior metric (how early the user starts, as a share of each task's time window) captured automatically from the Start Working press, with no manual logging. The Urgency Score (Section 9.5) is described only as Task Board's default ordering and is not presented as a highlight: with the handful of open tasks one page can show, it changes the order very little, and its weights are untuned. **(v0.12 addition)** The LINE integration adds a second kind of contribution: a deliberate, documented decision *not* to reach for AI/LLM components where a structured, deterministic alternative achieves the same user-facing outcome with less risk and better testability (Section 14.6) — directly continuing the "exclude/document rather than silently guess or hide" posture already established for the rejected learned-Urgency-Score-weighting idea (Section 9.5) and the v0.9 known-limitation entries. This gives the defense a coherent, explicit position on AI/ML scope, rather than an implicit absence that could otherwise be read as an oversight.
 
 The evaluation gap flagged in earlier readiness assessments remains addressed: real user testing with currently-enrolled junior students is planned. **(v0.12 note)** This user testing window is also the natural point to validate whether the LINE integration is used enough, by enough participants, to be worth reporting on quantitatively — an outcome that cannot be predicted in advance and should not be assumed.
 
 **Timeline — affected, and this should be stated plainly rather than minimized.** Section 21's ~2-month post-defense implementation estimate now needs to absorb the LINE integration's estimated implementation time (accountlinking, the structured chat-flow state machine, and the scheduled notification function — roughly 2.5–3 weeks by the team's own estimate). Unlike the v0.9 and v0.10 additions, this is not a documentation-only or thin-UI change; it should be explicitly budgeted for in the implementation plan presented at defense, not treated as absorbed into the existing estimate by default.
 
 **(v0.13 note) Describing the Urgency Score at the defense.** The Urgency Score is no longer entirely system-derived: three of its four components (deadline, progress gap, neglect) are computed from data the app already holds, and the fourth (Priority) is a user-set input added after advisor feedback. It should be presented that way, with Priority's weight (0.2) described as a reasoned starting point rather than a tuned value, and with the flattening limitation (Section 20) stated up front. It should not be claimed that Priority makes the ranking more accurate; the intended and defensible claim is narrower: it lets the user tell the app that a long or important task matters, which the other three signals cannot express.
+
+**(v0.14 note) Describing the focus timer at the defense.** The advisor did not recognise the word Pomodoro or see why the timer is tied to a task. Present it as the Start Working action: pressing it on a task page starts a work/rest timer, records when work on that task began, and that record feeds the Dashboard's start-lag metric. Do not claim it improves performance (Section 5.1.3 of the report measures perceived benefit only), and do not spend time on batches, the floating widget, or the cited study unless asked.
