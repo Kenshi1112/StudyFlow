@@ -1,7 +1,11 @@
 // Owner: Frontend
-// หน้าที่: ฟอร์ม task ตัวเดียวที่ใช้ทั้งโมดัล "+ New Task" (mode 'create') และแผง Task Detail (mode 'edit')
-// ช่องและลำดับตาม UX-UI-Design-Review_v0.13 (Task Create / Edit Form): Title, Course, Due, Priority, Progress, Notes
-// ส่ง/รับข้อมูลตาม docs/ipc-contract.md (ตัวฟอร์มไม่เรียก IPC เอง ให้หน้าที่เรียกใช้ส่ง callback เข้ามา)
+// หน้าที่: ฟอร์ม task ตัวเดียวที่ใช้ทั้งป๊อปอัป "Create New Task" (mode 'create') และ "Edit Task" (mode 'edit') ตาม Figma
+// ช่อง: Subject / Classroom (course_name), Status (เฉพาะ edit), Task Name (title), Description (notes), Deadline (due_date)
+// เพิ่มเอง (ไม่อยู่ใน Figma แต่ spec v0.13+ ให้มี): Priority แบบ segmented control ไม่บังคับ ไม่มีค่าเริ่มต้น กดซ้ำเพื่อล้าง
+// ตัวฟอร์มไม่เรียก IPC เอง ให้หน้าที่เรียกใช้ส่ง onSubmit เข้ามา
+//   create: onSubmit(payload)  ตรงกับ tasks:create
+//   edit  : onSubmit(changes)  ตรงกับ changes ของ tasks:update (ส่งเฉพาะช่องที่เปลี่ยน)
+// Progress ไม่อยู่ในฟอร์ม Figma (ปรับด้วยแถบเลื่อนในป๊อปอัปรายละเอียด)
 
 'use strict';
 
@@ -15,7 +19,15 @@
     { value: 'high', label: 'High' },
   ];
 
-  // ถ้าผู้ใช้กรอกวันที่แต่ไม่กรอกเวลา ใช้สิ้นวัน (spec ยังไม่กำหนดค่าเริ่มต้นของเวลา: รอยืนยันกับ Backend)
+  const STATUSES = [
+    { value: 'not_started', label: 'Not Started' },
+    { value: 'in_progress', label: 'In Progress' },
+    { value: 'completed', label: 'Completed' },
+  ];
+
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  // Figma มีแค่ช่องวันที่ ถ้าไม่มีเวลาเดิมให้ใช้สิ้นวัน (spec ยังไม่กำหนดค่าเริ่มต้นของเวลา: รอยืนยันกับ Backend)
   const DEFAULT_DUE_TIME = '23:59';
 
   let counter = 0;
@@ -25,9 +37,9 @@
   }
 
   function isoToLocalParts(iso) {
-    if (!iso) return { date: '', time: '' };
+    if (!iso) return { date: '', time: DEFAULT_DUE_TIME };
     const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return { date: '', time: '' };
+    if (Number.isNaN(d.getTime())) return { date: '', time: DEFAULT_DUE_TIME };
     return {
       date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
       time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
@@ -39,22 +51,25 @@
     return Number.isNaN(d.getTime()) ? null : d.toISOString();
   }
 
+  // 'YYYY-MM-DD' -> 'Jan 31, 2026' (รูปแบบตาม Figma)
+  function formatDateValue(value) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
+    if (!match) return '';
+    return `${MONTHS[Number(match[2]) - 1]} ${Number(match[3])}, ${match[1]}`;
+  }
+
   function errorMessage(err) {
     return (err && err.message ? err.message : String(err)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
   }
 
   // Priority: segmented control 3 ช่อง ไม่เลือกค่าไหนเป็นค่าเริ่มต้น กดช่องที่เลือกอยู่ซ้ำเพื่อล้างเป็น "ไม่ตั้ง"
   // ใช้ลูกศรเลื่อนได้ (radiogroup)  ไม่แสดงน้ำหนัก/คะแนน และไม่ใช้สีแดง/ส้ม (UX Review §2, §6)
-  function priorityControl({ value, labelledBy, describedBy, onChange }) {
+  function priorityControl({ value, labelledBy }) {
     let current = value || null;
     const buttons = PRIORITIES.map((p) =>
       el('button', { type: 'button', class: 'seg__btn', role: 'radio', 'data-value': p.value, text: p.label }),
     );
-    const group = el(
-      'div',
-      { class: 'seg', role: 'radiogroup', 'aria-labelledby': labelledBy, 'aria-describedby': describedBy },
-      buttons,
-    );
+    const group = el('div', { class: 'seg', role: 'radiogroup', 'aria-labelledby': labelledBy }, buttons);
 
     function paint() {
       buttons.forEach((button, i) => {
@@ -65,16 +80,15 @@
       });
     }
 
-    function set(next, notify) {
+    function set(next) {
       current = next;
       paint();
-      if (notify) onChange(next);
     }
 
     group.addEventListener('click', (event) => {
       const button = event.target.closest('.seg__btn');
       if (!button) return;
-      set(current === button.dataset.value ? null : button.dataset.value, true);
+      set(current === button.dataset.value ? null : button.dataset.value);
     });
 
     group.addEventListener('keydown', (event) => {
@@ -85,24 +99,22 @@
       let next;
       if (index === -1) next = step === 1 ? 0 : PRIORITIES.length - 1;
       else next = (index + step + PRIORITIES.length) % PRIORITIES.length;
-      set(PRIORITIES[next].value, true);
+      set(PRIORITIES[next].value);
       buttons[next].focus();
     });
 
     paint();
-    return { element: group, getValue: () => current, setValue: (v) => set(v || null, false) };
+    return { element: group, getValue: () => current, setValue: (v) => set(v || null) };
   }
 
-  // สร้างฟอร์ม
-  //   mode 'create': onSubmit(payload) -> Promise  (payload ตรงกับ tasks:create)  onCancel()
-  //   mode 'edit'  : onCommit(changes) -> Promise<Task>  เรียกทันทีเมื่อแก้ช่องนั้น (ตรงกับ changes ของ tasks:update)
-  function create({ mode, task, courses, onSubmit, onCommit, onCancel }) {
+  function create({ mode, task, courses, onSubmit, onCancel }) {
     const isEdit = mode === 'edit';
     const uid = ++counter;
     const id = (name) => `tf${uid}-${name}`;
-    let saved = { ...(task || {}) };
+    const original = { ...(task || {}) };
+    const originalDue = isoToLocalParts(original.due_date);
 
-    const errorBox = el('p', { class: 'task-form__error', role: 'alert', hidden: true });
+    const errorBox = el('p', { class: 'tf__error', role: 'alert', hidden: true });
     const showError = (message) => {
       errorBox.textContent = message;
       errorBox.hidden = false;
@@ -113,181 +125,155 @@
     };
 
     // --- ช่องกรอก ---
-    const titleInput = el('input', { id: id('title'), type: 'text', name: 'title', autocomplete: 'off', 'aria-required': 'true' });
-    const courseList = el(
-      'datalist',
-      { id: id('courses') },
-      (courses || []).map((name) => el('option', { value: name })),
+    const courseInput = el('input', { id: id('course'), class: 'tf-field__input', type: 'text', name: 'course_name', list: id('courses'), autocomplete: 'off' });
+    const courseList = el('datalist', { id: id('courses') }, (courses || []).map((name) => el('option', { value: name })));
+    const statusSelect = el(
+      'select',
+      { id: id('status'), class: 'tf-field__input', name: 'status' },
+      STATUSES.map((s) => el('option', { value: s.value, text: s.label })),
     );
-    const courseInput = el('input', { id: id('course'), type: 'text', name: 'course_name', list: id('courses'), autocomplete: 'off' });
-    const dateInput = el('input', { id: id('due-date'), type: 'date', name: 'due_date', 'aria-label': 'Due date' });
-    const timeInput = el('input', { id: id('due-time'), type: 'time', name: 'due_time', 'aria-label': 'Due time' });
-    const progressInput = el('input', { id: id('progress'), type: 'number', name: 'progress_percentage', min: 0, max: 100, step: 1, inputmode: 'numeric' });
-    const notesInput = el('textarea', { id: id('notes'), name: 'notes', rows: 4 });
+    const titleInput = el('input', { id: id('title'), class: 'tf-field__input', type: 'text', name: 'title', autocomplete: 'off', 'aria-required': 'true' });
+    const notesInput = el('textarea', { id: id('notes'), class: 'tf-field__input tf-field__input--area', name: 'notes' });
+    // ช่องวันที่: ตัว <input type=date> จริงโปร่งใสวางทับ ส่วนที่เห็นเป็นข้อความรูปแบบ "Jan 31, 2026" ตาม Figma
+    const dateInput = el('input', { id: id('due'), class: 'tf-date__input', type: 'date', name: 'due_date' });
+    const dateText = el('span', { class: 'tf-date__text' });
+    const clearDate = el('button', { type: 'button', class: 'tf-date__clear', 'aria-label': 'Clear deadline', text: '✕' });
 
-    const priority = priorityControl({
-      value: saved.priority,
-      labelledBy: id('priority-label'),
-      describedBy: id('priority-help'),
-      onChange: (value) => {
-        if (isEdit) commit({ priority: value });
-      },
+    const priority = priorityControl({ value: original.priority, labelledBy: id('priority-label') });
+
+    function paintDate() {
+      dateText.textContent = formatDateValue(dateInput.value) || 'No deadline';
+      dateText.classList.toggle('tf-date__text--empty', !dateInput.value);
+      clearDate.hidden = !dateInput.value;
+    }
+
+    dateInput.addEventListener('change', paintDate);
+    dateInput.addEventListener('click', () => {
+      if (typeof dateInput.showPicker === 'function') {
+        try {
+          dateInput.showPicker();
+        } catch (err) {
+          /* เปิดไม่ได้ก็พิมพ์ได้ตามปกติ */
+        }
+      }
+    });
+    clearDate.addEventListener('click', () => {
+      dateInput.value = '';
+      paintDate();
+      dateInput.focus();
     });
 
-    function fill(source) {
-      titleInput.value = source.title || '';
-      courseInput.value = source.course_name || '';
-      const due = isoToLocalParts(source.due_date);
-      dateInput.value = due.date;
-      timeInput.value = due.time;
-      priority.setValue(source.priority);
-      progressInput.value = source.progress_percentage == null ? '' : String(source.progress_percentage);
-      notesInput.value = source.notes || '';
-    }
+    courseInput.value = original.course_name || '';
+    statusSelect.value = original.status || 'not_started';
+    titleInput.value = original.title || '';
+    notesInput.value = original.notes || '';
+    dateInput.value = originalDue.date;
+    paintDate();
 
-    function readDue() {
-      return dateInput.value ? localToIso(dateInput.value, timeInput.value) : null;
-    }
-
-    // คืน { ok, value } ช่องว่าง = ok แต่ไม่มีค่า
-    function readProgress() {
-      const raw = progressInput.value.trim();
-      if (raw === '') return { ok: true, value: undefined };
-      const n = Number(raw);
-      if (!Number.isFinite(n) || n < 0 || n > 100) return { ok: false };
-      return { ok: true, value: n };
-    }
-
-    // --- โหมดแก้ไขในแผง: บันทึกทันทีที่เปลี่ยนช่อง ---
-    async function commit(changes) {
-      clearError();
-      try {
-        const updated = await onCommit(changes);
-        if (updated) saved = { ...updated };
-      } catch (err) {
-        showError(errorMessage(err));
-        fill(saved); // ย้อนช่องกลับเป็นค่าที่บันทึกไว้ล่าสุด
-      }
-    }
-
-    if (isEdit) {
-      titleInput.addEventListener('change', () => {
-        const value = titleInput.value.trim();
-        if (!value) {
-          showError('Title is required.');
-          titleInput.value = saved.title || '';
-          return;
-        }
-        commit({ title: value });
-      });
-      courseInput.addEventListener('change', () => commit({ course_name: courseInput.value.trim() || null }));
-      const onDueChange = () => {
-        if (!dateInput.value) {
-          timeInput.value = '';
-          commit({ due_date: null });
-        } else {
-          commit({ due_date: readDue() });
-        }
-      };
-      dateInput.addEventListener('change', onDueChange);
-      timeInput.addEventListener('change', () => {
-        if (dateInput.value) onDueChange();
-      });
-      progressInput.addEventListener('change', () => {
-        const result = readProgress();
-        if (!result.ok) {
-          showError('Progress must be a number from 0 to 100.');
-          progressInput.value = String(saved.progress_percentage ?? 0);
-          return;
-        }
-        commit({ progress_percentage: result.value === undefined ? 0 : result.value });
-      });
-      notesInput.addEventListener('change', () => commit({ notes: notesInput.value.trim() || null }));
-    }
-
-    // --- ประกอบ layout ตามลำดับใน UX Review ---
-    const row = (labelFor, labelText, control, extra) =>
-      el('div', { class: 'task-form__row' }, el('label', { for: labelFor, text: labelText }), control, extra);
-
-    const titleLabel = el('label', { for: id('title') }, 'Title ', el('span', { 'aria-hidden': 'true', text: '*' }));
-    const form = el(
-      'form',
-      { class: 'task-form', novalidate: true },
-      el('div', { class: 'task-form__row' }, titleLabel, titleInput),
-      row(id('course'), 'Course', courseInput, courseList),
-      el(
+    function field(modifier, labelText, forId, control, extra) {
+      return el(
         'div',
-        { class: 'task-form__row', role: 'group', 'aria-labelledby': id('due-label') },
-        el('span', { id: id('due-label'), class: 'task-form__label', text: 'Due' }),
-        el('div', { class: 'task-form__inline' }, dateInput, timeInput),
-      ),
-      el(
-        'div',
-        { class: 'task-form__row' },
-        el('span', { id: id('priority-label'), class: 'task-form__label', text: 'Priority' }),
-        priority.element,
-        el('p', { id: id('priority-help'), class: 'task-form__help', text: 'Optional. Higher priority moves a task up within its group.' }),
-      ),
-      el(
-        'div',
-        { class: 'task-form__row' },
-        el('label', { for: id('progress'), text: 'Progress' }),
-        el('div', { class: 'task-form__inline' }, progressInput, el('span', { 'aria-hidden': 'true', text: '%' })),
-      ),
-      row(id('notes'), 'Notes', notesInput),
-      errorBox,
+        { class: `tf-field tf-field--${modifier}` },
+        el('label', { class: 'tf-field__label', for: forId, text: labelText }),
+        control,
+        extra,
+      );
+    }
+
+    const heading = el('h2', { class: 'tf__title', id: id('heading'), text: isEdit ? 'Edit Task' : 'Create New Task' });
+
+    const topRow = el(
+      'div',
+      { class: isEdit ? 'tf__split' : 'tf__single' },
+      field('course', 'Subject / Classroom', id('course'), courseInput, courseList),
+      isEdit ? field('status', 'Status', id('status'), statusSelect) : null,
     );
 
-    fill(saved);
-    if (!isEdit && progressInput.value === '') progressInput.value = '0';
+    const deadline = el(
+      'div',
+      { class: 'tf-field tf-field--deadline' },
+      el('label', { class: 'tf-field__label', for: id('due'), text: 'Deadline' }),
+      el('div', { class: 'tf-date' }, dateText, dateInput, clearDate),
+    );
 
-    // --- โหมดสร้าง: ปุ่ม Cancel / Create Task ---
-    if (!isEdit) {
-      const submitButton = el('button', { type: 'submit', class: 'btn btn--primary', text: 'Create Task' });
-      const cancelButton = el('button', { type: 'button', class: 'btn', text: 'Cancel', onclick: () => onCancel && onCancel() });
-      form.append(el('div', { class: 'task-form__actions' }, cancelButton, submitButton));
+    const priorityRow = el(
+      'div',
+      { class: 'tf__priority' },
+      el('span', { class: 'tf__priority-label', id: id('priority-label'), text: 'Priority (optional)' }),
+      priority.element,
+    );
 
-      form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        clearError();
-        const title = titleInput.value.trim();
-        if (!title) {
-          showError('Title is required.');
-          titleInput.focus();
-          return;
-        }
-        const payload = { title };
-        const course = courseInput.value.trim();
-        if (course) payload.course_name = course;
-        const due = readDue();
-        if (due) payload.due_date = due;
-        const level = priority.getValue();
-        if (level) payload.priority = level; // ไม่ตั้ง = ไม่ส่ง (null)
-        const progress = readProgress();
-        if (!progress.ok) {
-          showError('Progress must be a number from 0 to 100.');
-          progressInput.focus();
-          return;
-        }
-        if (progress.value !== undefined) payload.progress_percentage = progress.value;
-        const notes = notesInput.value.trim();
-        if (notes) payload.notes = notes;
+    const cancelButton = el('button', { type: 'button', class: 'tf__btn tf__btn--cancel', text: 'Cancel', onclick: () => onCancel && onCancel() });
+    const submitButton = el('button', { type: 'submit', class: 'tf__btn tf__btn--save', text: isEdit ? 'Save Edit' : 'Save Task' });
 
-        submitButton.disabled = true;
-        try {
-          await onSubmit(payload);
-        } catch (err) {
-          showError(errorMessage(err));
-        } finally {
-          submitButton.disabled = false;
-        }
-      });
-    } else {
-      // โหมดแก้ไขไม่มีปุ่มส่ง กัน Enter ใน input ทำให้หน้ารีโหลด
-      form.addEventListener('submit', (event) => event.preventDefault());
+    const form = el(
+      'form',
+      { class: 'tf', novalidate: true, 'aria-labelledby': id('heading') },
+      heading,
+      topRow,
+      field('name', 'Task Name', id('title'), titleInput),
+      field('des', 'Description', id('notes'), notesInput),
+      deadline,
+      priorityRow,
+      errorBox,
+      el('div', { class: 'tf__actions' }, cancelButton, submitButton),
+    );
+
+    // ค่าวันที่ -> ISO โดยคงเวลาเดิมของ task ถ้ามี
+    function readDue() {
+      return dateInput.value ? localToIso(dateInput.value, originalDue.time) : null;
     }
 
-    form.focusFirst = () => titleInput.focus();
+    function collect() {
+      const title = titleInput.value.trim();
+      const course = courseInput.value.trim();
+      const notes = notesInput.value.trim();
+      const level = priority.getValue();
+      const due = readDue();
+
+      if (!isEdit) {
+        const payload = { title };
+        if (course) payload.course_name = course;
+        if (due) payload.due_date = due;
+        if (level) payload.priority = level; // ไม่ตั้ง = ไม่ส่ง (null)
+        if (notes) payload.notes = notes;
+        return payload;
+      }
+
+      const changes = {};
+      if (title !== (original.title || '')) changes.title = title;
+      if (course !== (original.course_name || '')) changes.course_name = course || null;
+      if (notes !== (original.notes || '')) changes.notes = notes || null;
+      if (level !== (original.priority || null)) changes.priority = level;
+      if (statusSelect.value !== original.status) changes.status = statusSelect.value;
+      if (dateInput.value !== originalDue.date) changes.due_date = due;
+      return changes;
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      clearError();
+      if (!titleInput.value.trim()) {
+        showError('Task Name is required.');
+        titleInput.focus();
+        return;
+      }
+      const data = collect();
+      if (isEdit && Object.keys(data).length === 0) {
+        if (onCancel) onCancel(); // ไม่มีอะไรเปลี่ยน
+        return;
+      }
+      submitButton.disabled = true;
+      try {
+        await onSubmit(data);
+      } catch (err) {
+        showError(errorMessage(err));
+      } finally {
+        submitButton.disabled = false;
+      }
+    });
+
+    form.focusFirst = () => courseInput.focus();
     return form;
   }
 

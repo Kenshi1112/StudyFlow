@@ -9,10 +9,16 @@
   const { el } = window.dom;
   const api = window.apiClient;
 
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const STATUS_LABEL = { not_started: 'Not Started', in_progress: 'In Progress', completed: 'Completed' };
+
   let root = null;
   let tasks = [];
   let selectedId = null;
-  let dialog = null;
+  let filter = 'all';
+  let query = '';
+  let sourceFilter = 'all';
+  let courseFilter = '';
   let alive = false; // กันผลของ request ที่ตอบกลับหลังออกจากหน้านี้แล้ว
 
   const $ = (selector) => root.querySelector(selector);
@@ -28,7 +34,6 @@
   }
 
   // ipc-contract ข้อ 2: tasks:list ไม่รับประกันลำดับ เรียงเองด้วย urgency_score มาก -> น้อย แล้วเอา null ไว้ท้าย
-  // (ยังไม่แบ่งกลุ่มตาม Deadline State: ทำในงาน Task Board ถัดไป)
   function sortTasks(list) {
     return [...list].sort((a, b) => {
       if (a.urgency_score === null && b.urgency_score !== null) return 1;
@@ -42,31 +47,130 @@
     return [...new Set(tasks.map((t) => t.course_name).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   }
 
+  // รูปแบบวันที่ตาม Figma: "Jan 31,2026"
+  function formatDate(iso) {
+    const d = new Date(iso);
+    return `${MONTHS[d.getMonth()]} ${d.getDate()},${d.getFullYear()}`;
+  }
+
+  function daysLeft(iso) {
+    return Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000);
+  }
+
+  function matchesFilter(task) {
+    if (filter === 'all') return true;
+    if (filter === 'overdue') return task.status !== 'completed' && task.deadline_state === 'overdue';
+    return task.status === filter;
+  }
+
+  function matchesSource(task) {
+    return sourceFilter === 'all' || task.source === sourceFilter;
+  }
+
+  function matchesCourse(task) {
+    return !courseFilter || task.course_name === courseFilter;
+  }
+
+  function matchesQuery(task) {
+    if (!query) return true;
+    const q = query.toLowerCase();
+    return String(task.title).toLowerCase().includes(q) || String(task.course_name || '').toLowerCase().includes(q);
+  }
+
+  // ป้ายสถานะบนการ์ด: ถ้าเลยกำหนดและยังไม่เสร็จ แสดง Overdue (สีแดง) แทนสถานะ (ตาม Figma)
+  function pillOf(task) {
+    if (task.status !== 'completed' && task.deadline_state === 'overdue') return { text: 'Overdue', overdue: true };
+    return { text: STATUS_LABEL[task.status] || task.status, overdue: false };
+  }
+
+  function buildCard(task) {
+    const pill = pillOf(task);
+    const completed = task.status === 'completed';
+    const progress = Math.max(0, Math.min(100, Number(task.progress_percentage) || 0));
+
+    let leftText = null;
+    let urgent = false;
+    if (task.due_date && !completed && !pill.overdue) {
+      const n = Math.max(1, daysLeft(task.due_date));
+      leftText = `${n} ${n === 1 ? 'day' : 'days'} left`;
+      urgent = n <= 2;
+    }
+
+    const fill = el('span', { class: 'tb-card__fill' });
+    fill.style.setProperty('--fill', String(progress));
+
+    return el(
+      'button',
+      {
+        type: 'button',
+        class: completed ? 'tb-card tb-card--completed' : 'tb-card',
+        'data-id': task.id,
+                'aria-haspopup': 'dialog',
+        onclick: () => openDetails(task.id),
+      },
+      el('span', { class: pill.overdue ? 'tb-card__pill tb-card__pill--overdue' : 'tb-card__pill', text: pill.text }),
+      leftText ? el('span', { class: urgent ? 'tb-card__left tb-card__left--urgent' : 'tb-card__left', text: leftText }) : null,
+      // ธงเฉพาะ High เท่านั้น เป็นไอคอนเล็กโทนกลาง (UX Review §2) ไม่อยู่ใน Figma
+      task.priority === 'high'
+        ? el('span', { class: 'tb-card__flag' }, el('span', { 'aria-hidden': 'true', text: '⚑' }), el('span', { class: 'visually-hidden', text: 'High priority' }))
+        : null,
+      el('span', { class: 'tb-card__course', text: task.course_name || '' }),
+      el(
+        'span',
+        { class: 'tb-card__source' },
+        window.SourceIcon.create(task.source, 26),
+        el('span', { class: 'visually-hidden', text: window.SourceIcon.label(task.source) }),
+      ),
+      el('span', { class: 'tb-card__title', text: `ชื่องาน : ${task.title}` }),
+      el(
+        'span',
+        { class: 'tb-card__meta' },
+        el('span', { text: `Deadline: ${task.due_date ? formatDate(task.due_date) : '-'}` }),
+        el('br'),
+        el('span', { text: `Progress: ${progress}%` }),
+      ),
+      el('span', { class: 'tb-card__bar' }, fill),
+    );
+  }
+
+  function refreshCourseOptions() {
+    const select = $('#tb-course');
+    const names = courseNames();
+    if (courseFilter && !names.includes(courseFilter)) courseFilter = '';
+    select.replaceChildren(el('option', { value: '', text: 'All courses' }), ...names.map((n) => el('option', { value: n, text: n })));
+    select.value = courseFilter;
+  }
+
   function renderList() {
+    refreshCourseOptions();
     const list = $('#tb-list');
     list.replaceChildren();
-    $('#tb-empty').hidden = tasks.length > 0;
-    for (const task of sortTasks(tasks)) {
-      const button = el(
-        'button',
-        {
-          type: 'button',
-          class: 'tb-card',
-          'data-id': task.id,
-          'aria-expanded': String(task.id === selectedId),
-          'aria-controls': 'tb-detail',
-          onclick: () => openDetail(task.id),
-        },
-        el('span', { class: 'tb-card__title', text: task.title }),
-        task.course_name ? el('span', { class: 'tb-card__course', text: task.course_name }) : null,
-        // ธงเฉพาะ High เท่านั้น (Medium/Low ดูได้ในแผง Detail)
-        task.priority === 'high'
-          ? el('span', { class: 'tb-card__flag' }, el('span', { 'aria-hidden': 'true', text: '⚑' }), el('span', { class: 'visually-hidden', text: 'High priority' }))
-          : null,
-      );
-      list.append(el('li', {}, button));
+    const visible = sortTasks(tasks).filter((t) => matchesFilter(t) && matchesSource(t) && matchesCourse(t) && matchesQuery(t));
+    const empty = $('#tb-empty');
+    if (tasks.length === 0) {
+      empty.textContent = 'No tasks yet. Create your first task with “+ New Task”.';
+    } else if (visible.length === 0) {
+      empty.textContent = 'No tasks match this filter.';
     }
+    empty.hidden = visible.length > 0;
+    for (const task of visible) list.append(el('li', {}, buildCard(task)));
     $('#tb-mock').hidden = !api.isMock();
+  }
+
+  function setSource(next) {
+    sourceFilter = next;
+    for (const tab of root.querySelectorAll('.tb__tab--sub')) {
+      tab.setAttribute('aria-pressed', String(tab.dataset.source === next));
+    }
+    renderList();
+  }
+
+  function setFilter(next) {
+    filter = next;
+    for (const tab of root.querySelectorAll('.tb__tab')) {
+      tab.setAttribute('aria-pressed', String(tab.dataset.filter === next));
+    }
+    renderList();
   }
 
   async function load() {
@@ -82,110 +186,297 @@
     renderList();
   }
 
-  // ---------- แผง Task Detail (แก้ไขในที่ บันทึกทันทีเมื่อเปลี่ยนช่อง) ----------
+  // ---------- ป๊อปอัป (Figma: รายละเอียดงาน / Create New Task / Edit Task / ยืนยันลบ) ----------
 
-  function closeDetail(restoreFocus) {
-    const previous = selectedId;
-    selectedId = null;
-    const panel = $('#tb-detail');
-    panel.hidden = true;
-    panel.replaceChildren();
-    renderList();
-    if (restoreFocus && previous) {
-      const card = root.querySelector(`.tb-card[data-id="${CSS.escape(previous)}"]`);
-      if (card) card.focus();
-    }
+  let dialog = null;
+  let suppressFocus = false; // กำลังสลับจากป๊อปอัปหนึ่งไปอีกอัน ไม่ต้องคืนโฟกัสระหว่างทาง
+  let returnFocusId = null; // การ์ดที่โฟกัสควรกลับไปหาเมื่อปิดป๊อปอัป
+
+  function restoreFocus() {
+    if (!root) return;
+    const card = returnFocusId && root.querySelector(`.tb-card[data-id="${CSS.escape(returnFocusId)}"]`);
+    const target = card || $('#tb-new');
+    if (target) target.focus();
   }
-
-  function openDetail(id) {
-    const task = tasks.find((t) => t.id === id);
-    if (!task) return;
-    selectedId = id;
-    const panel = $('#tb-detail');
-
-    const form = window.TaskForm.create({
-      mode: 'edit',
-      task,
-      courses: courseNames(),
-      onCommit: async (changes) => {
-        const updated = await api.invoke('tasks:update', { id, changes });
-        if (!alive) return updated;
-        tasks = tasks.map((t) => (t.id === id ? updated : t));
-        renderList(); // อัปเดตการ์ด/ลำดับ แต่ไม่สร้างฟอร์มใหม่ เพื่อไม่ให้โฟกัสหลุด
-        return updated;
-      },
-    });
-
-    panel.replaceChildren(
-      el(
-        'div',
-        { class: 'tb__detail-header' },
-        el('h2', { class: 'tb__detail-title', text: 'Task detail' }),
-        el('button', { type: 'button', class: 'btn', text: 'Close', onclick: () => closeDetail(true) }),
-      ),
-      form,
-    );
-    panel.hidden = false;
-    renderList();
-  }
-
-  // ---------- โมดัลสร้าง task ----------
 
   function closeDialog() {
-    if (!dialog) return;
-    if (dialog.open) dialog.close();
-    dialog.remove();
-    dialog = null;
+    if (dialog && dialog.open) dialog.close();
   }
 
-  function openCreate() {
-    closeDialog();
-    let focusOpener = true; // สร้างสำเร็จแล้วโฟกัสไปที่การ์ดใหม่แทน
-    const form = window.TaskForm.create({
-      mode: 'create',
-      courses: courseNames(),
-      onCancel: closeDialog,
-      onSubmit: async (payload) => {
-        const created = await api.invoke('tasks:create', payload);
-        if (!alive) return;
-        tasks = [...tasks, created];
-        focusOpener = false;
-        closeDialog();
+  function showDialog(className, label, content) {
+    if (dialog) {
+      suppressFocus = true;
+      closeDialog();
+    }
+    const d = el('dialog', { class: `tb-popup ${className}`, 'aria-label': label }, content);
+    d.addEventListener('close', () => {
+      d.remove();
+      if (dialog === d) {
+        dialog = null;
+        selectedId = null;
         renderList();
-        const card = root.querySelector(`.tb-card[data-id="${CSS.escape(created.id)}"]`);
-        if (card) card.focus();
-      },
+      }
+      if (!suppressFocus) restoreFocus();
+      suppressFocus = false;
     });
+    // คลิกพื้นหลังมืดนอกป๊อปอัป = ปิด
+    d.addEventListener('click', (event) => {
+      if (event.target === d) d.close();
+    });
+    dialog = d;
+    root.append(d);
+    d.showModal();
+    return d;
+  }
 
-    dialog = el(
-      'dialog',
-      { class: 'tb-dialog', 'aria-labelledby': 'tb-dialog-title' },
+  function dueSummary(task) {
+    if (task.status === 'completed') return 'Completed';
+    if (!task.due_date) return 'No deadline';
+    if (task.deadline_state === 'overdue') return 'Overdue';
+    return `Due in ${Math.max(1, daysLeft(task.due_date))} day(s)`;
+  }
+
+  function formatLong(iso) {
+    const d = new Date(iso);
+    return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+  }
+
+  // ไอคอนถังขยะชั่วคราว: ยังโหลดไฟล์จาก Figma ไม่ได้ (โควต้า MCP หมด) เปลี่ยนเป็น <img> ของ Figma เมื่อได้ไฟล์
+  function trashIcon() {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    for (const [k, v] of Object.entries({ viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' })) {
+      svg.setAttribute(k, v);
+    }
+    for (const d of ['M4 7h16', 'M9 7V4h6v3', 'M6 7l1 13h10l1-13', 'M10 11v6', 'M14 11v6']) {
+      const path = document.createElementNS(ns, 'path');
+      path.setAttribute('d', d);
+      svg.append(path);
+    }
+    return svg;
+  }
+
+  async function updateTask(id, changes) {
+    const updated = await api.invoke('tasks:update', { id, changes });
+    if (alive) {
+      tasks = tasks.map((t) => (t.id === id ? updated : t));
+      renderList();
+    }
+    return updated;
+  }
+
+  function progressBox(task, onCommit) {
+    const percent = Math.max(0, Math.min(100, Number(task.progress_percentage) || 0));
+    const value = el('p', { class: 'dt-box__value', text: `${percent}%` });
+    const range = el('input', { type: 'range', class: 'dt-range', min: '0', max: '100', step: '1', 'aria-label': 'Progress percentage' });
+    range.value = String(percent);
+    const paint = () => {
+      range.style.setProperty('--p', range.value);
+      value.textContent = `${range.value}%`;
+    };
+    range.addEventListener('input', paint);
+    range.addEventListener('change', () => onCommit(Number(range.value)));
+    paint();
+    return el(
+      'div',
+      { class: 'dt-box' },
+      el('p', { class: 'dt-box__label', text: 'Progress' }),
+      value,
+      range,
+      el('div', { class: 'dt-ticks', 'aria-hidden': 'true' }, el('span', { text: '0%' }), el('span', { text: '50%' }), el('span', { text: '100%' })),
+    );
+  }
+
+  // Description ใน Figma = ฟิลด์ notes ของ task (spec มี notes ช่องเดียว จึงไม่ทำกล่อง Notes แยก)
+  function buildDetails(task) {
+    const completed = task.status === 'completed';
+    const errorBox = el('p', { class: 'dt__error', role: 'alert', hidden: true });
+
+    async function guarded(action) {
+      errorBox.hidden = true;
+      try {
+        await action();
+      } catch (err) {
+        errorBox.textContent = message(err);
+        errorBox.hidden = false;
+      }
+    }
+
+    return el(
+      'div',
+      { class: 'dt' },
       el(
         'div',
-        { class: 'tb-dialog__header' },
-        el('h2', { id: 'tb-dialog-title', class: 'tb-dialog__title', text: 'New Task' }),
-        el('button', { type: 'button', class: 'btn', 'aria-label': 'Close', text: '✕', onclick: closeDialog }),
+        { class: 'dt__head' },
+        task.course_name ? el('span', { class: 'dt__chip dt__chip--course', text: task.course_name }) : null,
+        el('span', { class: 'dt__chip dt__chip--status', text: STATUS_LABEL[task.status] || task.status }),
+        el(
+          'div',
+          { class: 'dt__tools' },
+          el(
+            'button',
+            { type: 'button', class: 'dt__icon-btn', 'aria-label': 'Edit task', onclick: () => openForm('edit', task) },
+            el('img', { src: 'assets/task-board/edit.svg', alt: '' }),
+          ),
+          el('button', { type: 'button', class: 'dt__icon-btn dt__icon-btn--delete', 'aria-label': 'Delete task', onclick: () => openDelete(task) }, trashIcon()),
+        ),
       ),
-      form,
+      el('h2', { class: 'dt__title', text: task.title }),
+      el(
+        'p',
+        { class: 'dt__source' },
+        window.SourceIcon.create(task.source, 18),
+        el('span', { text: `${window.SourceIcon.label(task.source)} · ${task.created_at ? formatLong(task.created_at) : '-'}` }),
+      ),
+      el(
+        'div',
+        { class: 'dt__due' },
+        el('span', { text: dueSummary(task) }),
+        el('span', { text: task.due_date ? formatLong(task.due_date) : '' }),
+      ),
+      el(
+        'div',
+        { class: 'dt__grid' },
+        el(
+          'div',
+          { class: 'dt-box' },
+          el('p', { class: 'dt-box__label', text: 'Description' }),
+          el('p', task.notes ? { class: 'dt-box__text', text: task.notes } : { class: 'dt-box__text dt-box__text--empty', text: 'No description' }),
+        ),
+        progressBox(task, (value) =>
+          guarded(async () => {
+            const updated = await updateTask(task.id, { progress_percentage: value });
+            if (dialog && alive) refreshDetails(updated);
+          }),
+        ),
+      ),
+      errorBox,
+      el(
+        'div',
+        { class: 'dt__actions' },
+        el('button', { type: 'button', class: 'dt__btn dt__btn--start', text: 'Start Working', disabled: completed, onclick: () => startWorking(task) }),
+        el('button', {
+          type: 'button',
+          class: 'dt__btn dt__btn--done',
+          text: 'Mark as Completed',
+          disabled: completed,
+          onclick: () =>
+            guarded(async () => {
+              const updated = await updateTask(task.id, { status: 'completed' });
+              if (dialog && alive) refreshDetails(updated);
+            }),
+        }),
+      ),
     );
-    dialog.addEventListener('close', () => {
-      if (dialog) {
-        dialog.remove();
-        dialog = null;
-      }
-      const opener = focusOpener && root && root.querySelector('#tb-new');
-      if (opener) opener.focus();
+  }
+
+  function refreshDetails(task) {
+    if (!dialog || !dialog.classList.contains('tb-popup--details')) return;
+    dialog.replaceChildren(buildDetails(task));
+  }
+
+  function openDetails(id) {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+    returnFocusId = id;
+    selectedId = id;
+    showDialog('tb-popup--details', 'Task details', buildDetails(task));
+    renderList();
+  }
+
+  // Start Working: ไปหน้า Pomodoro ของ task นี้ (spec §15: เข้า Pomodoro ผ่าน task เท่านั้น) ตัวตั้งเวลาเป็นงานของ Backend/หน้า Pomodoro
+  function startWorking(task) {
+    suppressFocus = true;
+    closeDialog();
+    window.location.hash = `#/pomodoro?task=${encodeURIComponent(task.id)}`;
+  }
+
+  // mode 'create' | 'edit'
+  function openForm(mode, task) {
+    const isEdit = mode === 'edit';
+    if (isEdit) returnFocusId = task.id;
+    const form = window.TaskForm.create({
+      mode,
+      task,
+      courses: courseNames(),
+      onCancel: () => {
+        if (isEdit) openDetails(task.id);
+        else closeDialog();
+      },
+      onSubmit: async (data) => {
+        if (isEdit) {
+          await updateTask(task.id, data);
+          if (alive) openDetails(task.id);
+          return;
+        }
+        const created = await api.invoke('tasks:create', data);
+        if (!alive) return;
+        tasks = [...tasks, created];
+        returnFocusId = created.id;
+        closeDialog();
+        renderList();
+      },
     });
-    root.append(dialog);
-    dialog.showModal();
+    showDialog('tb-popup--form', isEdit ? 'Edit Task' : 'Create New Task', form);
     form.focusFirst();
   }
 
-  function onKeydown(event) {
-    // Esc ปิดแผง Detail เมื่อโฟกัสอยู่ในแผง (Esc ของโมดัลเบราว์เซอร์จัดการให้เอง)
-    if (event.key === 'Escape' && selectedId && !dialog && $('#tb-detail').contains(document.activeElement)) {
-      closeDetail(true);
-    }
+  function openDelete(task) {
+    const errorBox = el('p', { class: 'dt__error', role: 'alert', hidden: true });
+    const confirmButton = el('button', { type: 'button', class: 'dl__btn dl__btn--confirm', text: 'Confirm' });
+    confirmButton.addEventListener('click', async () => {
+      confirmButton.disabled = true;
+      errorBox.hidden = true;
+      try {
+        await api.invoke('tasks:delete', { id: task.id });
+        if (!alive) return;
+        tasks = tasks.filter((t) => t.id !== task.id);
+        returnFocusId = null;
+        closeDialog();
+        renderList();
+      } catch (err) {
+        errorBox.textContent = message(err);
+        errorBox.hidden = false;
+        confirmButton.disabled = false;
+      }
+    });
+    showDialog(
+      'tb-popup--delete',
+      'Delete this task',
+      el(
+        'div',
+        { class: 'dl' },
+        el('h2', { class: 'dl__title', text: 'Delete this Task?' }),
+        el('p', { class: 'dl__text', text: 'You are going to delete this task forever. Do you want to process?' }),
+        errorBox,
+        el(
+          'div',
+          { class: 'dl__actions' },
+          el('button', { type: 'button', class: 'dl__btn dl__btn--cancel', text: 'Cancel', onclick: () => openDetails(task.id) }),
+          confirmButton,
+        ),
+      ),
+    );
+  }
+
+  function onTabClick(event) {
+    const tab = event.target.closest('.tb__tab');
+    if (tab && tab.dataset.filter) setFilter(tab.dataset.filter);
+  }
+
+  function onSourceClick(event) {
+    const tab = event.target.closest('.tb__tab--sub');
+    if (tab) setSource(tab.dataset.source);
+  }
+
+  function onCourseChange(event) {
+    courseFilter = event.target.value;
+    renderList();
+  }
+
+  function onSearch(event) {
+    query = event.target.value.trim();
+    renderList();
   }
 
   window.pages['task-board'] = {
@@ -194,16 +485,30 @@
       alive = true;
       tasks = [];
       selectedId = null;
-      $('#tb-new').addEventListener('click', openCreate);
-      document.addEventListener('keydown', onKeydown);
+      filter = 'all';
+      query = '';
+      sourceFilter = 'all';
+      courseFilter = '';
+      for (const holder of root.querySelectorAll('.tb__tab-icon')) holder.append(window.SourceIcon.create(holder.dataset.icon, 22));
+      $('.tb__tabs--sub').addEventListener('click', onSourceClick);
+      $('#tb-course').addEventListener('change', onCourseChange);
+      $('#tb-new').addEventListener('click', () => {
+        returnFocusId = null;
+        openForm('create');
+      });
+      root.querySelector('.tb__tabs:not(.tb__tabs--sub)').addEventListener('click', onTabClick);
+      $('#tb-search').addEventListener('input', onSearch);
       load();
     },
     unmount() {
       alive = false;
-      document.removeEventListener('keydown', onKeydown);
-      closeDialog();
+      if (dialog) {
+        const d = dialog;
+        dialog = null;
+        if (d.open) d.close();
+        d.remove();
+      }
       root = null;
-      dialog = null;
     },
   };
 })();
