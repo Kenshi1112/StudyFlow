@@ -1,6 +1,6 @@
 // Owner: Backend
 // หน้าที่: เชื่อมต่อ Google Classroom, fetch ตอนเปิดแอป + Sync now, คิว review (pending/imported/ignored)
-// TODO: ทำตาม PROJECT_v0.13 section 13
+// TODO: ทำตาม PROJECT_v0.14 section 13
 
 'use strict';
 
