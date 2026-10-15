@@ -3,7 +3,7 @@
 ไฟล์นี้คือแผนทำงานทีละขั้นและบันทึกว่าทำอะไรไปแล้ว ใช้เป็นจุดต่อเวลาเปลี่ยน session
 Spec หลักคือ `docs/PROJECT_v0.14.md` ถ้าไฟล์นี้ขัดกับ spec ให้ยึด spec
 
-อัปเดตล่าสุด: 2026-10-11
+อัปเดตล่าสุด: 2026-10-16
 
 ---
 
@@ -35,14 +35,16 @@ Spec หลักคือ `docs/PROJECT_v0.14.md` ถ้าไฟล์นี�
 - สร้างโครงโฟลเดอร์และไฟล์ stub ทั้งหมด (header 3 บรรทัดทุกไฟล์) + `package.json`, `.gitignore`, `.env.example`, `.prettierrc`, `main.js`, `preload.js`, `ipc-channels.js`, `constants.js`, `README.md`
 - วาง `docs/PROJECT_v0.13.md` แล้ว (แทน v0.12 ซึ่งลบออกแล้ว และประวัติ git ถูกรวมเป็น commit เดียว จึงไม่มี v0.12 ใน repo อีก) และ Claude Project ใช้ v0.13 ตรงกับในโฟลเดอร์แล้ว
 - `docs/ipc-contract.md` ตัดสินครบ, `TASK_PRIORITY` อยู่ใน `constants.js`, `docs/UX-UI-Design-Review_v0.13.md` อัปเดตเรื่อง Priority/Course แล้ว
-- สเปกขึ้น `docs/PROJECT_v0.14.md` และ `docs/UX-UI-Design-Review_v0.14.md` แล้ว (2026-10-11, แทน v0.13 ซึ่งลบแล้ว): เพิ่ม `tasks.first_started_at`, ตัดเมตริก Longest Inactive Assignment เหลือ 6 metrics, สูตร Urgency Score ไม่เปลี่ยน แต่ที่โค้ดข้อ 1 เขียนไปแล้วยังต้องตามแก้ ดูข้อ 1.2b, 3.1, 4.1-4.3, 7.1
+- สเปกขึ้น `docs/PROJECT_v0.14.md` และ `docs/UX-UI-Design-Review_v0.14.md` แล้ว (2026-10-11, แทน v0.13 ซึ่งลบแล้ว): เพิ่ม `tasks.first_started_at`, ตัดเมตริก Longest Inactive Assignment เหลือ 6 metrics, สูตร Urgency Score ไม่เปลี่ยน โค้ดข้อ 1 ตามแก้แล้ว (ข้อ 1.2b) ส่วนที่เหลือคือข้อ 3.1, 4.1-4.3, 7.1
 - push `main`, `backend`, `frontend` ขึ้น GitHub แล้ว (commit เดียว `initial commit`, เบล force push เอง)
 - `npm install` และ `npm run dev` ผ่าน: หน้าต่างเปล่าขึ้น, `window.api` มี `channels/invoke/on`, `invoke('foo:bar')` ถูกปฏิเสธตาม whitelist
-- ข้อ 1 ครบ (1.1-1.7): SQLite (`schema.sql`, `database.js`), `task.service.js` (CRUD, Deadline State, Urgency Score), `tasks:*` IPC ต่อใน `main.js` เช็คใน Electron แล้ว (ยังไม่ commit และยังไม่มีเทสใน `tests/` ยกเว้น `schema.test.js` ดูบันทึกการทำงานแถวล่างสุด)
+- ข้อ 1 ครบ (1.1-1.7): SQLite (`schema.sql`, `database.js`), `task.service.js` (CRUD, Deadline State, Urgency Score), `tasks:*` IPC ต่อใน `main.js` เช็คใน Electron แล้ว และ commit แล้ว (PR #1 merge เข้า `main`) เทสของข้อ 1.5/1.6 ยังอยู่แค่ใน `_claude-draft/tests/` ใน `tests/` มีแต่ `schema.test.js` (ยังไม่ track)
+
+- ข้อ 2 ครบ (Settings) และข้อ 3 ครบ (3.1-3.7 Pomodoro, 2026-10-16): timer ใน main process, บันทึก `pomodoro_sessions`, event `pomodoro:state-changed`, floating widget, OS notification, `settings` เพิ่ม key ความยาว focus/break
 
 ยังไม่ได้ทำ / ยังไม่ยืนยัน:
 - เพื่อนเพิ่มช่อง Priority/Course ในฟอร์ม task (เหลือของข้อ 0.4) และทำ `index.html` ตามวิธีสลับหน้าที่ตัดสินแล้ว (ข้อ 0.5)
-- ที่เหลือ (ข้อ 2 เป็นต้นไป) ทุก service/ipc ยังเป็น stub ว่าง
+- ที่เหลือ (ข้อ 4 เป็นต้นไป) ทุก service/ipc ยังเป็น stub ว่าง
 
 ### ข้อสังเกตเรื่องโครงที่สร้างไว้ (ควรรู้ก่อนทำต่อ)
 
@@ -82,7 +84,8 @@ Spec หลักคือ `docs/PROJECT_v0.14.md` ถ้าไฟล์นี�
 - [x] 1.1 เลือกและติดตั้ง SQLite binding เช็ค: require ได้ใน main process
   - เสร็จ: ติดตั้ง `better-sqlite3@^13.0.3` (ไม่ต้อง rebuild ดูหมายเหตุด้านบน) และเช็คใน Electron แล้ว (2026-10-06): `npm run dev` main ไม่ error, `window.api.invoke('tasks:list')` ตอบ `[]`, `tasks:create` แล้ว `tasks:list` เห็น task
 - [x] 1.2 เขียน `schema.sql` ตาม §19 (v0.13: `tasks` มี `course_name` และ `priority`): `tasks`, `classroom_sync_state`, `pomodoro_sessions`, `notification_log`, `settings`
-- [ ] 1.2b (v0.14) เพิ่ม `first_started_at TEXT` ในตาราง `tasks` ของ `schema.sql` และใน `tests/schema.test.js` (รายชื่อคอลัมน์กับเช็คว่าเป็น NULL ได้) แล้วลบไฟล์ `studyflow.sqlite` ใน userData เพราะไม่มีระบบ migration
+- [x] 1.2b (v0.14) เพิ่ม `first_started_at TEXT` ในตาราง `tasks` ของ `schema.sql` และใน `tests/schema.test.js` (รายชื่อคอลัมน์กับเช็คว่าเป็น NULL ได้) แล้วลบไฟล์ `studyflow.sqlite` ใน userData เพราะไม่มีระบบ migration
+  - เสร็จ (2026-10-11): แก้ `schema.sql` กับ `tests/schema.test.js` แล้ว `node --test tests/schema.test.js` ผ่าน 18/18 **เหลือเบลลบ `studyflow.sqlite` ใน userData เอง** (ไม่งั้น DB เก่าไม่มีคอลัมน์ใหม่)
 - [x] 1.3 เขียน `database.js`: `initDatabase` (ไฟล์ใน `app.getPath('userData')`), `runMigrations` เช็ค: เปิดแอป 2 ครั้ง ตารางไม่ถูกสร้างซ้ำ
 - [x] 1.4 `task.service.js` ส่วน CRUD + soft delete (`deleted_at`) + ตั้ง `completed_at` ตอนเป็น Completed
 - [x] 1.5 `computeDeadlineState` ตามตาราง §9.2 + unit test ใน `tests/`
@@ -100,13 +103,15 @@ Spec หลักคือ `docs/PROJECT_v0.14.md` ถ้าไฟล์นี�
 
 ## ข้อ 3: Pomodoro (§15)
 
-- [ ] 3.1 `startBatch`: ตั้ง `last_focus_started_at` ทุกครั้ง, Not Started เป็น In Progress ครั้งแรกเท่านั้น, และ (v0.14) ตั้ง `first_started_at` เฉพาะตอนที่ยังเป็น null ห้ามเขียนทับ + เทส
-- [ ] 3.2 timer ใน main process: focus, break, focus ต่อเนื่องจนครบ batch, มี pause/resume/stop
-- [ ] 3.3 บันทึก `pomodoro_sessions` ทีละ focus period (break ไม่บันทึก) พร้อม `batch_id`, `session_index`, `session_total`
-- [ ] 3.4 ปิดแอปกลางคัน บันทึกเวลาที่ผ่านไปด้วย `completed = false` (§15.1)
-- [ ] 3.5 ส่ง event `pomodoro:state-changed`
-- [ ] 3.6 `floating-widget.js` หน้าต่างที่ 2 always-on-top รับ state ผ่าน IPC
-- [ ] 3.7 OS notification ทุกครั้งที่เปลี่ยน phase เช็ค: รัน 1 batch จนจบแล้วตรวจแถวใน `pomodoro_sessions`
+- [x] 3.1 `startBatch`: ตั้ง `last_focus_started_at` ทุกครั้ง, Not Started เป็น In Progress ครั้งแรกเท่านั้น, และ (v0.14) ตั้ง `first_started_at` เฉพาะตอนที่ยังเป็น null ห้ามเขียนทับ + เทส
+- [x] 3.2 timer ใน main process: focus, break, focus ต่อเนื่องจนครบ batch, มี pause/resume/stop
+- [x] 3.3 บันทึก `pomodoro_sessions` ทีละ focus period (break ไม่บันทึก) พร้อม `batch_id`, `session_index`, `session_total`
+- [x] 3.4 ปิดแอปกลางคัน บันทึกเวลาที่ผ่านไปด้วย `completed = false` (§15.1)
+- [x] 3.5 ส่ง event `pomodoro:state-changed`
+- [x] 3.6 `floating-widget.js` หน้าต่างที่ 2 always-on-top รับ state ผ่าน IPC
+- [x] 3.7 OS notification ทุกครั้งที่เปลี่ยน phase เช็ค: รัน 1 batch จนจบแล้วตรวจแถวใน `pomodoro_sessions`
+  - เสร็จ (2026-10-16): โค้ดอยู่ใน `src/` (`pomodoro.service.js`, `pomodoro.ipc.js`, `floating-widget.js`, `ipc/index.js`, `settings.service.js`, `main.js`) เทสและ smoke test ผ่าน และเบลเช็คใน Electron แล้วผ่านหมด
+  - ข้อตัดสินใจของเบลที่ spec ไม่ได้ระบุ (2026-10-16): ความยาว focus/break อยู่ใน `settings` (`pomodoro_focus_minutes` 25 / `pomodoro_break_minutes` 5, จำนวนเต็ม ≥ 1) payload ของ `start-batch` จึงมีแค่ `{ task_id, session_total }` / ไม่มี break หลังรอบสุดท้าย / เด้งเป็น In Progress เฉพาะ batch แรก (ตอน `first_started_at` ยังว่าง) / task `completed` กด Start ไม่ได้ / กด Start ตอนมี batch วิ่ง = reject / Stop ที่ 0 วินาทีไม่บันทึกแถว / notification ตอนเปลี่ยน phase และตอนจบ ไม่ส่งตอนกด Start / ส่ง event `pomodoro:state-changed` ทุก 1 วินาที / ปิดหน้าต่างหลัก = ปิดทั้งแอป (บันทึก partial ตาม §15.1)
 
 ## ข้อ 4: Dashboard (§10)
 
@@ -188,3 +193,5 @@ Deadline State, Urgency Score, Time-to-Start Lag, LWW ต้องเขีย�
 | 2026-10-07 | 0.4 (Frontend), Room | ทำฟอร์ม Priority/Course ที่ใช้ร่วม (`task-form.js`), หน้า Task Board แบบบาง (สร้างในโมดัล/แก้ในแผงข้าง), `api-client.js` + `dev-mock-tasks.js` (mock เฉพาะเมื่อ main ยังไม่มี handler), ย้ายไป branch `frontend`, ทำหน้า Room ตาม Figma 4 เฟรม (รูป 33 ไฟล์ใน `src/renderer/assets/room/`) ดูใน Electron จริงแล้วตรงแบบ | (1) `dev-mock-tasks.js` ลบได้หลัง Backend ทำข้อ 1.7 (`deadline_state`/`urgency_score` ในนั้นเป็นค่าประมาณ ไม่ใช่สูตร §9) (2) สมมติฐานที่ยังไม่ยืนยัน: เวลาเริ่มต้นของ due = 23:59, ป้ายในฟอร์มเป็นภาษาอังกฤษ, ช่วงเวลาเช้า/กลางวัน/เย็น/ค่ำ = 05/11/16/19 น., ปุ่ม Settings แสดงทุกช่วงเวลา (Figma เฟรมเช้าไม่มี), token สีใน `tokens.css` ยังเป็นค่าชั่วคราว (3) `window-evening.png` ขนาด 14.7 MB ควรขอไฟล์เล็กลงจากดีไซเนอร์ (4) ยังไม่ทำตัวบอกงานด่วนบนกระดาน (spec แค่อนุญาต) (5) ลบ `download-room-assets.ps1` แล้ว ห้าม commit (6) ไฟล์ใน repo โชว์ว่าแก้เพราะ line ending (CRLF) ไม่ใช่เนื้อหา (เพื่อนเป็นคนเขียนแถวนี้ รวมจาก ROADMAP ฉบับเพื่อน) |
 | 2026-10-08 | 2.1, 2.2 (ติ๊กแล้ว เบลยืนยันใน DevTools) | ตรวจงานข้อ 2 ที่เขียนไว้ 2026-10-06 ซ้ำ ไม่เขียนโค้ดใหม่ (เบลเลือกใช้ของเดิม และใช้ payload `{ key, value }` เดิม): เทสใน `_claude-draft` 11/11 ผ่าน, `settings.service.js` กับ `settings.ipc.js` ใน `src/` ตรงกับ draft, smoke test หลอก electron กับไฟล์จริงใน `src/` (ใช้ไฟล์ DB จริง) ผ่าน: default -> ตั้งครบ 3 key -> payload ผิด 7 แบบ reject และไม่เขียนอะไร -> ปิด-เปิดใหม่ค่ายังอยู่ -> `tasks:list` ยังใช้ได้ รวมส่วน frontend ของเพื่อนที่ยังไม่ได้ merge เข้าไฟล์นี้ (ข้อ 0.4 ฟอร์ม Priority/Course, ความคืบหน้าแทร็กเพื่อน, แถวบันทึก Room) โดยยึดตามที่เพื่อนเขียน ส่วนอื่นของฉบับเพื่อนเป็นของก่อนข้อ 1 จึงไม่เอามาทับ | (1) เบลเช็คใน DevTools แล้วผ่านหมด: get/set, reject key ผิด/ค่าผิด/cutoff ไม่มีเวลา, ปิด-เปิดใหม่ค่ายังอยู่ (2) ยังไม่ commit ทั้งข้อ 2 (`src/main/services/settings.service.js` ใหม่, `settings.ipc.js`, `ipc/index.js`, `docs/ipc-contract.md`, `docs/ROADMAP.md`) ทำบน branch `backend` แล้วเปิด PR (3) แจ้งเพื่อนตอน PR: `ipc-contract.md` เพิ่ม `settings:*` และชื่อ key `classroom_cutoff_date` / `reminder_window_days` กับขั้นต่ำ 1 วันเป็นการตัดสินของเรา (4) ข้อ 1.7 เสร็จแล้ว เพื่อนลบ `dev-mock-tasks.js` และต่อ Task Board กับ `tasks:*` จริงได้ (ฝั่ง renderer เพื่อนทำเอง) (5) ข้อสมมติของเพื่อนเรื่องเวลาเริ่มต้นของ due = 23:59 ต้องส่งมาเป็น ISO 8601 วัน+เวลาตาม `ipc-contract.md` (6) `tests/schema.test.js` ยังไม่ track ต้องตัดสินใจว่าจะเอาลงไหม (7) ข้อถัดไป: ข้อ 3 Pomodoro |
 | 2026-10-11 | spec | ขึ้นสเปก `PROJECT_v0.14.md` และ `UX-UI-Design-Review_v0.14.md` (เพิ่ม `tasks.first_started_at`, ตัด Longest Inactive Assignment เหลือ 6 metrics, ตัดคำโฆษณา Urgency Score ออกจาก §29), ลบไฟล์ v0.13 ทั้งสองไฟล์, แก้ชื่อเวอร์ชันที่ชี้ไปยังสเปกปัจจุบันใน README/ROADMAP/ipc-contract/.env.example | (1) ยังไม่แก้โค้ด: `schema.sql`, `tests/schema.test.js`, ข้อ 3.1, 4.1-4.3, migration ข้อ 7.1 (2) comment ใน `src/`, `tests/`, `supabase/`, `_claude-draft/` ยังอ้าง v0.13 (3) แก้ `schema.sql` แล้วต้องลบ `studyflow.sqlite` ใน userData (4) เพื่อนต้องรู้ว่า Dashboard เหลือ 6 metrics |
+| 2026-10-11 | 1.2b | เพิ่ม `first_started_at` ใน `schema.sql` และ `tests/schema.test.js` (รายชื่อคอลัมน์ + เช็ค NULL ได้) เทส 18/18 ผ่าน, เปลี่ยน comment `PROJECT_v0.13` เป็น `PROJECT_v0.14` เฉพาะฝั่ง backend (`src/main/`, `tests/`, `supabase/` เว้นประโยคประวัติใน `schema.test.js`), ลบช่องว่างท้ายบรรทัดที่หลุดใน `task.service.js` | (1) เบลลบ `studyflow.sqlite` ใน userData เองก่อนรันแอป (2) ยังไม่ commit (3) `tests/schema.test.js` ยังไม่ track และเทสข้อ 1.5/1.6 ยังอยู่ใน `_claude-draft/tests/` ต้องตัดสินใจว่าจะย้ายลง `tests/` ไหม (4) comment ใน `src/renderer/` และ `src/shared/constants.js` ยังอ้าง v0.13 ไม่ได้แตะ (ของเพื่อน / ต้องคุยกันก่อน) ให้เพื่อนแก้เองตอนทำหน้านั้น `_claude-draft/` ก็ยังอ้าง v0.13 (ไม่ commit เลยไม่แก้) (5) ข้อถัดไป: ข้อ 3 (3.1 ต้องตั้ง `first_started_at` ครั้งแรกครั้งเดียว) |
+| 2026-10-16 | 3.1-3.7 (ติ๊กแล้ว เบลยืนยันใน Electron) | เขียนข้อ 3 Pomodoro ทั้งชุด: `pomodoro.service.js` (`startBatch` ตั้ง `last_focus_started_at`/`first_started_at`/status ด้วย SQL คำสั่งเดียว, timer ทุก 1 วิคำนวณจากเวลาที่ phase จะจบ, focus→break→focus จนครบ, pause/resume/stop, บันทึก 1 แถวต่อ focus, stop/ปิดแอปกลาง focus บันทึก `completed = 0`, ส่ง event, OS notification), `pomodoro.ipc.js` (5 channel), `floating-widget.js` (หน้าต่าง always-on-top ใช้ preload ตัวเดิม), `settings.service.js` เพิ่ม `pomodoro_focus_minutes` / `pomodoro_break_minutes`, `main.js` (`before-quit` เรียก `pomodoroService.stop()` ก่อนปิด DB, ปิดหน้าต่างหลัก = ปิดแอป, `setAppUserModelId`), `docs/ipc-contract.md` เพิ่ม `pomodoro:*` ทดสอบใน `_claude-draft` ก่อน (pomodoro 35 เทสผ่าน ใช้ electron ปลอมกับ mock timer) แล้วย้ายลง `src/` + smoke test รัน `main.js` จริงกับไฟล์ DB จริง (เล่น 2 รอบ, ปิดแอปกลางรอบ 2, เปิดใหม่ข้อมูลยังอยู่, เวลาจริง 3 วิ) ไม่แตะ `src/shared` `src/preload` `src/renderer` | (1) ยังไม่ commit: ทำบน branch `backend` แล้วเปิด PR (ไฟล์ที่แก้: `src/main/services/pomodoro.service.js`, `settings.service.js`, `src/main/ipc/pomodoro.ipc.js`, `index.js`, `src/main/windows/floating-widget.js`, `src/main/main.js`, `docs/ipc-contract.md`, `docs/ROADMAP.md` ปนกับของข้อ 1.2b/คอมเมนต์ v0.14 ที่ยังไม่ commit) (2) แจ้งเพื่อนตอน PR: หน้า Settings ต้องมีช่องกรอก focus/break นาที (`settings:set`), หน้า Pomodoro เรียก `settings:get` แล้ว preview เวลารวมเอง (`session_total x focus + (session_total - 1) x break`), `start-batch` ส่งแค่ `{ task_id, session_total }` ห้ามส่ง field อื่น (reject), ปุ่ม Start ควรปิดสำหรับ task ที่ `completed`, widget เรียก `pomodoro:get-state` ตอนโหลดแล้วค่อยฟัง event, `widget.html` / `widget.js` เป็นของเพื่อนยังเป็น stub (หน้าต่าง widget ตอนนี้ว่าง) และคอมเมนต์ใน `widget.html` / `pomodoro.html` ยังอ้าง v0.13 (3) เทสอยู่ที่ `_claude-draft/tests/pomodoro.test.js` (ไม่ลง `src/` และ `tests/`) เทสเก่า `moved-*.test.js` ใน draft ล้มเพราะเป็นสำเนาเก่าที่ยังอ้างระบบ migration แบบมีเลข version (ไม่เกี่ยวกับโค้ดจริง) (4) ถ้ารัน `settings:get` จะได้ 5 key แล้ว ข้อ 5 อ่าน `reminder_window_days` ได้เหมือนเดิม (5) ข้อ 4.2 อ่าน `tasks.first_started_at`, ข้อ 6.7 เรียก `pomodoroService.getState().status !== 'idle'` เช็คว่า Pomodoro วิ่งอยู่ไหม, ข้อ 7 sync `pomodoro_sessions` (6) จำกัดที่รู้: เครื่องดับ/แอปโดน kill กลางรอบไม่มีแถวบันทึก (§15.1 accepted limitation) และ batch ไม่ถูกกู้คืนหลังเปิดแอปใหม่ (7) ข้อถัดไป: ข้อ 4 Dashboard |

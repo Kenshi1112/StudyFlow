@@ -7,6 +7,7 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const { initDatabase, closeDatabase } = require('./db/database');
 const { registerAllIpc } = require('./ipc');
+const pomodoroService = require('./services/pomodoro.service');
 
 const isDev = process.argv.includes('--dev');
 
@@ -25,12 +26,18 @@ function createMainWindow() {
 
   win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
 
+  // ปิดหน้าต่างหลัก = ปิดทั้งแอป (ไม่งั้น floating widget ที่ยังเปิดอยู่จะค้างแอปไว้) before-quit จะบันทึก Pomodoro ที่ค้างให้
+  win.on('closed', () => app.quit());
+
   if (isDev) {
     win.webContents.openDevTools({ mode: 'detach' });
   }
 }
 
 app.whenReady().then(() => {
+  // Windows ต้องมี AppUserModelId ไม่งั้น OS notification (Pomodoro) บางเครื่องไม่ขึ้น ใช้ค่าเดียวกับ appId ใน package.json
+  app.setAppUserModelId('com.studyflow.app');
+
   // เปิด DB และลงทะเบียน IPC ก่อนเปิดหน้าต่าง เพราะหน้าจอเรียก window.api.invoke ได้ตั้งแต่โหลดหน้า
   try {
     initDatabase();
@@ -49,5 +56,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  // ปิดแอปกลาง Pomodoro: บันทึกเวลาที่ผ่านไปเป็น completed = 0 (§15.1) ต้องทำก่อนปิด DB
+  pomodoroService.stop();
   closeDatabase();
 });

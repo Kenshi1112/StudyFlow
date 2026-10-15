@@ -1,6 +1,6 @@
 // Owner: Backend
 // หน้าที่: อ่าน/เขียน table settings (key-value, local only) — ข้อ 5 (แจ้งเตือน) กับข้อ 6 (Classroom) เรียกใช้จาก main process ได้ตรง ๆ
-// อ้างอิง: PROJECT_v0.13 section 11.1, 13.1, 19 และ docs/ipc-contract.md
+// อ้างอิง: PROJECT_v0.14 section 11.1, 13.1, 15.3, 19 และ docs/ipc-contract.md
 
 'use strict';
 
@@ -27,9 +27,19 @@ const SETTINGS = {
     default: 1,
     isValid: (value) => Number.isInteger(value) && value >= 1,
   },
+  // §15.3: Pomodoro ใช้เวลาโฟกัสรอบละกี่นาที (default 25) อ่านตอนกด Start Working แต่ละ batch
+  pomodoro_focus_minutes: {
+    default: 25,
+    isValid: (value) => Number.isInteger(value) && value >= 1,
+  },
+  // §15.3: พักรอบละกี่นาที (default 5)
+  pomodoro_break_minutes: {
+    default: 5,
+    isValid: (value) => Number.isInteger(value) && value >= 1,
+  },
 };
 
-// อ่านค่าทั้ง 3 key เริ่มจาก default แล้วเอาค่าใน DB มาทับ (key ที่ยังไม่เคยตั้ง = ค่า default)
+// อ่านค่าทั้ง 5 key เริ่มจาก default แล้วเอาค่าใน DB มาทับ (key ที่ยังไม่เคยตั้ง = ค่า default)
 // เช่น DB มีแค่ reminder_window_days = '3' -> { has_seen_first_run_prompt: false, classroom_cutoff_date: null, reminder_window_days: 3 }
 function getSettings() {
   const result = {};
