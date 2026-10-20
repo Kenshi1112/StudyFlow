@@ -1,9 +1,58 @@
 <!-- Owner: Frontend -->
-<!-- หน้าที่: ส่วนเนื้อหา (fragment) ของหน้า Dashboard: แสดง metrics ของ Dashboard พร้อม filter This Week / This Month / All Time
-     router.js โหลดไฟล์นี้เข้า #app จึงไม่ใช่เอกสาร HTML เต็ม (ไม่มี html/head/body) -->
-<!-- TODO: ทำ UI ตาม PROJECT_v0.13 section 10 -->
+<!-- หน้าที่: ส่วนเนื้อหา (fragment) ของหน้า Dashboard ตาม Figma node 410:63 (เฟรม 1998x1080) + spec v0.14 หัวข้อ 10 (6 metrics)
+     router.js โหลดไฟล์นี้เข้า #app จึงไม่ใช่เอกสาร HTML เต็ม -->
 
-<section id="page-dashboard" aria-label="Dashboard">
-  <!-- ชั่วคราว: ปุ่มกลับห้อง ไว้ทดสอบ router จะเปลี่ยนตามดีไซน์ -->
-  <a href="#/room">กลับห้อง</a>
+<section id="page-dashboard" class="db" aria-label="Dashboard">
+  <header class="db__top">
+    <a class="db__back" href="#/room">&lt; Back to your room</a>
+    <span class="db__divider" aria-hidden="true"></span>
+    <h1 class="db__title">Dashboard</h1>
+    <a class="db__gear" href="#/settings" aria-label="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </a>
+  </header>
+
+  <p class="db__attention"><b>Need Attention - </b><span>always current</span></p>
+  <div class="db__overdue" id="db-overdue-card">
+    <p class="db__overdue-label">Overdue</p>
+    <p class="db__overdue-value" id="db-overdue">1</p>
+  </div>
+
+  <div class="db__range" role="group" aria-label="Time range">
+    <button type="button" class="db__range-btn" data-range="week">This Week</button>
+    <span class="db__range-sep" aria-hidden="true"></span>
+    <button type="button" class="db__range-btn" data-range="month">This Month</button>
+    <span class="db__range-sep" aria-hidden="true"></span>
+    <button type="button" class="db__range-btn is-active" data-range="all">All Time</button>
+  </div>
+
+  <div class="db__tile db__tile--1"><p class="db__tile-title">Total Assignments</p><p class="db__tile-value" id="db-total">7</p></div>
+  <div class="db__tile db__tile--2"><p class="db__tile-title">Completed</p><p class="db__tile-value" id="db-completed">6</p></div>
+  <div class="db__tile db__tile--3"><p class="db__tile-title">Remaining</p><p class="db__tile-value" id="db-remaining">1</p></div>
+  <div class="db__tile db__tile--4"><p class="db__tile-title">%Completed Before Deadlines</p><p class="db__tile-value" id="db-before">80%</p></div>
+  <div class="db__tile db__tile--5">
+    <p class="db__tile-title">Avg. Time-to-start lag</p>
+    <p class="db__tile-value db__tile-value--small" id="db-lag">45 %</p>
+    <p class="db__tile-title db__tile-sub">before first focus session</p>
+  </div>
+
+  <section class="db__graph db__graph--bar" aria-label="Complete vs Remaining">
+    <h2 class="db__graph-title">Complete vs Remaining</h2>
+    <div class="db__bars" id="db-bars"></div>
+    <div class="db__legend db__legend--bar">
+      <span><i class="db__sw db__sw--done"></i>Completed</span>
+      <span><i class="db__sw db__sw--rest"></i>Remaining</span>
+    </div>
+  </section>
+
+  <section class="db__graph db__graph--donut" aria-label="By Deadline State">
+    <h2 class="db__graph-title">By Deadline State</h2>
+    <div class="db__donut">
+      <svg viewBox="0 0 200 200" id="db-donut" role="img" aria-label="By Deadline State"></svg>
+      <div class="db__donut-center"><b id="db-donut-pct">80%</b><span>Before Deadline</span></div>
+    </div>
+    <div class="db__legend db__legend--donut" id="db-donut-legend"></div>
+  </section>
+
+  <p id="db-note" class="db__note" hidden></p>
 </section>

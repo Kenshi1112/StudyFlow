@@ -1,9 +1,135 @@
 <!-- Owner: Frontend -->
-<!-- หน้าที่: ส่วนเนื้อหา (fragment) ของหน้า Settings: ตั้งค่าเชื่อมต่อ Google Classroom / LINE, cutoff date, reminder window
-     router.js โหลดไฟล์นี้เข้า #app จึงไม่ใช่เอกสาร HTML เต็ม (ไม่มี html/head/body) -->
-<!-- TODO: ทำ UI ตาม PROJECT_v0.13 section 11, 13.1, 14.2 -->
+<!-- หน้าที่: ส่วนเนื้อหา (fragment) ของหน้า Settings ตาม Figma node 403:64 (เฟรม 1998x1353)
+     router.js โหลดไฟล์นี้เข้า #app จึงไม่ใช่เอกสาร HTML เต็ม -->
 
-<section id="page-settings" aria-label="Settings">
-  <!-- ชั่วคราว: ปุ่มกลับห้อง ไว้ทดสอบ router จะเปลี่ยนตามดีไซน์ -->
-  <a href="#/room">กลับห้อง</a>
+<section id="page-settings" class="st" aria-label="Settings">
+  <header class="st__top">
+    <a class="st__back" href="#/room">&lt; Back to your room</a>
+    <span class="st__divider" aria-hidden="true"></span>
+    <h1 class="st__title">Settings</h1>
+  </header>
+
+  <div class="st__body">
+    <nav class="st__side" aria-label="Sections">
+      <p class="st__side-label">SECTIONS</p>
+      <button type="button" class="st__nav is-active" data-target="st-account">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+        <span>Account</span>
+      </button>
+      <button type="button" class="st__nav" data-target="st-integration">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 9a15 15 0 0 1 20 0M5 13a10 10 0 0 1 14 0M8.5 16.5a5 5 0 0 1 7 0"/><circle cx="12" cy="20" r="1"/></svg>
+        <span>Integration</span>
+      </button>
+      <button type="button" class="st__nav" data-target="st-pomodoro">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <span>Pomodoro Timer</span>
+      </button>
+      <button type="button" class="st__nav" data-target="st-notifications">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 17V11a6 6 0 0 1 12 0v6l2 2H4zM10 21h4"/></svg>
+        <span>Notifications</span>
+      </button>
+      <button type="button" class="st__nav" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>
+        <span>About</span>
+      </button>
+    </nav>
+
+    <main class="st__main">
+      <p id="st-error" class="st__note" role="status" hidden></p>
+
+      <h2 class="st__label" id="st-account">ACCOUNT</h2>
+      <section class="st__card st__card--account" aria-label="Account">
+        <div class="st__avatar" id="st-avatar" aria-hidden="true">T</div>
+        <div class="st__who">
+          <p class="st__name" id="st-name">Thodsaporn Srichot</p>
+          <p class="st__handle" id="st-handle">Thodsaporn.s</p>
+          <span class="st__chip">CS student &bull; Year 4</span>
+        </div>
+        <hr class="st__rule">
+        <div class="st__account-actions">
+          <button type="button" class="st__link st__link--danger" id="st-signout">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H5v16h4M16 8l4 4-4 4M20 12H9"/></svg>
+            <span>Sign out</span>
+          </button>
+          <button type="button" class="st__link" id="st-edit-profile">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+            <span>Edit Profile</span>
+          </button>
+        </div>
+      </section>
+
+      <h2 class="st__label st__label--integration" id="st-integration">INTEGRATION</h2>
+      <section class="st__card st__card--classroom" aria-label="Google Classroom">
+        <div class="st__brand">
+          <img class="st__brand-img st__brand-img--classroom" src="assets/settings/classroom-icon.png" alt="">
+          <h3 class="st__brand-title">Google Classroom</h3>
+        </div>
+        <dl class="st__rows">
+          <dt>Status</dt>
+          <dd><span class="st__dot" id="st-cls-dot"></span><span id="st-cls-status" class="st__ok">Connected</span></dd>
+          <dt>Google Account</dt>
+          <dd id="st-cls-account">Thodsaporn.s</dd>
+          <dt>Permission</dt>
+          <dd>View Google Classroom courses and coursework</dd>
+        </dl>
+        <button type="button" class="st__btn st__btn--outline" id="st-cls-btn">[ Disconnect ]</button>
+      </section>
+
+      <section class="st__card st__card--line" aria-label="LINE">
+        <div class="st__brand">
+          <span class="st__brand-img st__brand-img--line" aria-hidden="true"><b>LINE</b></span>
+          <h3 class="st__brand-title">LINE</h3>
+        </div>
+        <p class="st__line-status">Status : <span id="st-line-status">Not Connected</span></p>
+        <p class="st__line-hint">Add our LINE account as a friend, then send a one-time code to link it</p>
+        <button type="button" class="st__btn st__btn--solid" id="st-line-btn">[ Connect LINE ]</button>
+      </section>
+
+      <h2 class="st__label st__label--pomodoro" id="st-pomodoro">POMODORO TIMER</h2>
+      <section class="st__card st__card--white st__card--pomodoro" aria-label="Pomodoro Timer">
+        <div class="st__field st__field--focus">
+          <label class="st__field-label" for="st-focus">Focus Duration</label>
+          <div class="st__stepper">
+            <input id="st-focus" class="st__stepper-input" type="number" min="1" max="180" value="25" inputmode="numeric">
+            <span class="st__stepper-unit">minutes</span>
+            <span class="st__stepper-btns">
+              <button type="button" class="st__chev st__chev--up" data-step="1" data-for="st-focus" aria-label="เพิ่ม Focus Duration"></button>
+              <button type="button" class="st__chev st__chev--down" data-step="-1" data-for="st-focus" aria-label="ลด Focus Duration"></button>
+            </span>
+          </div>
+        </div>
+        <div class="st__field st__field--break">
+          <label class="st__field-label" for="st-break">Break Duration</label>
+          <div class="st__stepper">
+            <input id="st-break" class="st__stepper-input" type="number" min="1" max="60" value="5" inputmode="numeric">
+            <span class="st__stepper-unit">minutes</span>
+            <span class="st__stepper-btns">
+              <button type="button" class="st__chev st__chev--up" data-step="1" data-for="st-break" aria-label="เพิ่ม Break Duration"></button>
+              <button type="button" class="st__chev st__chev--down" data-step="-1" data-for="st-break" aria-label="ลด Break Duration"></button>
+            </span>
+          </div>
+        </div>
+        <button type="button" class="st__btn st__btn--save" id="st-save">Save Change</button>
+      </section>
+
+      <h2 class="st__label st__label--notifications" id="st-notifications">NOTIFICATIONS</h2>
+      <section class="st__card st__card--white st__card--notif" aria-label="Notifications">
+        <div class="st__notif">
+          <div>
+            <p class="st__notif-title">Deadline reminders</p>
+            <p class="st__notif-desc" id="st-reminder-desc">Notify 24 hours before due dates</p>
+          </div>
+          <button type="button" class="st__switch is-on" role="switch" aria-checked="true" aria-label="Deadline reminders"></button>
+        </div>
+        <hr class="st__rule st__rule--thin">
+        <div class="st__notif">
+          <div>
+            <p class="st__notif-title">Session complete alert</p>
+            <p class="st__notif-desc">Receive Pomodoro session notifications.</p>
+          </div>
+          <button type="button" class="st__switch is-on" role="switch" aria-checked="true" aria-label="Session complete alert"></button>
+        </div>
+      </section>
+    </main>
+  </div>
 </section>
