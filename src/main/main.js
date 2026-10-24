@@ -1,6 +1,6 @@
 // Owner: Backend
 // หน้าที่: entry point ของ Electron main process — เปิด DB, ลงทะเบียน IPC, เปิดหน้าต่างหลัก
-// TODO: เรียก startScheduler() (ข้อ 5), startSync() (ข้อ 7) เมื่อ service พร้อม
+// TODO: เรียก startSync() (ข้อ 7) เมื่อ service พร้อม
 'use strict';
 
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
@@ -8,6 +8,7 @@ const path = require('path');
 const { initDatabase, closeDatabase } = require('./db/database');
 const { registerAllIpc } = require('./ipc');
 const pomodoroService = require('./services/pomodoro.service');
+const notificationService = require('./services/notification.service');
 
 const isDev = process.argv.includes('--dev');
 
@@ -42,6 +43,8 @@ app.whenReady().then(() => {
   try {
     initDatabase();
     registerAllIpc(ipcMain);
+    // เช็ค Deadline State ตอนเปิดแอป แล้วเช็คซ้ำทุก 15 นาที (ข้อ 5)
+    notificationService.startScheduler();
   } catch (error) {
     dialog.showErrorBox('StudyFlow', `เปิดฐานข้อมูลไม่สำเร็จ\n\n${error.message}`);
     app.quit();
@@ -56,6 +59,8 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  // หยุดตัวเช็คแจ้งเตือนก่อนปิด DB ไม่งั้นรอบถัดไปจะอ่าน DB ที่ปิดไปแล้ว
+  notificationService.stopScheduler();
   // ปิดแอปกลาง Pomodoro: บันทึกเวลาที่ผ่านไปเป็น completed = 0 (§15.1) ต้องทำก่อนปิด DB
   pomodoroService.stop();
   closeDatabase();
