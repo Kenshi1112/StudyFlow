@@ -3,7 +3,7 @@
 ไฟล์นี้คือแผนทำงานทีละขั้นและบันทึกว่าทำอะไรไปแล้ว ใช้เป็นจุดต่อเวลาเปลี่ยน session
 Spec หลักคือ `docs/PROJECT_v0.14.md` ถ้าไฟล์นี้ขัดกับ spec ให้ยึด spec
 
-อัปเดตล่าสุด: 2026-10-16
+อัปเดตล่าสุด: 2026-10-24
 
 ---
 
@@ -42,9 +42,11 @@ Spec หลักคือ `docs/PROJECT_v0.14.md` ถ้าไฟล์นี�
 
 - ข้อ 2 ครบ (Settings) และข้อ 3 ครบ (3.1-3.7 Pomodoro, 2026-10-16): timer ใน main process, บันทึก `pomodoro_sessions`, event `pomodoro:state-changed`, floating widget, OS notification, `settings` เพิ่ม key ความยาว focus/break
 
+- ข้อ 4 ครบ (Dashboard 4.1-4.4, 2026-10-24): `dashboard.service.js` (6 metrics + Time-to-Start Lag), `dashboard.ipc.js` (`dashboard:get-metrics`), เพิ่ม `dashboard:*` ใน `docs/ipc-contract.md`
+
 ยังไม่ได้ทำ / ยังไม่ยืนยัน:
 - เพื่อนเพิ่มช่อง Priority/Course ในฟอร์ม task (เหลือของข้อ 0.4) และทำ `index.html` ตามวิธีสลับหน้าที่ตัดสินแล้ว (ข้อ 0.5)
-- ที่เหลือ (ข้อ 4 เป็นต้นไป) ทุก service/ipc ยังเป็น stub ว่าง
+- ที่เหลือ (ข้อ 5 เป็นต้นไป) ทุก service/ipc ยังเป็น stub ว่าง
 
 ### ข้อสังเกตเรื่องโครงที่สร้างไว้ (ควรรู้ก่อนทำต่อ)
 
@@ -115,10 +117,12 @@ Spec หลักคือ `docs/PROJECT_v0.14.md` ถ้าไฟล์นี�
 
 ## ข้อ 4: Dashboard (§10)
 
-- [ ] 4.1 6 metrics ใน `dashboard.service.js` ตามตาราง §10.2 (v0.14: ตัด Longest Inactive Assignment แล้ว, มีแค่ Overdue ที่ไม่ขึ้นกับช่วงเวลา)
-- [ ] 4.2 Average Time-to-Start Lag ตามสูตร §10.3 (v0.14: ใช้ `tasks.first_started_at` แทน session แรกใน `pomodoro_sessions`)
-- [ ] 4.3 unit test โดยเฉพาะ Time-to-Start Lag (v0.14: รวมเคส `first_started_at` เป็น null ต้องถูกตัดออก)
-- [ ] 4.4 `dashboard.ipc.js`
+- [x] 4.1 6 metrics ใน `dashboard.service.js` ตามตาราง §10.2 (v0.14: ตัด Longest Inactive Assignment แล้ว, มีแค่ Overdue ที่ไม่ขึ้นกับช่วงเวลา)
+- [x] 4.2 Average Time-to-Start Lag ตามสูตร §10.3 (v0.14: ใช้ `tasks.first_started_at` แทน session แรกใน `pomodoro_sessions`)
+- [x] 4.3 unit test โดยเฉพาะ Time-to-Start Lag (v0.14: รวมเคส `first_started_at` เป็น null ต้องถูกตัดออก)
+- [x] 4.4 `dashboard.ipc.js`
+  - เสร็จ (2026-10-24): โค้ดอยู่ใน `src/` (`dashboard.service.js`, `dashboard.ipc.js`, `ipc/index.js`) เทสใน `_claude-draft/tests/dashboard.test.js` 27/27 ผ่าน และ smoke test หลอก electron กับไฟล์ DB จริงผ่าน (ตัวอย่าง This Week = 3/2/2/2/100/45, payload ผิด 4 แบบ reject, ปิด-เปิดใหม่ค่ายังอยู่) เบลสั่งอัปเดต ROADMAP ให้ถือว่ายืนยันแล้ว
+  - ข้อตัดสินใจของเบลที่ spec ไม่ได้ระบุ (2026-10-16): payload `{ range }` (`this_week` / `this_month` / `all_time`) ไม่ส่งหรือผิด = reject / สัปดาห์เริ่มวันจันทร์ ช่วงเป็น `[เริ่ม, จบ)` ตามเวลาเครื่อง / task ที่ลบแล้วไม่นับ / ตัวหารเป็น 0 คืน `null` (หน้าจอทำ empty state) / ปัดทศนิยม 1 ตำแหน่งฝั่ง backend / `completed_at <= due_date` เทียบเวลาเต็ม / Lag นับ task ที่ completed ด้วย (กรองแค่ due ในช่วง + มี `first_started_at` + due > created) / ไม่มี field จำนวน task ที่ใช้คำนวณ Lag / All Time นับ task ไม่มี due ที่ยังไม่เสร็จใน Remaining (Total = Completed + Remaining)
 
 ## ข้อ 5: Notification บนเดสก์ท็อป (§11)
 
@@ -195,3 +199,4 @@ Deadline State, Urgency Score, Time-to-Start Lag, LWW ต้องเขีย�
 | 2026-10-11 | spec | ขึ้นสเปก `PROJECT_v0.14.md` และ `UX-UI-Design-Review_v0.14.md` (เพิ่ม `tasks.first_started_at`, ตัด Longest Inactive Assignment เหลือ 6 metrics, ตัดคำโฆษณา Urgency Score ออกจาก §29), ลบไฟล์ v0.13 ทั้งสองไฟล์, แก้ชื่อเวอร์ชันที่ชี้ไปยังสเปกปัจจุบันใน README/ROADMAP/ipc-contract/.env.example | (1) ยังไม่แก้โค้ด: `schema.sql`, `tests/schema.test.js`, ข้อ 3.1, 4.1-4.3, migration ข้อ 7.1 (2) comment ใน `src/`, `tests/`, `supabase/`, `_claude-draft/` ยังอ้าง v0.13 (3) แก้ `schema.sql` แล้วต้องลบ `studyflow.sqlite` ใน userData (4) เพื่อนต้องรู้ว่า Dashboard เหลือ 6 metrics |
 | 2026-10-11 | 1.2b | เพิ่ม `first_started_at` ใน `schema.sql` และ `tests/schema.test.js` (รายชื่อคอลัมน์ + เช็ค NULL ได้) เทส 18/18 ผ่าน, เปลี่ยน comment `PROJECT_v0.13` เป็น `PROJECT_v0.14` เฉพาะฝั่ง backend (`src/main/`, `tests/`, `supabase/` เว้นประโยคประวัติใน `schema.test.js`), ลบช่องว่างท้ายบรรทัดที่หลุดใน `task.service.js` | (1) เบลลบ `studyflow.sqlite` ใน userData เองก่อนรันแอป (2) ยังไม่ commit (3) `tests/schema.test.js` ยังไม่ track และเทสข้อ 1.5/1.6 ยังอยู่ใน `_claude-draft/tests/` ต้องตัดสินใจว่าจะย้ายลง `tests/` ไหม (4) comment ใน `src/renderer/` และ `src/shared/constants.js` ยังอ้าง v0.13 ไม่ได้แตะ (ของเพื่อน / ต้องคุยกันก่อน) ให้เพื่อนแก้เองตอนทำหน้านั้น `_claude-draft/` ก็ยังอ้าง v0.13 (ไม่ commit เลยไม่แก้) (5) ข้อถัดไป: ข้อ 3 (3.1 ต้องตั้ง `first_started_at` ครั้งแรกครั้งเดียว) |
 | 2026-10-16 | 3.1-3.7 (ติ๊กแล้ว เบลยืนยันใน Electron) | เขียนข้อ 3 Pomodoro ทั้งชุด: `pomodoro.service.js` (`startBatch` ตั้ง `last_focus_started_at`/`first_started_at`/status ด้วย SQL คำสั่งเดียว, timer ทุก 1 วิคำนวณจากเวลาที่ phase จะจบ, focus→break→focus จนครบ, pause/resume/stop, บันทึก 1 แถวต่อ focus, stop/ปิดแอปกลาง focus บันทึก `completed = 0`, ส่ง event, OS notification), `pomodoro.ipc.js` (5 channel), `floating-widget.js` (หน้าต่าง always-on-top ใช้ preload ตัวเดิม), `settings.service.js` เพิ่ม `pomodoro_focus_minutes` / `pomodoro_break_minutes`, `main.js` (`before-quit` เรียก `pomodoroService.stop()` ก่อนปิด DB, ปิดหน้าต่างหลัก = ปิดแอป, `setAppUserModelId`), `docs/ipc-contract.md` เพิ่ม `pomodoro:*` ทดสอบใน `_claude-draft` ก่อน (pomodoro 35 เทสผ่าน ใช้ electron ปลอมกับ mock timer) แล้วย้ายลง `src/` + smoke test รัน `main.js` จริงกับไฟล์ DB จริง (เล่น 2 รอบ, ปิดแอปกลางรอบ 2, เปิดใหม่ข้อมูลยังอยู่, เวลาจริง 3 วิ) ไม่แตะ `src/shared` `src/preload` `src/renderer` | (1) ยังไม่ commit: ทำบน branch `backend` แล้วเปิด PR (ไฟล์ที่แก้: `src/main/services/pomodoro.service.js`, `settings.service.js`, `src/main/ipc/pomodoro.ipc.js`, `index.js`, `src/main/windows/floating-widget.js`, `src/main/main.js`, `docs/ipc-contract.md`, `docs/ROADMAP.md` ปนกับของข้อ 1.2b/คอมเมนต์ v0.14 ที่ยังไม่ commit) (2) แจ้งเพื่อนตอน PR: หน้า Settings ต้องมีช่องกรอก focus/break นาที (`settings:set`), หน้า Pomodoro เรียก `settings:get` แล้ว preview เวลารวมเอง (`session_total x focus + (session_total - 1) x break`), `start-batch` ส่งแค่ `{ task_id, session_total }` ห้ามส่ง field อื่น (reject), ปุ่ม Start ควรปิดสำหรับ task ที่ `completed`, widget เรียก `pomodoro:get-state` ตอนโหลดแล้วค่อยฟัง event, `widget.html` / `widget.js` เป็นของเพื่อนยังเป็น stub (หน้าต่าง widget ตอนนี้ว่าง) และคอมเมนต์ใน `widget.html` / `pomodoro.html` ยังอ้าง v0.13 (3) เทสอยู่ที่ `_claude-draft/tests/pomodoro.test.js` (ไม่ลง `src/` และ `tests/`) เทสเก่า `moved-*.test.js` ใน draft ล้มเพราะเป็นสำเนาเก่าที่ยังอ้างระบบ migration แบบมีเลข version (ไม่เกี่ยวกับโค้ดจริง) (4) ถ้ารัน `settings:get` จะได้ 5 key แล้ว ข้อ 5 อ่าน `reminder_window_days` ได้เหมือนเดิม (5) ข้อ 4.2 อ่าน `tasks.first_started_at`, ข้อ 6.7 เรียก `pomodoroService.getState().status !== 'idle'` เช็คว่า Pomodoro วิ่งอยู่ไหม, ข้อ 7 sync `pomodoro_sessions` (6) จำกัดที่รู้: เครื่องดับ/แอปโดน kill กลางรอบไม่มีแถวบันทึก (§15.1 accepted limitation) และ batch ไม่ถูกกู้คืนหลังเปิดแอปใหม่ (7) ข้อถัดไป: ข้อ 4 Dashboard |
+| 2026-10-24 | 4.1-4.4 (ติ๊กแล้ว เบลสั่งอัปเดต) | เขียนข้อ 4 Dashboard แบบเรียบง่าย: `dashboard.service.js` 3 ฟังก์ชัน (`getRangeBounds` หาช่วง this_week/this_month/all_time, `computeStartPercentage` สูตร §10.3 ต่อ 1 task, `getMetrics` ดึง task ที่ไม่ถูกลบครั้งเดียวแล้ววนนับ 6 metrics และเรียก `computeDeadlineState` ของข้อ 1.5 นับ Overdue), `dashboard.ipc.js` ผูก `dashboard:get-metrics`, `ipc/index.js` เพิ่ม `registerDashboardIpc`, `docs/ipc-contract.md` เพิ่ม `dashboard:*` ทดสอบใน `_claude-draft` ก่อน (dashboard 27 เทสผ่าน, ทั้ง draft 139/139) แล้วย้ายลง `src/` + smoke test หลอก electron กับไฟล์ DB จริง ไม่แตะ `src/shared` `src/preload` `src/renderer` | (1) ยังไม่ commit: ทำบน branch `backend` แล้วเปิด PR (ไฟล์ที่แก้: `src/main/services/dashboard.service.js`, `src/main/ipc/dashboard.ipc.js`, `src/main/ipc/index.js`, `docs/ipc-contract.md`, `docs/ROADMAP.md`) (2) แจ้งเพื่อนตอน PR: หน้า Dashboard เรียก `dashboard:get-metrics` ส่ง `{ range }` ได้ 6 ค่า `percent_completed_before_deadline` กับ `average_time_to_start_lag` เป็น `null` ได้ (ต้องมี empty state) ข้อความตัวอย่างของ Lag ("10 วัน = ประมาณวันที่ 4-5") หน้าจอคิดเอง Total ไม่จำเป็นต้องเท่ากับ Completed + Remaining ใน This Week/This Month ตาม spec (3) เทสอยู่ที่ `_claude-draft/tests/dashboard.test.js` (ไม่ลง `src/` และ `tests/`) (4) ข้อ 7 ต้อง sync `tasks.first_started_at` ไม่งั้น Lag เพี้ยนบนเครื่องอื่น (5) ข้อ 9.1 ทดสอบวนข้อ 3 (กด Start) -> ข้อ 4 (Lag) (6) เบลสั่งอัปเดตโดยไม่ได้ระบุว่าเช็คผ่านข้อไหนบ้าง จึงติ๊ก 4.1-4.4 ทั้งหมด ถ้ารัน DevTools แล้วพบว่าข้อไหนไม่ผ่านให้แก้ติ๊กกลับ (7) ข้อถัดไป: ข้อ 5 Notification |

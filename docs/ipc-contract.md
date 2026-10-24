@@ -1,10 +1,10 @@
-# IPC Contract: `tasks:*`, `settings:*` และ `pomodoro:*`
+# IPC Contract: `tasks:*`, `settings:*`, `pomodoro:*` และ `dashboard:*`
 
 หน้าจอ (Frontend) ไม่แตะฐานข้อมูลตรง ต้องขอผ่าน `window.api.invoke(channel, payload)` เท่านั้น (spec §17.2)
 ไฟล์นี้คือข้อตกลงว่าแต่ละ channel รับอะไร ส่งอะไรกลับ ถ้าไฟล์นี้ขัดกับ spec (`PROJECT_v0.14.md`) ให้ยึด spec
 
 **สถานะ: ตกลงแล้ว** (เบลตัดสิน 2026-10-05) ถ้าเพื่อนอยากเปลี่ยน ให้แก้ไฟล์นี้แล้วบอกกัน
-ครอบคลุม `tasks:*`, `settings:*` และ `pomodoro:*` (ดูท้ายไฟล์) กลุ่มอื่นจะเพิ่มเมื่อถึงข้อของมัน
+ครอบคลุม `tasks:*`, `settings:*`, `pomodoro:*` และ `dashboard:*` (ดูท้ายไฟล์) กลุ่มอื่นจะเพิ่มเมื่อถึงข้อของมัน
 
 ## ตัวอย่างการใช้
 
@@ -142,3 +142,25 @@ await window.api.invoke('settings:set', { key: 'reminder_window_days', value: 3 
 - **event `pomodoro:state-changed`:** ส่งทุก 1 วินาทีระหว่าง `running` และทุกครั้งที่เปลี่ยน (start/pause/resume/เปลี่ยน phase/จบ) ให้ทุกหน้าต่าง ตอนจบ/หยุดส่ง state `idle` widget ที่เพิ่งเปิดให้เรียก `pomodoro:get-state` ตอนโหลดก่อน แล้วค่อย subscribe event
 - **ปิดแอปกลาง Pomodoro:** บันทึกเหมือน `stop` (§15.1) ปิดหน้าต่างหลัก = ปิดทั้งแอป
 - **OS notification:** ส่งตอนเปลี่ยน phase และตอนจบ batch ("ถึงเวลาพักแล้ว", "ถึงเวลาทำงานแล้ว", "ครบทุกรอบแล้ว") ไม่ส่งตอนกด Start
+
+## `dashboard:*` (ข้อ 4, เบลตัดสิน 2026-10-16)
+
+คำนวณฝั่ง main จากตาราง `tasks` (ไม่รวมที่ลบแล้ว) ตาม spec §10 หน้าจอแค่เลือกช่วงเวลาแล้วแสดงผล
+
+| channel | ส่งไป | ได้กลับ |
+|---|---|---|
+| `dashboard:get-metrics` | `{ range }` (`'this_week'` \| `'this_month'` \| `'all_time'` ค่าเดียวกับ `DASHBOARD_RANGE`) | `Metrics` |
+
+```js
+// Metrics
+{ range,
+  total_assignments, completed_assignments, remaining_assignments,   // จำนวนเต็ม
+  overdue_assignments,                                               // จำนวนเต็ม ไม่ขึ้นกับ range
+  percent_completed_before_deadline,                                 // 0-100 ทศนิยม 1 ตำแหน่ง หรือ null
+  average_time_to_start_lag }                                        // เปอร์เซ็นต์ ทศนิยม 1 ตำแหน่ง (เกิน 100 ได้) หรือ null
+```
+
+- **`range`:** ไม่ส่ง / ค่านอก 3 ค่า / ไม่ใช่ string = reject (ไม่ default) สัปดาห์เริ่มวันจันทร์ ช่วงเป็น `[เริ่ม, จบ)` ตามเวลาเครื่อง (This Week = จ. 00:00 ถึงจ.ถัดไป 00:00, This Month = วันที่ 1 ถึงวันที่ 1 เดือนถัดไป)
+- **`null`:** `percent_completed_before_deadline` เป็น `null` เมื่อไม่มี task ที่ completed และ due อยู่ในช่วง, `average_time_to_start_lag` เป็น `null` เมื่อไม่มี task ที่เข้าเงื่อนไข §10.3 ให้หน้าจอแสดง empty state (ไม่ใช่ 0)
+- **ตัวนับ:** Total/Remaining นับตาม `due_date` (task ไม่มี due นับเฉพาะ `all_time`), Completed นับตาม `completed_at`, Overdue เป็น real-time จึงอาจไม่เท่ากับ Total - Completed - Remaining ตาม spec
+- **ไม่มี field จำนวน task ที่ใช้คำนวณ Lag** (spec ไม่ได้ขอ) ถ้าหน้าจอต้องแยกกรณีข้อมูลน้อย ให้คุยกันแล้วเพิ่มทีหลัง
