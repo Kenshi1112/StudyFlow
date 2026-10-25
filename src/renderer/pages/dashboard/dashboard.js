@@ -59,7 +59,7 @@
       const bar = document.createElement('div');
       bar.className = `db__bar db__bar--${kind}`;
       bar.dataset.value = String(n ?? 0);
-      bar.style.setProperty('--h-n', String(((n || 0) / max) * 342));
+      bar.style.setProperty('--h-n', String(((n || 0) / max) * 320));
       box.appendChild(bar);
     });
   }

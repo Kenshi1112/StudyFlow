@@ -71,11 +71,75 @@
 
   function bindPending() {
     const pending = (id, text) => listen($(id), 'click', () => note(text));
-    pending('#st-cls-btn', 'การเชื่อม/ยกเลิก Google Classroom ยังไม่พร้อม รอ Backend');
     pending('#st-line-btn', 'การเชื่อม LINE ยังไม่พร้อม รอ Backend');
     pending('#st-signout', 'Sign out ยังไม่พร้อม รอ Backend');
     pending('#st-edit-profile', 'Edit Profile ยังไม่พร้อม');
     pending('#st-save', 'ค่า Focus/Break ยังไม่ถูกบันทึก (ยังไม่มีใน spec/Backend)');
+  }
+
+  // ---------- Google Classroom (spec §13.1) ----------
+  // payload เป็นการเดาของ Frontend (ยังไม่อยู่ใน ipc-contract): classroom:get-status -> { connected, account_email, last_synced_at, cutoff_date }
+  // เชื่อมครั้งแรก (ยังไม่มี cutoff) ต้องเลือกวัน cutoff ก่อน fetch แรก -> settings:set { key: 'classroom_cutoff_date', value: ISO }
+  let classroom = null;
+
+  function fmtWhen(iso) {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '\u2014';
+    const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()];
+    const h = d.getHours();
+    return `${m} ${d.getDate()}, ${d.getFullYear()} ${((h + 11) % 12) + 1}:${String(d.getMinutes()).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+  }
+
+  function renderClassroom() {
+    const on = Boolean(classroom && classroom.connected);
+    $('#st-cls-dot').classList.toggle('is-off', !on);
+    const label = $('#st-cls-status');
+    label.classList.toggle('is-off', !on);
+    label.textContent = on ? 'Connected' : 'Not connected';
+    $('#st-cls-account').textContent = on && classroom.account_email ? classroom.account_email : '\u2014';
+    $('#st-cls-sync').textContent = on && classroom.last_synced_at ? fmtWhen(classroom.last_synced_at) : '\u2014';
+    $('#st-cls-btn').textContent = !on ? '[ Connect ]' : classroom.cutoff_date ? '[ Disconnect ]' : '[ Choose import date ]';
+  }
+
+  async function loadClassroom() {
+    try {
+      classroom = await api.invoke('classroom:get-status');
+    } catch (err) {
+      classroom = null;
+    }
+    if (root) renderClassroom();
+  }
+
+  function askCutoff() {
+    window.ClassroomPopups.cutoff({
+      onConfirm: async (date) => {
+        await api.invoke('settings:set', { key: 'classroom_cutoff_date', value: date.toISOString() });
+        note('');
+        loadClassroom();
+      },
+      onCancel: () => note('ยังไม่ได้เลือกวันเริ่มดึงงาน Classroom จะยังไม่ดึงงานจนกว่าจะเลือก (กด Connect อีกครั้ง)'),
+    });
+  }
+
+  async function toggleClassroom() {
+    const btn = $('#st-cls-btn');
+    btn.disabled = true;
+    note('');
+    try {
+      if (classroom && classroom.connected && classroom.cutoff_date) {
+        classroom = await api.invoke('classroom:disconnect');
+      } else {
+        if (!(classroom && classroom.connected)) classroom = await api.invoke('classroom:connect');
+        if (classroom && classroom.connected && !classroom.cutoff_date) askCutoff();
+      }
+    } catch (err) {
+      note(`Google Classroom: ${String((err && err.message) || err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')}`);
+    } finally {
+      if (root) {
+        btn.disabled = false;
+        renderClassroom();
+      }
+    }
   }
 
   window.pages['settings'] = {
@@ -86,7 +150,9 @@
       bindSteppers();
       bindSwitches();
       bindPending();
+      listen($('#st-cls-btn'), 'click', toggleClassroom);
       loadReminderWindow();
+      loadClassroom();
     },
     unmount() {
       cleanups.forEach((fn) => fn());

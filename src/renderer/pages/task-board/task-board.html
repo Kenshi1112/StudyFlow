@@ -13,7 +13,7 @@
     <h1 id="tb-title" class="tb__title">Task Board</h1>
     <div class="tb__sync-area">
       <p id="tb-last-sync" class="tb__last-sync">Last sync: &mdash;</p>
-      <button type="button" id="tb-sync" class="tb__sync" disabled title="ยังใช้งานไม่ได้ รอ Backend เชื่อม Google Classroom">
+      <button type="button" id="tb-sync" class="tb__sync" title="ดึงงานใหม่จาก Google Classroom (spec §13.2)">
         <img class="tb__sync-icon" src="assets/task-board/classroom-icon.png" alt="" />
         <span>Sync Classroom</span>
       </button>
@@ -49,6 +49,7 @@
 
   <p id="tb-mock" class="tb__note" hidden>ข้อมูลจำลอง: Backend ยังไม่เชื่อมต่อ (tasks:* ยังไม่มี handler)</p>
   <p id="tb-error" class="tb__note tb__note--error" role="alert" hidden></p>
+  <p id="tb-toast" class="tb__toast" role="status" hidden></p>
   <p id="tb-empty" class="tb__note" hidden></p>
 
   <ul id="tb-list" class="tb__grid"></ul>

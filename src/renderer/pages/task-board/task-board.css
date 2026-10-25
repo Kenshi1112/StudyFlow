@@ -695,3 +695,7 @@
   opacity: 0.6;
   cursor: progress;
 }
+
+/* แจ้งผล Sync แบบไม่บล็อก (spec §13.5 Manual-trigger feedback) */
+.tb__toast { position: fixed; left: 50%; bottom: calc(var(--u) * 40); transform: translateX(-50%); z-index: 5; margin: 0; padding: calc(var(--u) * 14) calc(var(--u) * 28); border-radius: calc(var(--u) * 14); background: #3b2a1e; color: #fbf4ee; font-size: calc(var(--u) * 24); box-shadow: var(--tb-shadow); }
+.tb__toast[hidden] { display: none; }

@@ -1,9 +1,34 @@
 <!-- Owner: Frontend -->
-<!-- หน้าที่: ส่วนเนื้อหา (fragment) ของหน้า Calendar: ดู task ตามวัน due date
-     router.js โหลดไฟล์นี้เข้า #app จึงไม่ใช่เอกสาร HTML เต็ม (ไม่มี html/head/body) -->
-<!-- TODO: ทำ UI ตาม PROJECT_v0.13 section 7 -->
+<!-- หน้าที่: ส่วนเนื้อหา (fragment) ของหน้า Calendar: ดู task ตามวัน due date (Figma node 412:65 เป็นภาพอ้างอิงภาพเดียว วาดตามภาพ)
+     router.js โหลดไฟล์นี้เข้า #app จึงไม่ใช่เอกสาร HTML เต็ม -->
 
-<section id="page-calendar" aria-label="Calendar">
-  <!-- ชั่วคราว: ปุ่มกลับห้อง ไว้ทดสอบ router จะเปลี่ยนตามดีไซน์ -->
-  <a href="#/room">กลับห้อง</a>
+<section id="page-calendar" class="cl" aria-label="Calendar">
+  <header class="cl__top">
+    <a class="cl__back" href="#/room">&lt; Back to Room</a>
+    <span class="cl__divider" aria-hidden="true"></span>
+    <h1 class="cl__title">Calendar</h1>
+    <a class="cl__gear" href="#/settings" aria-label="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+    </a>
+  </header>
+
+  <div class="cl__body">
+    <main class="cl__main">
+      <div class="cl__nav">
+        <button type="button" class="cl__arrow" id="cl-prev" aria-label="เดือนก่อนหน้า">&lsaquo;</button>
+        <h2 class="cl__month" id="cl-month">July 2026</h2>
+        <button type="button" class="cl__arrow" id="cl-next" aria-label="เดือนถัดไป">&rsaquo;</button>
+      </div>
+      <div class="cl__week" aria-hidden="true">
+        <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+      </div>
+      <div class="cl__grid" id="cl-grid"></div>
+      <p class="cl__msg" id="cl-msg" role="status" hidden></p>
+    </main>
+
+    <aside class="cl__side" aria-label="Upcoming Deadlines">
+      <h2 class="cl__side-title">Upcoming Deadlines</h2>
+      <div id="cl-upcoming"></div>
+    </aside>
+  </div>
 </section>

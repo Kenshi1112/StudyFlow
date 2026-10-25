@@ -7,6 +7,9 @@
 
 (function () {
   const CHANNELS = ['tasks:list', 'tasks:get', 'tasks:create', 'tasks:update', 'tasks:delete'];
+  // (เพิ่ม 2026-10-25) จำลอง classroom:* และ settings:* ไว้ดูป๊อปอัป Classroom / หน้า Settings ระหว่างรอ Backend ข้อ 2, 6
+  // รูปแบบ payload ของ classroom:* เป็นการเดาของ Frontend ยังไม่อยู่ใน ipc-contract ต้องตกลงกับ Backend
+  const EXTRA = ['classroom:get-status', 'classroom:connect', 'classroom:disconnect', 'classroom:sync-now', 'classroom:get-pending', 'classroom:decide', 'settings:get', 'settings:set'];
   // ตรงกับ TASK_PRIORITY / TASK_STATUS ใน src/shared/constants.js (renderer import ตรงไม่ได้)
   const PRIORITIES = ['low', 'medium', 'high'];
   const STATUSES = ['not_started', 'in_progress', 'completed'];
@@ -96,7 +99,67 @@
     }
   }
 
+  const settings = { has_seen_first_run_prompt: false, classroom_cutoff_date: null, reminder_window_days: 1 };
+  const classroom = { connected: false, account_email: null, last_synced_at: null };
+  const pending = [
+    { id: 'cw-1', title: 'Lab 5: Process Scheduling', course_name: '014118332-69-2 - OS', due_date: iso(10) },
+    { id: 'cw-2', title: 'Quiz Prep: Memory Paging', course_name: '014118332-69-2 - OS', due_date: iso(14) },
+    { id: 'cw-3', title: 'Weekly Reflection', course_name: '014118332-69-2 - OS', due_date: null },
+  ];
+
+  function status() {
+    return { ...classroom, cutoff_date: settings.classroom_cutoff_date };
+  }
+
+  function invokeExtra(channel, payload) {
+    switch (channel) {
+      case 'settings:get':
+        return { ...settings };
+      case 'settings:set':
+        if (!payload || !(payload.key in settings)) throw new Error(`unknown setting: ${payload && payload.key}`);
+        settings[payload.key] = payload.value;
+        return { ...settings };
+      case 'classroom:get-status':
+        return status();
+      case 'classroom:connect':
+        classroom.connected = true;
+        classroom.account_email = 'student@example.com';
+        return status();
+      case 'classroom:disconnect':
+        classroom.connected = false;
+        classroom.account_email = null;
+        return status();
+      case 'classroom:sync-now':
+        if (!classroom.connected) throw new Error('Google Classroom is not connected');
+        if (!settings.classroom_cutoff_date) throw new Error('Set an import start date first');
+        classroom.last_synced_at = new Date().toISOString();
+        return { new_items: 0, pending: pending.length };
+      case 'classroom:get-pending':
+        return classroom.connected && settings.classroom_cutoff_date ? pending.map((p) => ({ ...p })) : [];
+      case 'classroom:decide': {
+        const i = pending.findIndex((p) => p.id === payload.id);
+        if (i < 0) throw new Error(`pending item not found: ${payload.id}`);
+        const [item] = pending.splice(i, 1);
+        if (payload.decision === 'import') {
+          insert({ title: item.title, course_name: item.course_name, due_date: item.due_date, source: 'google_classroom', classroom_assignment_id: item.id });
+        } else if (payload.decision !== 'ignore') {
+          throw new Error(`invalid decision: ${payload.decision}`);
+        }
+        return { id: item.id, decision: payload.decision };
+      }
+      default:
+        throw new Error(`mock does not handle ${channel}`);
+    }
+  }
+
   function invoke(channel, payload) {
+    if (EXTRA.includes(channel)) {
+      try {
+        return Promise.resolve(invokeExtra(channel, payload));
+      } catch (err) {
+        return Promise.reject(err);
+      }
+    }
     try {
       switch (channel) {
         case 'tasks:list':
@@ -139,5 +202,5 @@
     }
   }
 
-  window.__devMockTasks = { invoke, handles: (channel) => CHANNELS.includes(channel) };
+  window.__devMockTasks = { invoke, handles: (channel) => CHANNELS.includes(channel) || EXTRA.includes(channel) };
 })();

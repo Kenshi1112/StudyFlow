@@ -1,18 +1,28 @@
 <!-- Owner: Frontend -->
-<!-- หน้าที่: โครง HTML ของ floating widget (แสดง phase, เวลาที่เหลือ, ลำดับรอบ) -->
-<!-- TODO: ทำ UI ตาม PROJECT_v0.13 section 15.4 (แสดงผลอย่างเดียว รับ state ผ่าน IPC) -->
+<!-- หน้าที่: โครง HTML ของ floating widget (แสดง phase, เวลาที่เหลือ, ลำดับรอบ) spec §15.4: แสดงผลอย่างเดียว รับ state ผ่าน IPC
+     ไม่มีดีไซน์ใน Figma: ออกแบบให้โทนเดียวกับป๊อปอัป Classroom (Figma node 413:66) และหน้า Pomodoro (node 412:63)
+     ถ้าเปิดไฟล์นี้ในเบราว์เซอร์ตรง ๆ (ไม่มี window.api) จะแสดงข้อมูลตัวอย่าง ไว้ดูหน้าตา -->
 
 <!doctype html>
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>StudyFlow - Widget</title>
   <link rel="stylesheet" href="../styles/tokens.css" />
   <link rel="stylesheet" href="widget.css" />
 </head>
 <body>
-  <main id="widget"></main>
+  <main id="widget" class="wg is-idle" aria-live="polite">
+    <p class="wg__task" id="wg-task">No active session</p>
+    <div class="wg__row">
+      <span class="wg__phase" id="wg-phase">Idle</span>
+      <span class="wg__session" id="wg-session"></span>
+    </div>
+    <p class="wg__time" id="wg-time">--:--</p>
+    <div class="wg__streaks" id="wg-streaks" aria-hidden="true"></div>
+  </main>
   <script src="widget.js"></script>
 </body>
 </html>

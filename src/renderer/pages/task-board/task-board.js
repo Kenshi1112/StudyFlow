@@ -479,6 +479,91 @@
     renderList();
   }
 
+  // ---------- Google Classroom: Sync now + ป๊อปอัปรับงานใหม่ (spec §13.2, §13.5) ----------
+  // payload ของ classroom:* ยังไม่อยู่ใน ipc-contract (การเดาของ Frontend):
+  //   classroom:get-status -> { connected, account_email, last_synced_at }
+  //   classroom:get-pending -> [{ id, title, course_name, due_date }]
+  //   classroom:decide { id, decision: 'import' | 'ignore' }
+  // ยังไม่ได้กันกรณีกำลังจับเวลา Pomodoro (spec §13.5 Interruption-safe) เพราะ renderer ยังไม่รู้สถานะ session จริง
+
+  let reviewDialog = null;
+  let toastTimer = null;
+  let offPending = null;
+
+  function toast(text) {
+    const box = $('#tb-toast');
+    if (!box) return;
+    box.textContent = text;
+    box.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      if (root) $('#tb-toast').hidden = true;
+    }, 3000);
+  }
+
+  function formatSync(iso) {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '\u2014';
+    const h = d.getHours();
+    const time = `${((h + 11) % 12) + 1}:${String(d.getMinutes()).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+    return d.toDateString() === new Date().toDateString() ? `Today, ${time}` : `${formatLong(iso)}, ${time}`;
+  }
+
+  async function loadSyncStatus() {
+    try {
+      const s = await api.invoke('classroom:get-status');
+      if (!alive) return null;
+      $('#tb-last-sync').textContent = s && s.last_synced_at ? `Last sync: ${formatSync(s.last_synced_at)}` : 'Last sync: \u2014';
+      return s;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  async function checkPending(manual) {
+    let items = [];
+    try {
+      items = await api.invoke('classroom:get-pending');
+    } catch (err) {
+      if (manual) showError(`โหลดงานจาก Classroom ไม่ได้: ${message(err)}`);
+      return;
+    }
+    if (!alive) return;
+    if (!Array.isArray(items) || !items.length) {
+      if (manual) toast('No new items from Classroom');
+      return;
+    }
+    if (reviewDialog) return;
+    const status = await loadSyncStatus();
+    if (!alive) return;
+    reviewDialog = window.ClassroomPopups.review({
+      items,
+      syncedAt: status && status.last_synced_at,
+      onConfirm: async (decisions) => {
+        for (const d of decisions) await api.invoke('classroom:decide', d);
+        await load();
+      },
+      onClose: () => {
+        reviewDialog = null;
+      },
+    });
+  }
+
+  async function syncNow() {
+    const btn = $('#tb-sync');
+    btn.disabled = true;
+    showError('');
+    try {
+      await api.invoke('classroom:sync-now');
+      await loadSyncStatus();
+      await checkPending(true);
+    } catch (err) {
+      if (alive) showError(`Sync ไม่สำเร็จ: ${message(err)} (เชื่อม Google Classroom ได้ที่หน้า Settings)`);
+    } finally {
+      if (alive) btn.disabled = false;
+    }
+  }
+
   window.pages['task-board'] = {
     mount(rootEl) {
       root = rootEl;
@@ -498,10 +583,28 @@
       });
       root.querySelector('.tb__tabs:not(.tb__tabs--sub)').addEventListener('click', onTabClick);
       $('#tb-search').addEventListener('input', onSearch);
-      load();
+      $('#tb-sync').addEventListener('click', syncNow);
+      try {
+        // Backend แจ้งเมื่อมีงาน pending ใหม่ (เช่น fetch ตอนเปิดแอปเสร็จ)
+        if (window.api && typeof window.api.on === 'function') offPending = window.api.on('classroom:pending-changed', () => checkPending(false));
+      } catch (err) {
+        offPending = null;
+      }
+      load().then(() => {
+        loadSyncStatus();
+        checkPending(false);
+      });
     },
     unmount() {
       alive = false;
+      if (offPending) offPending();
+      offPending = null;
+      clearTimeout(toastTimer);
+      if (reviewDialog) {
+        const d = reviewDialog;
+        reviewDialog = null;
+        if (d.open) d.close();
+      }
       if (dialog) {
         const d = dialog;
         dialog = null;

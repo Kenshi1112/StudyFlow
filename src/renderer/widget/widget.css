@@ -1,3 +1,48 @@
 /* Owner: Frontend */
-/* หน้าที่: สไตล์ของ floating widget */
-/* TODO: ใช้ตัวแปรจาก styles/tokens.css */
+/* หน้าที่: สไตล์ของ floating widget ออกแบบเอง (ไม่มีใน Figma) ให้โทนเดียวกับป๊อปอัป Classroom / หน้า Pomodoro
+   ออกแบบที่ขนาดหน้าต่าง 320x150 ทุกขนาดคูณ --u (คงสัดส่วน วางกลางหน้าต่าง) ให้ย่อขยายตามหน้าต่างที่ Backend สร้าง
+   ห้ามใช้ inline style (CSP) */
+
+html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+body { display: flex; align-items: center; justify-content: center; }
+
+.wg {
+  --u: min(calc(100vw / 320), calc(100vh / 150)); /* ย่อให้พอดีทั้งกว้างและสูง คงสัดส่วน 320x150 */
+  --wg-text: #3b2a1e;
+  --wg-muted: #7e7464;
+  --wg-accent: #c97a3e;
+  --wg-break: #6f9a62;
+  box-sizing: border-box;
+  width: calc(var(--u) * 320);
+  height: calc(var(--u) * 150);
+  padding: calc(var(--u) * 14) calc(var(--u) * 18);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: #f9f5ec;
+  border: calc(var(--u) * 3) solid #ded4c8;
+  border-radius: calc(var(--u) * 18);
+  font-family: Inter, var(--font-family), sans-serif;
+  color: var(--wg-text);
+  user-select: none;
+  -webkit-app-region: drag; /* ถ้า Backend สร้างหน้าต่างแบบไม่มีกรอบ ลากย้ายได้ทั้งตัว */
+}
+
+.wg__task { margin: 0; font-size: calc(var(--u) * 13); font-weight: 500; color: var(--wg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.wg__row { display: flex; align-items: center; justify-content: space-between; margin-top: calc(var(--u) * 6); }
+.wg__phase { font-size: calc(var(--u) * 16); font-weight: 700; color: var(--wg-accent); }
+.wg__session { padding: calc(var(--u) * 2) calc(var(--u) * 10); border-radius: calc(var(--u) * 20); background: #f0e6d6; font-size: calc(var(--u) * 12); font-weight: 500; color: #5e2a1e; }
+.wg__session:empty { display: none; }
+
+.wg__time { margin: calc(var(--u) * 2) 0 0; font-size: calc(var(--u) * 46); font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+
+.wg__streaks { display: flex; gap: calc(var(--u) * 6); margin-top: calc(var(--u) * 6); }
+.wg__streak { flex: 1; height: calc(var(--u) * 6); border-radius: calc(var(--u) * 6); background: #d5d5d5; }
+.wg__streak.is-done { background: #ba6744; }
+
+/* สถานะ */
+.wg.is-break .wg__phase { color: var(--wg-break); }
+.wg.is-paused .wg__time { opacity: 0.45; }
+.wg.is-paused .wg__phase { color: var(--wg-muted); }
+.wg.is-idle .wg__phase, .wg.is-idle .wg__time { color: var(--wg-muted); }

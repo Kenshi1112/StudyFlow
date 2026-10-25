@@ -1,9 +1,39 @@
 <!-- Owner: Frontend -->
-<!-- หน้าที่: ส่วนเนื้อหา (fragment) ของหน้า Pomodoro: หน้าเลือกจำนวนรอบและเริ่ม Pomodoro batch ของ task หนึ่ง ๆ
-     router.js โหลดไฟล์นี้เข้า #app จึงไม่ใช่เอกสาร HTML เต็ม (ไม่มี html/head/body) -->
-<!-- TODO: เข้าถึงจาก task เท่านั้น ไม่มี session แบบไม่ผูก task (PROJECT_v0.13 section 15) รับ task id จาก route: #/pomodoro?task=<id> (params.task ใน mount) -->
+<!-- หน้าที่: ส่วนเนื้อหา (fragment) ของหน้า Pomodoro ตาม Figma node 412:63: เลือกจำนวนรอบ แล้วแสดงตัวนับเวลาของ batch
+     เข้าถึงจาก task เท่านั้น (#/pomodoro?task=<id>) ไม่มี session แบบไม่ผูก task (spec §15) -->
 
-<section id="page-pomodoro" aria-label="Pomodoro">
-  <!-- ชั่วคราว: ปุ่มกลับห้อง ไว้ทดสอบ router จะเปลี่ยนตามดีไซน์ -->
-  <a href="#/room">กลับห้อง</a>
+<section id="page-pomodoro" class="pm" aria-label="Pomodoro">
+  <a class="pm__back" href="#/task-board">&lt; Back to Task Board</a>
+
+  <!-- ขั้นที่ 1: เลือกจำนวนรอบ -->
+  <div class="pm__panel pm__panel--setup" id="pm-setup">
+    <p class="pm__task" id="pm-task-setup"></p>
+    <h1 class="pm__heading">How many sessions?</h1>
+    <button type="button" class="pm__step pm__step--minus" id="pm-minus" aria-label="ลดจำนวนรอบ">-</button>
+    <p class="pm__count" id="pm-count">4</p>
+    <button type="button" class="pm__step pm__step--plus" id="pm-plus" aria-label="เพิ่มจำนวนรอบ">+</button>
+    <p class="pm__total" id="pm-total"></p>
+    <div class="pm__presets" role="group" aria-label="จำนวนรอบที่ใช้บ่อย">
+      <button type="button" class="pm__preset" data-n="2">2</button>
+      <button type="button" class="pm__preset" data-n="4">4</button>
+      <button type="button" class="pm__preset" data-n="6">6</button>
+    </div>
+    <button type="button" class="pm__start" id="pm-start">Start Working</button>
+    <p class="pm__msg" id="pm-msg" role="status" hidden></p>
+  </div>
+
+  <!-- ขั้นที่ 2: นับเวลา -->
+  <div class="pm__panel pm__panel--run" id="pm-run" hidden>
+    <p class="pm__task pm__task--run" id="pm-task-run"></p>
+    <p class="pm__pill" id="pm-pill">Session 1 of 4</p>
+    <p class="pm__phase" id="pm-phase">Focus time</p>
+    <p class="pm__time" id="pm-time" aria-live="off">25:00</p>
+    <div class="pm__streaks" id="pm-streaks" aria-hidden="true"></div>
+    <button type="button" class="pm__toggle" id="pm-toggle" aria-label="หยุดชั่วคราว">
+      <svg class="pm__icon pm__icon--pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+      <svg class="pm__icon pm__icon--play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg>
+    </button>
+    <p class="pm__hint" id="pm-hint">You can close this window. We&rsquo;ll notify you when it&rsquo;s time for a break.</p>
+    <button type="button" class="pm__stop" id="pm-stop">Stop session</button>
+  </div>
 </section>
