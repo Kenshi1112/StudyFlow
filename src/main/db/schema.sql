@@ -1,5 +1,5 @@
 -- Owner: Backend
--- หน้าที่: schema SQLite ฝั่ง local (ตาม PROJECT_v0.13 section 19)
+-- หน้าที่: schema SQLite ฝั่ง local (ตาม PROJECT_v0.14 section 19)
 -- หมายเหตุ: วัน-เวลาเก็บเป็น TEXT ISO 8601 (ตัดสินใน ROADMAP ข้อ 0.4), boolean เก็บเป็น INTEGER 0/1
 --          ทุกตารางใช้ IF NOT EXISTS เพราะ database.js จะรันไฟล์นี้ทุกครั้งที่เปิดแอป
 --          ถ้าแก้ไฟล์นี้ระหว่างพัฒนา ตารางที่มีอยู่แล้วไม่เปลี่ยนตาม ให้ลบไฟล์ studyflow.sqlite ใน userData ทิ้ง
@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   classroom_last_updated  TEXT,
   completed_at            TEXT,
   deleted_at              TEXT,          -- soft delete (§18.2)
+  first_started_at        TEXT,          -- (v0.14) กด Start Working ครั้งแรก ตั้งครั้งเดียว ห้ามเขียนทับ ใช้คำนวณ Time-to-Start Lag (§10.3)
   last_focus_started_at   TEXT,
   created_at              TEXT NOT NULL,
   updated_at              TEXT NOT NULL  -- ใช้กับ LWW เท่านั้น ห้ามใช้เป็นสัญญาณ neglect

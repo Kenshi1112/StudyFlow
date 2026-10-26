@@ -1,10 +1,10 @@
-# IPC Contract: `tasks:*`
+# IPC Contract: `tasks:*`, `settings:*`, `pomodoro:*` และ `dashboard:*`
 
 หน้าจอ (Frontend) ไม่แตะฐานข้อมูลตรง ต้องขอผ่าน `window.api.invoke(channel, payload)` เท่านั้น (spec §17.2)
-ไฟล์นี้คือข้อตกลงว่าแต่ละ channel รับอะไร ส่งอะไรกลับ ถ้าไฟล์นี้ขัดกับ spec (`PROJECT_v0.13.md`) ให้ยึด spec
+ไฟล์นี้คือข้อตกลงว่าแต่ละ channel รับอะไร ส่งอะไรกลับ ถ้าไฟล์นี้ขัดกับ spec (`PROJECT_v0.14.md`) ให้ยึด spec
 
 **สถานะ: ตกลงแล้ว** (เบลตัดสิน 2026-10-05) ถ้าเพื่อนอยากเปลี่ยน ให้แก้ไฟล์นี้แล้วบอกกัน
-ครอบคลุมเฉพาะ `tasks:*` กลุ่มอื่นจะเพิ่มเมื่อถึงข้อของมัน
+ครอบคลุม `tasks:*`, `settings:*`, `pomodoro:*` และ `dashboard:*` (ดูท้ายไฟล์) กลุ่มอื่นจะเพิ่มเมื่อถึงข้อของมัน
 
 ## ตัวอย่างการใช้
 
@@ -28,7 +28,7 @@ await window.api.invoke('tasks:delete', { id: task.id });
 3. **ย้อน status จาก `completed`:** main ล้าง `completed_at` เป็น `null`
 4. **course และ priority (spec v0.13):** `classroom_course_name` เปลี่ยนชื่อเป็น `course_name` ใช้กับทุก source ส่วน `priority` เป็น `'low'` | `'medium'` | `'high'` | `null` (ผู้ใช้ใส่เอง `null` = ไม่ตั้ง) ทั้งสอง field ส่งตอนสร้างและแก้ได้ (ไม่บังคับ) ค่า `urgency_score` รวม priority แล้ว ฝั่งหน้าจอเรียงตามค่านี้เหมือนเดิม ไม่ต้องคิดเอง
 5. **วันที่/เวลาทุก field** เป็น ISO 8601 string, `id` ให้มองเป็น string ทึบ ๆ
-6. **Channel ที่เป็นการตีความของเรา** เก็บไว้ทั้งหมด: `classroom:get-status`, `settings:get`, `settings:set`, `line:get-status` (รายละเอียด payload ค่อยกำหนดตอนถึงข้อของมัน)
+6. **Channel ที่เป็นการตีความของเรา** เก็บไว้ทั้งหมด: `classroom:get-status`, `settings:get`, `settings:set`, `line:get-status` (`settings:*` และ `pomodoro:*` กำหนด payload แล้ว ดูท้ายไฟล์ ที่เหลือค่อยกำหนดตอนถึงข้อของมัน)
 7. ไม่มี event ของ tasks ถ้า task ใหม่เข้ามาจาก sync/LINE ให้เรียก `tasks:list` ใหม่ตอนเปิดหน้า
 
 ## Channels
@@ -66,6 +66,7 @@ field ตรงกับตาราง `tasks` ใน spec §19 ทั้งห
 | `classroom_last_updated` | string \| null | ไม่ได้ |
 | `completed_at` | string \| null | ไม่ได้ (main ตั้งเอง) |
 | `deleted_at` | string \| null | ไม่ได้ |
+| `first_started_at` | string \| null | ไม่ได้ (Pomodoro ตั้งครั้งแรกครั้งเดียว ไม่เขียนทับ, v0.14) |
 | `last_focus_started_at` | string \| null | ไม่ได้ (Pomodoro ตั้ง) |
 | `created_at` | string | ไม่ได้ |
 | `updated_at` | string | ไม่ได้ (ใช้กับ sync เท่านั้น ห้ามใช้เป็นสัญญาณ activity §19) |
@@ -75,3 +76,91 @@ field ตรงกับตาราง `tasks` ใน spec §19 ทั้งห
 ค่า enum ใช้จาก `src/shared/constants.js`
 
 หมายเหตุ: ค่า `priority` ใช้จาก `TASK_PRIORITY` ใน `src/shared/constants.js` (`LOW`, `MEDIUM`, `HIGH`)
+
+---
+
+## `settings:*` (ข้อ 2, เบลตัดสิน 2026-10-06, ข้อ 3 เพิ่ม 2 key)
+
+เก็บใน table `settings` (local only ไม่ sync §19) มี 5 key (3 key แรกตาม spec, 2 key Pomodoro เพิ่มในข้อ 3)
+
+| channel | ส่งไป | ได้กลับ |
+|---|---|---|
+| `settings:get` | ไม่มี | object ครบทั้ง 5 key (key ที่ยังไม่เคยตั้ง = ค่า default) |
+| `settings:set` | `{ key, value }` ทีละ key | object ครบทั้ง 5 key หลังอัปเดต |
+
+```js
+await window.api.invoke('settings:get')
+// { has_seen_first_run_prompt: false, classroom_cutoff_date: null, reminder_window_days: 1,
+//   pomodoro_focus_minutes: 25, pomodoro_break_minutes: 5 }
+await window.api.invoke('settings:set', { key: 'reminder_window_days', value: 3 })
+// { has_seen_first_run_prompt: false, classroom_cutoff_date: null, reminder_window_days: 3,
+//   pomodoro_focus_minutes: 25, pomodoro_break_minutes: 5 }
+```
+
+| key | type | default | ที่มา |
+|---|---|---|---|
+| `has_seen_first_run_prompt` | boolean | `false` | §19, §13.1 |
+| `classroom_cutoff_date` | ISO 8601 วัน+เวลา \| `null` (เช่น `2026-08-01T00:00:00.000Z`) | `null` | §13.1 |
+| `reminder_window_days` | จำนวนเต็ม ≥ 1 (วัน) | `1` | §11.1 |
+| `pomodoro_focus_minutes` | จำนวนเต็ม ≥ 1 (นาที) | `25` | §15.3 (ชื่อ key และค่า default เป็นการตัดสินของเรา spec ไม่ได้ระบุ) |
+| `pomodoro_break_minutes` | จำนวนเต็ม ≥ 1 (นาที) | `5` | §15.3 (เหมือนด้านบน) |
+
+- key ไม่อยู่ในตารางนี้ หรือ value ผิดชนิด = reject (ชื่อ key `classroom_cutoff_date` / `reminder_window_days` เป็นชื่อที่เราตั้งเอง spec ไม่ได้ระบุ และ spec ไม่ได้กำหนดช่วงของ reminder window ขั้นต่ำ 1 เป็นการตัดสินของเรา)
+- `classroom_cutoff_date` ต้องมีวัน+เวลา (ไม่รับ `2026-08-01` เฉย ๆ) เหมือน `due_date`
+- การบังคับให้ตั้ง cutoff ก่อน fetch ครั้งแรก (§13.1) เป็นหน้าที่ของ `classroom:*` (ข้อ 6) ไม่ใช่ channel นี้
+
+---
+
+## `pomodoro:*` (ข้อ 3, เบลตัดสิน 2026-10-16)
+
+เริ่มจาก task เท่านั้น (§15) ทีละ batch เท่านั้น timer อยู่ใน main process หน้าจอแค่สั่งและแสดงผล
+
+| channel | ส่งไป | ได้กลับ |
+|---|---|---|
+| `pomodoro:start-batch` | `{ task_id, session_total }` | `State` |
+| `pomodoro:pause` | ไม่มี | `State` |
+| `pomodoro:resume` | ไม่มี | `State` |
+| `pomodoro:stop` | ไม่มี | `State` (idle) |
+| `pomodoro:get-state` | ไม่มี | `State` |
+| event `pomodoro:state-changed` | - | `State` |
+
+```js
+// State
+{ status: 'idle' | 'running' | 'paused',
+  phase: 'focus' | 'break' | null,
+  task_id, batch_id, session_index, session_total,   // 1-based; idle = null ทั้งหมด
+  phase_total_seconds, remaining_seconds }           // idle = null ทั้งคู่
+```
+
+- **ความยาว focus/break ไม่อยู่ใน payload:** main อ่านจาก `settings` (`pomodoro_focus_minutes` / `pomodoro_break_minutes`, default 25/5) ตอนกด Start ถ้าแก้ settings ระหว่างวิ่ง batch นั้นไม่เปลี่ยนตาม หน้า Pomodoro ที่ต้อง preview เวลารวมให้เรียก `settings:get` เอง
+  เวลารวมของ batch = `session_total x focus + (session_total - 1) x break` (ไม่มี break หลังรอบสุดท้าย) เช่น 2 รอบ 25/5 = 55 นาที
+- **`start-batch`:** `session_total` เป็นจำนวนเต็ม ≥ 1 ส่ง field อื่นมา = reject และ reject เมื่อ task ไม่พบ/ถูกลบ, task เป็น `completed` (ต้องเปลี่ยน status เป็น In Progress ก่อน), หรือมี batch วิ่งอยู่แล้ว
+  ผลต่อ task (§15.3): `last_focus_started_at` = ตอนนี้ทุกครั้ง, `not_started` เป็น `in_progress` และตั้ง `first_started_at` เฉพาะ batch แรก (ตอนที่ `first_started_at` ยังเป็น null) ไม่เขียนทับ
+  main เปิด floating widget ให้เอง
+- **`pause` / `resume`:** กดซ้ำไม่เป็นไร (คืน state เดิม) ไม่มี batch = reject
+- **`stop`:** ไม่มี batch ก็ไม่ reject (คืน idle) ถ้าอยู่ใน focus จะบันทึกเวลาที่ผ่านไปเป็น `completed = 0` (ผ่านไป 0 วินาทีไม่บันทึก) อยู่ใน break ไม่บันทึกอะไรเพิ่ม
+- **event `pomodoro:state-changed`:** ส่งทุก 1 วินาทีระหว่าง `running` และทุกครั้งที่เปลี่ยน (start/pause/resume/เปลี่ยน phase/จบ) ให้ทุกหน้าต่าง ตอนจบ/หยุดส่ง state `idle` widget ที่เพิ่งเปิดให้เรียก `pomodoro:get-state` ตอนโหลดก่อน แล้วค่อย subscribe event
+- **ปิดแอปกลาง Pomodoro:** บันทึกเหมือน `stop` (§15.1) ปิดหน้าต่างหลัก = ปิดทั้งแอป
+- **OS notification:** ส่งตอนเปลี่ยน phase และตอนจบ batch ("ถึงเวลาพักแล้ว", "ถึงเวลาทำงานแล้ว", "ครบทุกรอบแล้ว") ไม่ส่งตอนกด Start
+
+## `dashboard:*` (ข้อ 4, เบลตัดสิน 2026-10-16)
+
+คำนวณฝั่ง main จากตาราง `tasks` (ไม่รวมที่ลบแล้ว) ตาม spec §10 หน้าจอแค่เลือกช่วงเวลาแล้วแสดงผล
+
+| channel | ส่งไป | ได้กลับ |
+|---|---|---|
+| `dashboard:get-metrics` | `{ range }` (`'this_week'` \| `'this_month'` \| `'all_time'` ค่าเดียวกับ `DASHBOARD_RANGE`) | `Metrics` |
+
+```js
+// Metrics
+{ range,
+  total_assignments, completed_assignments, remaining_assignments,   // จำนวนเต็ม
+  overdue_assignments,                                               // จำนวนเต็ม ไม่ขึ้นกับ range
+  percent_completed_before_deadline,                                 // 0-100 ทศนิยม 1 ตำแหน่ง หรือ null
+  average_time_to_start_lag }                                        // เปอร์เซ็นต์ ทศนิยม 1 ตำแหน่ง (เกิน 100 ได้) หรือ null
+```
+
+- **`range`:** ไม่ส่ง / ค่านอก 3 ค่า / ไม่ใช่ string = reject (ไม่ default) สัปดาห์เริ่มวันจันทร์ ช่วงเป็น `[เริ่ม, จบ)` ตามเวลาเครื่อง (This Week = จ. 00:00 ถึงจ.ถัดไป 00:00, This Month = วันที่ 1 ถึงวันที่ 1 เดือนถัดไป)
+- **`null`:** `percent_completed_before_deadline` เป็น `null` เมื่อไม่มี task ที่ completed และ due อยู่ในช่วง, `average_time_to_start_lag` เป็น `null` เมื่อไม่มี task ที่เข้าเงื่อนไข §10.3 ให้หน้าจอแสดง empty state (ไม่ใช่ 0)
+- **ตัวนับ:** Total/Remaining นับตาม `due_date` (task ไม่มี due นับเฉพาะ `all_time`), Completed นับตาม `completed_at`, Overdue เป็น real-time จึงอาจไม่เท่ากับ Total - Completed - Remaining ตาม spec
+- **ไม่มี field จำนวน task ที่ใช้คำนวณ Lag** (spec ไม่ได้ขอ) ถ้าหน้าจอต้องแยกกรณีข้อมูลน้อย ให้คุยกันแล้วเพิ่มทีหลัง

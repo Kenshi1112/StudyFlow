@@ -1,6 +1,6 @@
 // Owner: Backend
 // หน้าที่: จัดการ task (CRUD, soft delete) และคำนวณ Deadline State / Urgency Score ตอน read
-// อ้างอิง: PROJECT_v0.13 section 9.1, 9.2, 9.5 และ docs/ipc-contract.md
+// อ้างอิง: PROJECT_v0.14 section 9.1, 9.2, 9.5 และ docs/ipc-contract.md
 
 'use strict';
 
