@@ -14,9 +14,10 @@ This document was previously aligned to PROJECT_v0.11.md and is now revised to m
 |---|---|
 | Priority (Low / Medium / High, optional, user-set, no default) is reinstated as one weighted input to the Urgency Score; the Urgency Score remains the sole signal driving default order (Sections 9.3, 9.5) | **Section 2 (Task Board)** — card tier table, ordering note, new Task Create / Edit Form subsection, Include / Avoid lists; **Section 6** — the color-collision guidance returns to three signals (Deadline State, Priority, Urgency Score); **Summary priority list** — item 3 updated, item 12 added |
 | `classroom_course_name` is renamed `course_name` and now applies to tasks from every source; manual tasks can carry an optional course (Sections 14.3, 19) | **Section 2** — the card shows a course for any task that has one, not only Classroom-sourced tasks; the form gains an optional Course field; the Course filter is no longer Classroom-only |
-| Nothing else changes: Dashboard metrics (Section 10), notifications (Section 11), Classroom (Section 13), Pomodoro (Section 15), sync (Section 18) | **Sections 0, 1, 3, 4, 5** — unchanged |
+| **(Applied in the same pass)** LINE integration, introduced in v0.12 and never reflected here: Connect / Disconnect LINE in Settings (Section 14.2); `line` as a third task source (Sections 14.3, 19); LINE-created tasks bypass the Classroom Review Popup (Section 14.3); the three notification rules also drive LINE pushes with no separate configuration (Sections 11.1, 14.4) | **Section 2 (Task Board)** — source icon, Source filter, Detail panel line; **Section 5 (Settings)** — LINE card in category 1, LINE note under Notifications, control count; **Section 6** — consistency and honesty notes; **Summary** — item 13 |
+| Nothing else changes: Dashboard metrics (Section 10), Pomodoro (Section 15), sync (Section 18) | **Sections 0, 1, 3, 4** — unchanged |
 
-**Not yet applied — PROJECT_v0.12.md (LINE integration) was never reflected in this document.** It stayed aligned to v0.11 while the spec moved on. Items that still need their own pass: the "Connect LINE" / "Disconnect LINE" controls in Settings (Section 14.2), "LINE" as a third task source on Task Board cards and in the Source filter (Sections 14.3, 19), and any notification microcopy that should mention LINE (Sections 11.2, 14.4). They are left out here on purpose so this revision stays limited to what v0.13 changed.
+**Applied — PROJECT_v0.12.md (LINE integration).** This document had stayed aligned to v0.11 while the spec moved on. The LINE items are now covered in the same pass as v0.13. Wording of the LINE chat flow itself (prompts, buttons) is not a screen in this app and is out of scope here (Section 26).
 
 <details>
 <summary>Prior revision note — Aligned to PROJECT_v0.11.md (historical)</summary>
@@ -245,9 +246,9 @@ Group task metadata into three tiers, not one flat card:
 
 | Tier | Fields | Where it lives |
 |---|---|---|
-| **Always visible (card)** | Title, Deadline State chip (Overdue/Due Today/Upcoming/No Deadline/Completed), progress bar, source icon (manual vs Classroom), course name if the task has one — **(Changed in v0.13)** from any source, not only Classroom; **(New in v0.13)** a small neutral Priority flag, shown only when priority is High (see below) | Task card in the list |
+| **Always visible (card)** | Title, Deadline State chip (Overdue/Due Today/Upcoming/No Deadline/Completed), progress bar, source icon (manual / Classroom / LINE — **(New in v0.12 pass)** three neutral icons, no color), course name if the task has one — **(Changed in v0.13)** from any source, not only Classroom; **(New in v0.13)** a small neutral Priority flag, shown only when priority is High (see below) | Task card in the list |
 | **Visible on hover / secondary glance** | Quick actions (mark complete, start focus session, edit) | Card hover state, right-aligned icon row |
-| **Hidden until opened** | Notes, exact due date/time, **Priority control (Low / Medium / High / not set) and Course field (New in v0.13)**, full progress history, linked Pomodoro session history, Classroom import date, status dropdown | Task Detail panel |
+| **Hidden until opened** | Notes, exact due date/time, a quiet source line ("Imported from Classroom · [date]" or "Added via LINE · [date]"), **Priority control (Low / Medium / High / not set) and Course field (New in v0.13)**, full progress history, linked Pomodoro session history, Classroom import date, status dropdown | Task Detail panel |
 
 **One data-model nuance worth flagging for Figma:** `status` and `deadline_state` are two separate systems that happen to overlap in wording ("Completed" exists in both). Don't render two chips that both can say "Completed" — let the Deadline State chip be the single colored label on the card, and represent `status` more quietly as the progress bar's fill state or a small icon.
 
@@ -315,6 +316,15 @@ This is where Priority and Course are entered (Sections 9.3, 19). Use the same f
 
 **In the Detail panel:** show Priority as the same segmented control, applied immediately on change (like the inline status toggle), with no confirmation and no toast. If the change moves the card within its bucket, a short reorder transition or none at all is fine.
 
+### LINE-created tasks (New in the v0.12 pass)
+
+A task created through the LINE chat flow (Section 14.3) is a direct, explicit result of the user finishing that flow, so it does **not** go through the Classroom Review Popup (Sections 13.5, 14.3). It simply appears on Task Board like any other task.
+
+- **No review step, no special badge.** It is distinguished only by its LINE source icon and the quiet source line in the Detail panel.
+- **It arrives through the normal sync pull (Section 18.2), not instantly.** Don't animate it as "just added" or phrase it as live (Section 6, item 3).
+- **It starts as Not Started with no Priority set** (Sections 9.1, 14.3). The user can set Priority later in the Detail panel.
+- **Its course may be free text that matches no existing course** (Section 14.5). Task Board will show it as its own course value; this document does not propose merging or correcting it (accepted limitation).
+
 ### Classroom Review Popup
 
 This is the presentation-layer treatment of PROJECT.md Section 13.5's review step. It is a **separate overlay, not part of the Task Board page** — it can appear over the Room or over Task Board.
@@ -352,7 +362,7 @@ This is the presentation-layer treatment of PROJECT.md Section 13.5's review ste
 
 ### Components to include / avoid
 **Include:**
-- Persistent filter bar: Deadline State, Status, Source (Manual/Classroom), Course. **(Changed in v0.13)** Course now applies to tasks from any source, so it is no longer a Classroom-only filter.
+- Persistent filter bar: Deadline State, Status, Source (Manual / Classroom / LINE), Course. **(Changed in v0.13)** Course now applies to tasks from any source, so it is no longer a Classroom-only filter.
 - Inline search with live filtering.
 - The pending-review text link described above, shown only when applicable.
 - Quick-action icons on card hover: complete checkbox, "Start Focus Session", open detail.
@@ -567,7 +577,7 @@ Configuration only — connecting/disconnecting Classroom, adjusting notificatio
 ### Categorization
 Three clear categories:
 
-1. **Account & Google Classroom** (Section 13.1) — connect/disconnect, OAuth status, and the mandatory import cutoff date.
+1. **Account & Connections** — **(Changed in the v0.12 pass)** two independent cards, **Google Classroom** (Section 13.1: connect/disconnect, OAuth status, mandatory import cutoff date) and **LINE** (Section 14.2: connect/disconnect). Still one category, so Settings stays at three.
 2. **Notifications** (Section 11.1) — three default rules shown as toggles, with the reminder-window value (default 1 day) as a simple numeric stepper.
 3. **Sync & Backup** (Section 17) — cloud sync status display.
 
@@ -575,6 +585,15 @@ Three clear categories:
 A single, clear status card: connected account (email), "Connected" state with a green indicator, and a "Disconnect" action. If disconnected, show a single "Connect Google Classroom" button that starts OAuth. Explicitly note that disconnecting keeps already-imported tasks.
 
 **(New in v0.9) "Not connected" banner:** if the user has not connected a Google Classroom account — whether from declining the First-Run Prompt (Section 0, above) or simply never having connected — show a quiet, dismissible banner near the top of this category, above the "Connect Google Classroom" button: **"Not connected — your data is stored on this device only. Connect to back up your data and use it across devices."** This must not use warning colors (no red/orange/alert icon) — declining or deferring is a normal, fully supported state per Section 13.1, not an error condition. The banner is dismissible per session but should reappear on next launch until the user connects, since the underlying condition (no backup) is still true — this mirrors how the Task Board's pending-review indicator (Section 2, above) persists until its underlying condition is resolved, not until it's merely acknowledged once.
+
+### How LINE connection should be presented (New in the v0.12 pass)
+
+A second status card under the Classroom card, built the same way so the user learns one pattern (Section 6).
+
+- **Not connected:** a single "Connect LINE" button and one quiet line saying what it does (add tasks and get deadline reminders on LINE). **No banner, no First-Run Prompt, no warning color**: LINE is optional and independent of Classroom (Sections 13.1, 14.2), and being unconnected is a normal state.
+- **After pressing Connect LINE:** show the short numeric code large and plain, with "Send this code to the StudyFlow LINE account within 10 minutes" and a visible expiry. When it expires, show "Get a new code" instead of leaving a dead code on screen (Section 14.2).
+- **Connected:** "Connected" with the same green indicator as the Classroom card, and a "Disconnect LINE" action, with a note that tasks already created through LINE are kept (Sections 14.2, 14.5).
+- **How the app learns the link succeeded is an implementation detail** (the confirmation happens on LINE's side). Whatever it does, don't show "Connected" until it is actually known, and don't promise the change is instant (Section 6, item 3).
 
 **Mandatory cutoff date on first connect:** immediately after a successful OAuth consent, present a single, simple step: "Import assignments created on or after..." with a date picker. This step cannot be skipped. With the review popup back in the flow, frame the microcopy as "so your first review doesn't include years of old assignments."
 
@@ -588,15 +607,17 @@ Three toggles, each labeled in plain language:
 - "Notify me when something becomes overdue"
 - "Remind me about upcoming deadlines" — with the reminder-window stepper (default 1 day) inline.
 
+**(New in the v0.12 pass) No LINE-specific notification controls.** The same three rules also drive LINE pushes (Sections 11.1, 14.4). When LINE is connected, add one quiet helper line under the toggles ("Also sent to LINE"). Don't add a second set of toggles. A user with the app open and LINE connected may receive both a desktop notification and a LINE push for the same change; that is accepted (Section 14.4), so don't try to hide it in the UI.
+
 ### How cloud sync status should be displayed
 A quiet status line, not a control panel. Show: last successful sync time, and a simple state (Synced / Syncing… / Retrying).
 
 ### Components to include / avoid
 **Include:** status cards with clear state colors, simple toggles, one numeric stepper, one simple date picker, and **(New in v0.9)** the "not connected" banner described above (shown only when applicable). **(Changed in v0.10)** No "Sync now" button — that control now lives on Task Board only.
-**Avoid:** a generic settings "wall of switches," nested sub-menus, exposing database/sync internals. Also avoid any control inside Settings that duplicates the Classroom Review Popup or the First-Run Prompt — the banner should link into the *same* existing "Connect Google Classroom" button/flow, not open a third, separate connect surface.
+**Avoid:** a generic settings "wall of switches," nested sub-menus, exposing database/sync internals, **(New in the v0.12 pass)** a LINE first-run prompt or "not connected" banner, and any LINE-only notification options. Also avoid any control inside Settings that duplicates the Classroom Review Popup or the First-Run Prompt — the banner should link into the *same* existing "Connect Google Classroom" button/flow, not open a third, separate connect surface.
 
 ### Reducing cognitive load & clicks
-This page has roughly seven total controls across its three categories.
+This page has roughly nine total controls across its three categories (two more than before, for Connect / Disconnect LINE).
 
 ### What should receive visual emphasis
 The Classroom connection status card. **(v0.9 note)** When the "not connected" banner is showing, it should sit visually *above* the connect button as context, not compete with it — the button remains the primary action; the banner explains why it matters.
@@ -624,6 +645,8 @@ Standard desktop settings conventions apply well here: left category rail + righ
 - **Color tokens for Overdue/urgent** must be the single same value across the Room badge, the Task Board Deadline State chip, and the Dashboard's Needs Attention strip.
 - **Empty/zero states** should share one visual pattern (icon + one short sentence) across every page.
 - **(New in v0.9) First-Run Prompt and Settings banner microcopy must match.** The First-Run Prompt (Section 0) and the Settings "not connected" banner (Section 5) both describe the same underlying state — no Google connection, data stored locally only. They must use the same or near-identical wording for this ("your data is stored on this device only" / "Connect to back up your data and use it across devices") rather than two independently-written descriptions of the same fact. A user who reads the First-Run Prompt, declines, and later opens Settings should recognize the banner as the same message revisited, not a differently-worded surprise.
+- **(New in the v0.12 pass) The Classroom and LINE cards behave identically.** Same layout, same "Connected" indicator, same Disconnect pattern, same note that already-created tasks are kept. The one difference is deliberate: Classroom has a not-connected banner (Section 5, v0.9) and LINE does not, because only Classroom has a First-Run Prompt.
+- **(New in the v0.12 pass) One source-icon set for all three sources** (manual, Classroom, LINE), in the same neutral tone, used identically on the card, in the Source filter, and in the Detail panel.
 - **(New in v0.13) Priority and Course must be edited the same way everywhere.** The create modal and the Detail panel (Section 2) use the same controls, in the same order, with the same helper text. A user should never have to learn two ways to set Priority.
 - **(New in v0.13) "Not set" and "Low" look different but rank the same.** Section 9.5 gives both a Priority Factor of 0. Show "not set" as an empty control and "Low" as a selected one, but never imply in the UI that choosing Low pushes a task down, and never imply that leaving Priority empty is an omission the user should fix.
 
@@ -664,3 +687,4 @@ Standard desktop settings conventions apply well here: left category rail + righ
 10. The Room has three objects now, not four — Pomodoro is reached through Task Board only.
 11. **(New in v0.9)** Build the First-Run Prompt as a genuinely optional, equally-weighted two-button choice — never a login gate — and keep its "not connected" messaging word-for-word consistent with the Settings banner that echoes it later.
 12. **(New in v0.13)** Build Priority as an optional three-way control with nothing selected by default, shown in the same form in the create modal and the Detail panel, and show it on the card only as a quiet flag for High. Let it work through the Urgency Score's ordering within each bucket, and nowhere else.
+13. **(New in the v0.12 pass)** Add LINE as a second, optional card inside Settings category 1 (never a fourth category, never a first-run prompt), with the same Connect / Disconnect pattern as Classroom. Show LINE tasks on Task Board with a neutral source icon and no review step, and let them arrive through the normal sync rather than as a live event.
