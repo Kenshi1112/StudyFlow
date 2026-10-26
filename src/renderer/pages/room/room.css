@@ -1,3 +1,562 @@
 /* Owner: Frontend */
-/* หน้าที่: สไตล์เฉพาะหน้า Room */
-/* TODO: ใช้ตัวแปรจาก styles/tokens.css */
+/* หน้าที่: สไตล์หน้า Room ตาม Figma (เฟรม 1920x1080) ทุกชิ้นวางด้วยพิกัดจริงบนฉากคงที่ แล้วย่อทั้งฉากด้วย --room-scale
+   ห้ามใช้ inline style (CSP) ทุกค่าอยู่ใน class ด้านล่าง */
+
+.room {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #fdf6ec;
+}
+
+.room__stage {
+  position: absolute;
+  left: var(--room-x, 0px);
+  top: var(--room-y, 0px);
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  background: #fdf6ec;
+  border: 1px solid #f9e8cf;
+  box-sizing: border-box;
+  transform: scale(var(--room-scale, 1));
+  transform-origin: top left;
+}
+
+.room__layer {
+  position: absolute;
+  display: block;
+  max-width: none;
+}
+
+/* --- ชั้นภาพทั้งหมด (สร้างจากพิกัด Figma) --- */
+
+.room__floor-edge {
+  left:0px;
+  top:904px;
+  width:1920px;
+  height:5px;
+  background:#c6ac79;
+}
+
+.room__floor-light {
+  left:0px;
+  top:909px;
+  width:1920px;
+  height:23px;
+  background:#e5c78b;
+}
+
+.room__floor {
+  left:0px;
+  top:932px;
+  width:1920px;
+  height:148px;
+  background:#ba855b;
+}
+
+.room__shelf-outer {
+  left:68px;
+  top:120px;
+  width:437px;
+  height:960px;
+  background:#5d3a1a;
+  border-radius:10px;
+}
+
+.room__shelf-inner {
+  left:85px;
+  top:133px;
+  width:402px;
+  height:944px;
+  background:#865e44;
+  border-radius:10px;
+}
+
+.room__shelf-line-1 {
+  left:74px;
+  top:379px;
+  width:423px;
+  height:13px;
+  background:#5d3a1a;
+}
+
+.room__shelf-line-2 {
+  left:74px;
+  top:629px;
+  width:423px;
+  height:13px;
+  background:#5d3a1a;
+}
+
+.room__shelf-line-3 {
+  left:75px;
+  top:858px;
+  width:423px;
+  height:13px;
+  background:#5d3a1a;
+}
+
+.room__shelf-box-a {
+  left:235px;
+  top:921px;
+  width:205px;
+  height:156px;
+  background:#e3ba60;
+}
+
+.room__shelf-box-a-label {
+  left:311.48px;
+  top:933.91px;
+  width:51.407px;
+  height:11.834px;
+  background:#d9d9d9;
+  border-radius:10px;
+}
+
+.room__shelf-box-b {
+  left:93px;
+  top:948px;
+  width:134.918px;
+  height:129px;
+  background:#e3ba60;
+}
+
+.room__shelf-box-b-label {
+  left:143.34px;
+  top:958.68px;
+  width:33.833px;
+  height:9.786px;
+  background:#d9d9d9;
+  border-radius:10px;
+}
+
+.room__shelf-box-c {
+  left:113px;
+  top:713px;
+  width:327px;
+  height:145px;
+  background:#e3ba60;
+}
+
+.room__shelf-box-c-label {
+  left:235px;
+  top:725px;
+  width:82px;
+  height:11px;
+  background:#d9d9d9;
+  border-radius:10px;
+}
+
+.room__shelf-file-1 {
+  left:181px;
+  top:399px;
+  width:40px;
+  height:204px;
+  transform:rotate(90deg);
+}
+
+.room__shelf-file-2 {
+  left:165.5px;
+  top:442.5px;
+  width:54px;
+  height:211px;
+  transform:rotate(90deg);
+}
+
+.room__shelf-file-3 {
+  left:173.5px;
+  top:496.5px;
+  width:54px;
+  height:211px;
+  transform:rotate(90deg);
+}
+
+.room__shelf-file-4 {
+  left:210.852px;
+  top:168.542px;
+  width:54px;
+  height:211px;
+  transform:rotate(-3.76deg);
+}
+
+.room__shelf-file-5 {
+  left:158px;
+  top:179px;
+  width:46px;
+  height:200px;
+}
+
+.room__shelf-file-6 {
+  left:97px;
+  top:168px;
+  width:54px;
+  height:211px;
+}
+
+.room__shelf-file-7 {
+  left:406px;
+  top:168px;
+  width:54px;
+  height:211px;
+}
+
+.room__shelf-file-8 {
+  left:279px;
+  top:168px;
+  width:54px;
+  height:211px;
+}
+
+.room__shelf-file-9 {
+  left:344px;
+  top:168px;
+  width:54px;
+  height:211px;
+}
+
+.room__mug {
+  left:351px;
+  top:534px;
+  width:89px;
+  height:95px;
+}
+
+.room__rod {
+  left:608px;
+  top:134px;
+  width:558px;
+  height:24px;
+  background:#866144;
+}
+
+.room__rod-end-left {
+  left:580px;
+  top:117px;
+  width:57px;
+  height:57px;
+}
+
+.room__rod-end-right {
+  left:1138px;
+  top:119px;
+  width:57px;
+  height:57px;
+}
+
+.room__window {
+  left:721px;
+  top:172px;
+  width:338px;
+  height:516px;
+  object-fit:cover;
+  border:5px solid #563d2a;
+  box-sizing:border-box;
+}
+
+.room__curtain-left {
+  left:633px;
+  top:158px;
+  width:70px;
+  height:576px;
+}
+
+.room__curtain-right {
+  left:1078px;
+  top:156px;
+  width:70px;
+  height:576px;
+  transform:scaleX(-1);
+}
+
+.room__table-leg-left {
+  left:727px;
+  top:847px;
+  width:29px;
+  height:233px;
+  background:#9b6944;
+}
+
+.room__table-leg-right {
+  left:1685px;
+  top:847px;
+  width:29px;
+  height:233px;
+  background:#9b6944;
+}
+
+.room__table-top {
+  left:613px;
+  top:756px;
+  width:1220px;
+  height:63px;
+  background:#ca9e79;
+  border-radius:5px;
+}
+
+.room__table-edge {
+  left:642px;
+  top:819px;
+  width:1163px;
+  height:28px;
+  background:#a77957;
+}
+
+.room__board-frame {
+  left:1266px;
+  top:95px;
+  width:626px;
+  height:425px;
+  background:#5d3b15;
+  border-radius:10px;
+}
+
+.room__board-cork {
+  left:1284px;
+  top:113px;
+  width:590px;
+  height:389px;
+  object-fit:cover;
+}
+
+.room__note-1 {
+  left:1707.004px;
+  top:292.994px;
+  width:101.873px;
+  height:118.229px;
+  transform:rotate(3.8deg);
+}
+
+.room__note-2 {
+  left:1569.002px;
+  top:284.998px;
+  width:101.873px;
+  height:118.229px;
+  transform:rotate(6.41deg);
+}
+
+.room__note-3 {
+  left:1561.001px;
+  top:144.003px;
+  width:101.873px;
+  height:118.229px;
+  transform:rotate(2.13deg);
+}
+
+.room__note-4 {
+  left:1431.002px;
+  top:284.001px;
+  width:101.873px;
+  height:118.229px;
+  transform:rotate(4.2deg);
+}
+
+.room__note-5 {
+  left:1307.002px;
+  top:279.001px;
+  width:101.873px;
+  height:118.229px;
+  transform:rotate(7.27deg);
+}
+
+.room__note-6 {
+  left:1429.59px;
+  top:138.398px;
+  width:101.873px;
+  height:118.229px;
+  transform:rotate(7.84deg);
+}
+
+.room__note-7 {
+  left:1309px;
+  top:140px;
+  width:101.873px;
+  height:118.229px;
+}
+
+.room__note-8 {
+  left:1708.997px;
+  top:141.001px;
+  width:101.873px;
+  height:118.229px;
+  transform:rotate(7.18deg);
+}
+
+.room__desk-box {
+  left:1557px;
+  top:659px;
+  width:134.918px;
+  height:129px;
+  background:#e3ba60;
+}
+
+.room__desk-box-label {
+  left:1607.34px;
+  top:669.68px;
+  width:33.833px;
+  height:9.786px;
+  background:#d9d9d9;
+  border-radius:10px;
+}
+
+.room__desk-file {
+  left:1693.509px;
+  top:576.484px;
+  width:54px;
+  height:211px;
+  transform:rotate(-6.92deg);
+}
+
+.room__calendar-red {
+  left:1276px;
+  top:628px;
+  width:202px;
+  height:134px;
+  background:#da4848;
+  border-radius:10px;
+}
+
+.room__calendar-page {
+  left:1276px;
+  top:649px;
+  width:202px;
+  height:134px;
+  object-fit:cover;
+}
+
+.room__calendar-ring-1 {
+  left:1302px;
+  top:615px;
+  width:8px;
+  height:25px;
+  background:#d9d9d9;
+  border-radius:40px;
+}
+
+.room__calendar-ring-2 {
+  left:1336px;
+  top:615px;
+  width:8px;
+  height:25px;
+  background:#d9d9d9;
+  border-radius:40px;
+}
+
+.room__calendar-ring-3 {
+  left:1373px;
+  top:615px;
+  width:8px;
+  height:25px;
+  background:#d9d9d9;
+  border-radius:40px;
+}
+
+.room__calendar-ring-4 {
+  left:1447px;
+  top:615px;
+  width:8px;
+  height:25px;
+  background:#d9d9d9;
+  border-radius:40px;
+}
+
+.room__calendar-ring-svg {
+  left:1412px;
+  top:615px;
+  width:8px;
+  height:25px;
+}
+
+/* จอ Dashboard บนโต๊ะ (Figma: กรอบ 714,489 รูปเลื่อนซ้าย -0.86%) ขนาดตามไฟล์ svg เดิม */
+.room__widget {
+  left: 710.01px;
+  top: 489px;
+}
+
+/* --- ตัวหนังสือบนกระดาน --- */
+
+.room__board-label {
+  position: absolute;
+  left: 1579px;
+  top: 452px;
+  width: 164px;
+  margin: 0;
+  transform: translateX(-50%);
+  text-align: center;
+  font-family: Inter, var(--font-family), sans-serif;
+  font-weight: 600;
+  font-size: 24px;
+  letter-spacing: 0.48px;
+  color: #fff;
+  pointer-events: none;
+}
+
+/* --- จุดคลิก --- */
+
+.room__hotspot {
+  position: absolute;
+  display: block;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.room__hotspot:focus-visible,
+.room__settings:focus-visible {
+  outline: 4px solid #2563eb;
+  outline-offset: 4px;
+}
+
+.room__hotspot--board { left: 1266px; top: 95px; width: 626px; height: 425px; }
+.room__hotspot--dashboard { left: 714px; top: 489px; width: 464px; height: 322px; }
+.room__hotspot--calendar { left: 1276px; top: 615px; width: 202px; height: 168px; }
+
+/* --- Header --- */
+
+.room__header {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1920px;
+  height: 60px;
+  background: #fffbf3;
+  border: 2px solid #eee6db;
+  box-sizing: border-box;
+}
+
+.room__app-title {
+  position: absolute;
+  left: 13px; /* Figma 15 หักขอบ 2px */
+  top: 14px;  /* Figma 16 หักขอบ 2px */
+  width: 165px;
+  height: 28px;
+  margin: 0;
+  font-family: Inter, var(--font-family), sans-serif;
+  font-size: 18px;
+  line-height: 28px;
+  color: #544338;
+}
+
+.room__settings {
+  position: absolute;
+  left: 1857px; /* Figma 1859 หักขอบ 2px */
+  top: 8px;     /* Figma 10 หักขอบ 2px */
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.room__settings-circle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 40px;
+  height: 40px;
+}
+
+.room__settings-icon {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  width: 24px;
+  height: 24px;
+}

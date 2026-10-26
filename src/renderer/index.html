@@ -1,6 +1,6 @@
 <!-- Owner: Frontend -->
-<!-- หน้าที่: entry HTML ของ renderer (หน้าต่างหลักโหลดไฟล์นี้) -->
-<!-- TODO: ตัดสินใจวิธีสลับหน้า (ไปหน้า room เป็นหน้าแรกตาม PROJECT_v0.13 section 7) -->
+<!-- หน้าที่: entry HTML ของ renderer (หน้าต่างหลักโหลดไฟล์นี้) เป็นหน้าเดียว (SPA) ที่ router.js สลับหน้าเข้า #app ตาม hash -->
+<!-- ตัดสินแล้ว (ROADMAP 0.5): ทาง A หน้าเดียว + hash router เริ่มที่ #/room ตาม PROJECT_v0.13 section 7 -->
 
 <!doctype html>
 <html lang="th">
@@ -10,8 +10,17 @@
   <title>StudyFlow</title>
   <link rel="stylesheet" href="styles/tokens.css" />
   <link rel="stylesheet" href="styles/global.css" />
+  <link rel="stylesheet" href="components/task-form.css" />
+  <link rel="stylesheet" href="components/classroom-popups.css" />
 </head>
 <body>
-  <main id="app"></main>
+  <main id="app" tabindex="-1"></main>
+  <script src="components/dom.js"></script>
+  <script src="dev-mock-tasks.js"></script>
+  <script src="api-client.js"></script>
+  <script src="components/task-form.js"></script>
+  <script src="components/source-icon.js"></script>
+  <script src="components/classroom-popups.js"></script>
+  <script src="router.js"></script>
 </body>
 </html>

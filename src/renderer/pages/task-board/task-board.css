@@ -1,3 +1,701 @@
 /* Owner: Frontend */
-/* หน้าที่: สไตล์เฉพาะหน้า Task Board */
-/* TODO: ใช้ตัวแปรจาก styles/tokens.css */
+/* หน้าที่: สไตล์เฉพาะหน้า Task Board ตาม Figma (เฟรม 1998x1102)
+   ขนาดทุกอย่างคูณ --u (= ความกว้างหน้าต่าง / 1998) เพื่อให้สัดส่วนเหมือน Figma ในทุกขนาดหน้าต่าง
+   ห้ามใช้ inline style (CSP) */
+
+.tb {
+  --u: calc(100vw / 1998);
+  --tb-panel: rgba(255, 242, 226, 0.73);
+  --tb-text: #ba6744;
+  --tb-shadow: 0 calc(var(--u) * 4) calc(var(--u) * 4) rgba(0, 0, 0, 0.25);
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  padding-bottom: calc(var(--u) * 60);
+  border: 1px solid #daab70;
+  box-sizing: border-box;
+  font-family: Inter, var(--font-family), sans-serif;
+  color: var(--tb-text);
+}
+
+/* พื้นหลัง: สีครีมทึบ + รูปไม้โปร่ง 70% (ตามเลเยอร์ใน Figma) */
+.tb__bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: #f7efe4;
+  overflow: hidden;
+}
+
+.tb__bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url('../../assets/task-board/wood-bg.png') center / cover no-repeat;
+  opacity: 0.7;
+}
+
+/* กล่องโปร่งสีครีมที่ใช้ซ้ำ: ปุ่ม back, แท็บกรอง, ค้นหา, + New Task */
+.tb__panel {
+  background: var(--tb-panel);
+  box-shadow: var(--tb-shadow);
+  border: 0;
+  color: var(--tb-text);
+  font: inherit;
+}
+
+/* --- หัวหน้า --- */
+
+.tb__top {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: start;
+  padding: calc(var(--u) * 33) calc(var(--u) * 10) 0 calc(var(--u) * 16);
+}
+
+.tb__back {
+  display: flex;
+  align-items: center;
+  justify-self: start;
+  width: calc(var(--u) * 361);
+  height: calc(var(--u) * 66);
+  padding-left: calc(var(--u) * 46);
+  box-sizing: border-box;
+  font-size: calc(var(--u) * 30);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.tb__title {
+  margin: 0;
+  height: calc(var(--u) * 66);
+  font-size: calc(var(--u) * 55);
+  font-weight: 600;
+  line-height: calc(var(--u) * 66);
+  color: #8e613c;
+  text-align: center;
+  text-shadow: var(--tb-shadow);
+}
+
+.tb__sync-area {
+  display: flex;
+  align-items: flex-start;
+  justify-self: end;
+  gap: calc(var(--u) * 12);
+}
+
+.tb__last-sync {
+  margin: calc(var(--u) * 25) 0 0;
+  font-size: calc(var(--u) * 24);
+  font-weight: 500;
+  line-height: calc(var(--u) * 29);
+  color: #7d5534;
+  white-space: nowrap;
+}
+
+.tb__sync {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 8);
+  height: calc(var(--u) * 53);
+  margin-top: calc(var(--u) * 13);
+  padding: 0 calc(var(--u) * 8);
+  border: 0;
+  border-radius: calc(var(--u) * 10);
+  background: #fae7cf;
+  box-shadow: var(--tb-shadow);
+  color: #c4714a;
+  font: inherit;
+  font-size: calc(var(--u) * 28);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tb__sync:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.tb__sync-icon {
+  width: calc(var(--u) * 40.15);
+  height: calc(var(--u) * 40.15);
+  border-radius: calc(var(--u) * 10);
+}
+
+/* --- แถบกรอง / ค้นหา / + New Task --- */
+
+.tb__tools {
+  display: flex;
+  align-items: center;
+  margin-top: calc(var(--u) * 36);
+  padding: 0 calc(var(--u) * 10) 0 calc(var(--u) * 34);
+}
+
+.tb__filter-label {
+  width: calc(var(--u) * 87);
+  flex-shrink: 0;
+  font-size: calc(var(--u) * 32);
+  color: #514438;
+}
+
+.tb__tabs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: calc(var(--u) * 1026);
+  height: calc(var(--u) * 66);
+  padding: 0 calc(var(--u) * 10);
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.tb__tab {
+  height: calc(var(--u) * 48);
+  padding: 0 calc(var(--u) * 10);
+  border: 0;
+  background: transparent;
+  color: var(--tb-text);
+  font: inherit;
+  font-size: calc(var(--u) * 32);
+  cursor: pointer;
+}
+
+.tb__tab[aria-pressed='true'] {
+  background: rgba(186, 103, 68, 0.25);
+}
+
+.tb__search {
+  width: calc(var(--u) * 592.4);
+  height: calc(var(--u) * 66);
+  margin-left: calc(var(--u) * 17.6);
+  padding: 0 calc(var(--u) * 25);
+  box-sizing: border-box;
+  font-size: calc(var(--u) * 32);
+}
+
+.tb__search::placeholder {
+  color: #df9c80;
+  opacity: 1;
+}
+
+.tb__new {
+  width: calc(var(--u) * 211);
+  height: calc(var(--u) * 66);
+  margin-left: auto;
+  font-size: calc(var(--u) * 32);
+  cursor: pointer;
+}
+
+.tb__note {
+  margin: calc(var(--u) * 16) calc(var(--u) * 34) 0;
+  font-size: calc(var(--u) * 22);
+  color: #7d5534;
+}
+
+.tb__note--error {
+  color: var(--color-error);
+}
+
+/* --- แถวตัวกรองที่สอง: Source / Course (ออกแบบเองตาม UX Review v0.14 ใช้โทนเดียวกับแถวแรก) --- */
+
+.tb__tools--sub {
+  margin-top: calc(var(--u) * 18);
+}
+
+.tb__tools--sub .tb__filter-label {
+  font-size: calc(var(--u) * 24);
+}
+
+.tb__tabs--sub {
+  width: auto;
+  height: calc(var(--u) * 50);
+  gap: calc(var(--u) * 6);
+}
+
+.tb__tab--sub {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 8);
+  height: calc(var(--u) * 36);
+  font-size: calc(var(--u) * 24);
+}
+
+.tb__tab-icon {
+  display: inline-flex;
+}
+
+.tb__course-label {
+  margin-left: calc(var(--u) * 24);
+  margin-right: calc(var(--u) * 14);
+  font-size: calc(var(--u) * 24);
+  color: #514438;
+}
+
+.tb__course {
+  min-width: calc(var(--u) * 260);
+  height: calc(var(--u) * 50);
+  padding: 0 calc(var(--u) * 14);
+  font-size: calc(var(--u) * 24);
+  cursor: pointer;
+}
+
+/* ไอคอน Source บนการ์ด: ปลายขวาของบรรทัดวิชา โทนเดียวกับตัวอักษร */
+.tb-card__source {
+  right: calc(var(--u) * 12);
+  top: calc(var(--u) * 58.4);
+  width: calc(var(--u) * 26);
+  height: calc(var(--u) * 26);
+  color: #964e30;
+}
+
+.tb-card__source svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* บรรทัดที่มาในแผง Detail */
+.tb__detail-source {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-muted);
+  font-size: 0.9em;
+}
+
+/* --- การ์ด 5 คอลัมน์ --- */
+
+.tb__grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  column-gap: calc(var(--u) * 38.5);
+  row-gap: calc(var(--u) * 68);
+  margin: calc(var(--u) * 69) 0 0;
+  padding: 0 calc(var(--u) * 67) 0 calc(var(--u) * 65);
+  list-style: none;
+}
+
+.tb-card {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: calc(var(--u) * 281);
+  padding: 0;
+  border: 1px solid #f4e2cc;
+  border-radius: calc(var(--u) * 5);
+  box-sizing: border-box;
+  background: #f4e2cc;
+  color: var(--tb-text);
+  font: inherit;
+  font-size: calc(var(--u) * 20);
+  line-height: 1.21;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tb-card--completed {
+  opacity: 0.65;
+}
+
+.tb-card > * {
+  position: absolute;
+  display: block;
+}
+
+.tb-card__pill {
+  left: calc(var(--u) * 12);
+  top: calc(var(--u) * 10);
+  width: calc(var(--u) * 132);
+  height: calc(var(--u) * 39);
+  border-radius: calc(var(--u) * 20);
+  background: #fdfdfd;
+  line-height: calc(var(--u) * 39);
+  text-align: center;
+  color: var(--tb-text);
+}
+
+/* สีแดงสงวนไว้ให้ Deadline State (Overdue / ใกล้ครบกำหนด) เท่านั้น */
+.tb-card__pill--overdue {
+  color: red;
+}
+
+.tb-card__left {
+  right: calc(var(--u) * 11.5);
+  top: calc(var(--u) * 12);
+  color: #484747;
+  text-align: right;
+}
+
+.tb-card__left--urgent {
+  color: #dd3a1f;
+}
+
+.tb-card__flag {
+  left: calc(var(--u) * 154);
+  top: calc(var(--u) * 12);
+  color: #7d5534;
+}
+
+.tb-card__course {
+  left: calc(var(--u) * 12.3);
+  top: calc(var(--u) * 58.4);
+  width: calc(var(--u) * 284);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #964e30;
+}
+
+.tb-card__title {
+  left: calc(var(--u) * 12.3);
+  top: calc(var(--u) * 99.5);
+  width: calc(var(--u) * 318);
+  max-height: calc(var(--u) * 72);
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.tb-card__meta {
+  left: calc(var(--u) * 12.5);
+  top: calc(var(--u) * 183.8);
+  width: calc(var(--u) * 318);
+}
+
+.tb-card__bar {
+  left: calc(var(--u) * 12.5);
+  top: calc(var(--u) * 247.2);
+  width: calc(var(--u) * 313.5);
+  height: calc(var(--u) * 14.05);
+  border-radius: calc(var(--u) * 30);
+  background: #fff;
+  overflow: hidden;
+}
+
+.tb-card__fill {
+  height: 100%;
+  width: calc(var(--fill, 0) * 1%);
+  border-radius: calc(var(--u) * 30);
+  background: #c4714a;
+}
+
+/* --- ป๊อปอัป (Figma: Task Details 1205x868, Create/Edit 1127x957, Delete 892x218) --- */
+/* สีพื้น/ขอบของกรอบป๊อปอัปเป็นเวกเตอร์ใน Figma ผมประมาณจากภาพ (พื้นครีม ขอบน้ำตาล เงาจาง) */
+
+.tb-popup {
+  --popup-bg: #faf5ea;
+  --popup-border: #a98a6b;
+  padding: 0;
+  border: calc(var(--u) * 2) solid var(--popup-border);
+  border-radius: calc(var(--u) * 20);
+  background: var(--popup-bg);
+  box-shadow: var(--tb-shadow);
+  color: #514940;
+  max-width: 96vw;
+  max-height: 96vh;
+  overflow: auto;
+  font-family: Inter, var(--font-family), sans-serif;
+}
+
+.tb-popup::backdrop {
+  background: var(--color-backdrop);
+}
+
+.tb-popup--form {
+  width: calc(var(--u) * 1127);
+  height: calc(var(--u) * 957);
+}
+
+.tb-popup--details {
+  width: calc(var(--u) * 1205);
+}
+
+.tb-popup--delete {
+  width: calc(var(--u) * 892);
+}
+
+/* ===== ป๊อปอัปรายละเอียดงาน ===== */
+
+.dt {
+  padding: calc(var(--u) * 38) calc(var(--u) * 44) calc(var(--u) * 40);
+}
+
+.dt__head {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 25);
+  padding-left: calc(var(--u) * 4);
+}
+
+.dt__chip {
+  display: inline-flex;
+  align-items: center;
+  height: calc(var(--u) * 45);
+  padding: 0 calc(var(--u) * 15);
+  border-radius: calc(var(--u) * 20);
+  font-size: calc(var(--u) * 30);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.dt__chip--course {
+  max-width: calc(var(--u) * 272);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: #e6ddd1;
+  color: #6b5c51;
+}
+
+.dt__chip--status {
+  background: #f5e0cd;
+  color: #a65d37;
+}
+
+.dt__tools {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 20);
+  margin-left: auto;
+}
+
+.dt__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--u) * 44);
+  height: calc(var(--u) * 44);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.dt__icon-btn img,
+.dt__icon-btn svg {
+  display: block;
+  width: calc(var(--u) * 32);
+  height: calc(var(--u) * 32);
+}
+
+.dt__icon-btn--delete {
+  color: #b3261e; /* M3 error ตาม Figma */
+}
+
+.dt__title {
+  margin: calc(var(--u) * 28) 0 0;
+  padding-left: calc(var(--u) * 4);
+  font-size: calc(var(--u) * 40);
+  font-weight: 500;
+  line-height: calc(var(--u) * 48);
+  color: #1a1714;
+  overflow-wrap: anywhere;
+}
+
+.dt__source {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 10);
+  margin: calc(var(--u) * 8) 0 0;
+  padding-left: calc(var(--u) * 4);
+  font-size: calc(var(--u) * 22);
+  color: #8a7a6b;
+}
+
+.dt__due {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: calc(var(--u) * 28);
+  padding: 0 calc(var(--u) * 14) 0 calc(var(--u) * 18);
+  height: calc(var(--u) * 73.6);
+  border: calc(var(--u) * 2) solid #eeddb0;
+  border-radius: calc(var(--u) * 10);
+  box-sizing: border-box;
+  background: #fff8ec;
+  font-size: calc(var(--u) * 25);
+  font-weight: 700;
+  color: #9e7452;
+}
+
+.dt__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(var(--u) * 43);
+  margin-top: calc(var(--u) * 32);
+}
+
+.dt-box {
+  min-height: calc(var(--u) * 195);
+  padding: calc(var(--u) * 12) calc(var(--u) * 15);
+  border: calc(var(--u) * 2) solid #e4d5bf;
+  border-radius: calc(var(--u) * 20);
+  box-sizing: border-box;
+  background: #fffdf7;
+}
+
+.dt-box__label {
+  margin: 0;
+  font-size: calc(var(--u) * 25);
+  line-height: calc(var(--u) * 42);
+  color: #b87347;
+}
+
+.dt-box__text {
+  margin: calc(var(--u) * 4) 0 0;
+  font-size: calc(var(--u) * 25);
+  line-height: 1.3;
+  color: #472e1b;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.dt-box__text--empty {
+  color: #b4a592;
+}
+
+.dt-box__value {
+  margin: calc(var(--u) * 2) 0 0;
+  font-size: calc(var(--u) * 30);
+  font-weight: 600;
+  line-height: calc(var(--u) * 42);
+  color: #472e1b;
+}
+
+/* แถบเลื่อน Progress: ราง #e8dec8, ส่วนที่เต็ม #ba6744 */
+.dt-range {
+  --p: 0;
+  display: block;
+  width: 100%;
+  height: calc(var(--u) * 28);
+  margin: calc(var(--u) * 14) 0 0;
+  padding: 0;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.dt-range::-webkit-slider-runnable-track {
+  height: calc(var(--u) * 21.8);
+  border-radius: calc(var(--u) * 30);
+  background: linear-gradient(to right, #ba6744 calc(var(--p) * 1%), #e8dec8 calc(var(--p) * 1%));
+}
+
+.dt-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: calc(var(--u) * 26);
+  height: calc(var(--u) * 27);
+  margin-top: calc(var(--u) * -2.6);
+  border: calc(var(--u) * 3) solid #fffdf7;
+  border-radius: 50%;
+  box-sizing: border-box;
+  background: #ba6744;
+  box-shadow: 0 0 0 1px #ba6744;
+}
+
+.dt-ticks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: calc(var(--u) * 6);
+  font-size: calc(var(--u) * 15);
+  color: #472e1b;
+}
+
+.dt__error {
+  margin: calc(var(--u) * 14) 0 0;
+  font-size: calc(var(--u) * 24);
+  color: var(--color-error);
+}
+
+.dt__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(var(--u) * 43);
+  margin-top: calc(var(--u) * 40);
+}
+
+.dt__btn {
+  height: calc(var(--u) * 59);
+  border-radius: calc(var(--u) * 20);
+  font: inherit;
+  font-size: calc(var(--u) * 26);
+  cursor: pointer;
+}
+
+.dt__btn--start {
+  border: 1px solid #a86430;
+  background: #c97a3e;
+  color: #f5e6d3;
+}
+
+.dt__btn--done {
+  border: 1px solid #dcc9ac;
+  background: #f5e3cc;
+  color: #c97a3e;
+}
+
+.dt__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ===== ป๊อปอัปยืนยันลบ ===== */
+
+.dl {
+  padding: calc(var(--u) * 17) calc(var(--u) * 37) calc(var(--u) * 20) calc(var(--u) * 28);
+}
+
+.dl__title {
+  margin: 0;
+  font-size: calc(var(--u) * 40);
+  font-weight: 500;
+  line-height: calc(var(--u) * 48);
+  color: #1a1714;
+}
+
+.dl__text {
+  margin: calc(var(--u) * 12) 0 0;
+  font-size: calc(var(--u) * 24);
+  font-weight: 600;
+  line-height: calc(var(--u) * 30);
+  color: rgba(30, 30, 30, 0.53);
+}
+
+.dl__actions {
+  display: flex;
+  gap: calc(var(--u) * 32);
+  margin-top: calc(var(--u) * 28);
+  padding-left: calc(var(--u) * 9);
+}
+
+.dl__btn {
+  flex: 1;
+  height: calc(var(--u) * 57.4);
+  border-radius: calc(var(--u) * 50);
+  font: inherit;
+  font-size: calc(var(--u) * 24);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dl__btn--cancel {
+  border: 1px solid #dcc9ac;
+  background: #f5e3cc;
+  color: rgba(30, 30, 30, 0.53);
+}
+
+.dl__btn--confirm {
+  border: 1px solid #cf0000;
+  background: #a33737;
+  color: #fff;
+}
+
+.dl__btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* แจ้งผล Sync แบบไม่บล็อก (spec §13.5 Manual-trigger feedback) */
+.tb__toast { position: fixed; left: 50%; bottom: calc(var(--u) * 40); transform: translateX(-50%); z-index: 5; margin: 0; padding: calc(var(--u) * 14) calc(var(--u) * 28); border-radius: calc(var(--u) * 14); background: #3b2a1e; color: #fbf4ee; font-size: calc(var(--u) * 24); box-shadow: var(--tb-shadow); }
+.tb__toast[hidden] { display: none; }

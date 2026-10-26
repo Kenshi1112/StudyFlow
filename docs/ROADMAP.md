@@ -1,9 +1,9 @@
 # StudyFlow Roadmap และบันทึกความคืบหน้า
 
 ไฟล์นี้คือแผนทำงานทีละขั้นและบันทึกว่าทำอะไรไปแล้ว ใช้เป็นจุดต่อเวลาเปลี่ยน session
-Spec หลักคือ `docs/PROJECT_v0.13.md` ถ้าไฟล์นี้ขัดกับ spec ให้ยึด spec
+Spec หลักคือ `docs/PROJECT_v0.14.md` ถ้าไฟล์นี้ขัดกับ spec ให้ยึด spec
 
-อัปเดตล่าสุด: 2026-10-06
+อัปเดตล่าสุด: 2026-10-11
 
 ---
 
@@ -11,7 +11,7 @@ Spec หลักคือ `docs/PROJECT_v0.13.md` ถ้าไฟล์นี�
 
 1. เปิด session ใหม่ในโฟลเดอร์ `Final_Project_FR`
 2. พิมพ์ประมาณนี้:
-   > อ่าน docs/ROADMAP.md แล้วทำต่อที่ "ข้อ X" ฉันทำ Backend (src/main, supabase) เพื่อนทำ Frontend (src/renderer) ห้ามเพิ่มอะไรนอก PROJECT_v0.13.md
+   > อ่าน docs/ROADMAP.md แล้วทำต่อที่ "ข้อ X" ฉันทำ Backend (src/main, supabase) เพื่อนทำ Frontend (src/renderer) ห้ามเพิ่มอะไรนอก PROJECT_v0.14.md
 3. จบ session ให้ทำตามนี้ก่อนปิด:
    - รัน test / เช็คตามช่อง "เช็ค" ของข้อนั้นให้ผ่าน
    - `git commit` ผลงาน
@@ -23,7 +23,7 @@ Spec หลักคือ `docs/PROJECT_v0.13.md` ถ้าไฟล์นี�
 - `src/main/`, `supabase/` = Backend (เบล) / `src/renderer/` = Frontend (เพื่อน)
 - `src/preload/`, `src/shared/` = ต้องคุยกันก่อนแก้ ทั้ง `ipc-channels.js` และ `constants.js`
 - renderer ห้ามเข้า DB ตรง ต้องผ่าน IPC (`window.api.invoke`) เท่านั้น
-- ห้ามเพิ่ม field/feature/requirement ที่ไม่มีใน `PROJECT_v0.13.md` ถ้าต้องเปลี่ยนให้ขึ้นเวอร์ชัน spec ก่อน แล้วค่อยแก้โค้ด
+- ห้ามเพิ่ม field/feature/requirement ที่ไม่มีใน `PROJECT_v0.14.md` ถ้าต้องเปลี่ยนให้ขึ้นเวอร์ชัน spec ก่อน แล้วค่อยแก้โค้ด
 - เรื่องที่ยังรอคุยกับอาจารย์ให้เป็น TBD/Open Questions ใน spec และอย่าเพิ่งเขียนโค้ด
 - Secrets (LINE token ฯลฯ) ห้ามอยู่ใน repo ให้ใช้ `supabase secrets set`
 
@@ -35,12 +35,13 @@ Spec หลักคือ `docs/PROJECT_v0.13.md` ถ้าไฟล์นี�
 - สร้างโครงโฟลเดอร์และไฟล์ stub ทั้งหมด (header 3 บรรทัดทุกไฟล์) + `package.json`, `.gitignore`, `.env.example`, `.prettierrc`, `main.js`, `preload.js`, `ipc-channels.js`, `constants.js`, `README.md`
 - วาง `docs/PROJECT_v0.13.md` แล้ว (แทน v0.12 ซึ่งลบออกแล้ว และประวัติ git ถูกรวมเป็น commit เดียว จึงไม่มี v0.12 ใน repo อีก) และ Claude Project ใช้ v0.13 ตรงกับในโฟลเดอร์แล้ว
 - `docs/ipc-contract.md` ตัดสินครบ, `TASK_PRIORITY` อยู่ใน `constants.js`, `docs/UX-UI-Design-Review_v0.13.md` อัปเดตเรื่อง Priority/Course แล้ว
+- สเปกขึ้น `docs/PROJECT_v0.14.md` และ `docs/UX-UI-Design-Review_v0.14.md` แล้ว (2026-10-11, แทน v0.13 ซึ่งลบแล้ว): เพิ่ม `tasks.first_started_at`, ตัดเมตริก Longest Inactive Assignment เหลือ 6 metrics, สูตร Urgency Score ไม่เปลี่ยน แต่ที่โค้ดข้อ 1 เขียนไปแล้วยังต้องตามแก้ ดูข้อ 1.2b, 3.1, 4.1-4.3, 7.1
 - push `main`, `backend`, `frontend` ขึ้น GitHub แล้ว (commit เดียว `initial commit`, เบล force push เอง)
 - `npm install` และ `npm run dev` ผ่าน: หน้าต่างเปล่าขึ้น, `window.api` มี `channels/invoke/on`, `invoke('foo:bar')` ถูกปฏิเสธตาม whitelist
 - ข้อ 1 ครบ (1.1-1.7): SQLite (`schema.sql`, `database.js`), `task.service.js` (CRUD, Deadline State, Urgency Score), `tasks:*` IPC ต่อใน `main.js` เช็คใน Electron แล้ว (ยังไม่ commit และยังไม่มีเทสใน `tests/` ยกเว้น `schema.test.js` ดูบันทึกการทำงานแถวล่างสุด)
 
 ยังไม่ได้ทำ / ยังไม่ยืนยัน:
-- เพื่อนเพิ่มช่อง Priority/Course ในฟอร์ม task (เหลือของข้อ 0.4) และทำ `index.html` ตามวิธีสลับหน้าที่ตัดสินแล้ว (ข้อ 0.5)
+- (Frontend) ช่อง Priority/Course ในฟอร์ม task (ข้อ 0.4) และ `index.html` ตามวิธีสลับหน้า (ข้อ 0.5) ทำแล้ว ดูแถวบันทึกการทำงาน 2026-10-07 และ 2026-10-11
 - ที่เหลือ (ข้อ 2 เป็นต้นไป) ทุก service/ipc ยังเป็น stub ว่าง
 
 ### ข้อสังเกตเรื่องโครงที่สร้างไว้ (ควรรู้ก่อนทำต่อ)
@@ -70,11 +71,10 @@ Spec หลักคือ `docs/PROJECT_v0.13.md` ถ้าไฟล์นี�
   - spec v0.13 ยืนยันแล้ว (เบล 2026-10-05): Priority ผู้ใช้ใส่เองเข้าสูตร Urgency Score (0.4/0.24/0.16/0.2), `classroom_course_name` เปลี่ยนเป็น `course_name` และ `ipc-contract.md` อัปเดตตามแล้ว ข้อ 1.2 และ 1.6 เริ่มได้
   - เพิ่ม `TASK_PRIORITY` ใน `src/shared/constants.js` แล้ว (เบลตัดสินเพิ่มเลย เพราะอาจารย์สั่ง และเป็นการเพิ่มค่าใหม่ ไม่ได้แก้ของเดิม)
   - ตัดสินแล้ว: `due_date` เก็บเป็น ISO 8601 วัน+เวลา (เพราะ LINE เก็บเวลาด้วย) spec §26 ปล่อยให้ตอน implement จึงไม่ต้องขึ้นเวอร์ชัน spec
-  - เหลือ: เพื่อนต้องเพิ่มช่อง Priority กับ Course (ไม่บังคับ) ในฟอร์ม task
+  - Frontend ทำแล้ว (2026-10-07): ฟอร์ม task ที่ใช้ร่วมกัน `src/renderer/components/task-form.js` + `.css` มีช่อง Priority (segmented control ไม่มีค่าเริ่มต้น กดซ้ำเพื่อล้าง) และ Course (ไม่บังคับ) ใช้ทั้งโมดัลสร้าง (create) และแผงข้าง (edit) ในหน้า Task Board
 - [x] 0.5 ตัดสินใจ: SQLite binding (Backend), วิธีสลับหน้า (Frontend)
   - Backend ตัดสินแล้ว: ใช้ `better-sqlite3` (ติดตั้งจริงในข้อ 1.1)
-  - Frontend ตัดสินแล้ว (เบล 2026-10-06): แยกหน้า (multi-page) แต่ละหน้าเป็นไฟล์ HTML ของตัวเองตามโครง `pages/*/` สลับหน้าด้วย `location.href` ไม่ต้องเขียน router `index.html` แค่ redirect ไป `pages/room/room.html` (เพื่อนเป็นคนทำ)
-  - ข้อควรระวังของวิธีนี้: ตัวแปร JS หายทุกครั้งที่เปลี่ยนหน้า ของที่ต้องจำข้ามหน้า (เช่น "popup Classroom แสดงไปแล้วใน session นี้") ต้องเก็บใน `sessionStorage` หรือฝั่ง main process ไม่เก็บเป็นตัวแปรในหน้า
+  - Frontend ตัดสินแล้ว (2026-10-07, เบลยืนยันตามที่เพื่อนทำ): หน้าเดียว + hash router (`src/renderer/router.js`, route `#/room`, `#/task-board`, `#/dashboard`, `#/calendar`, `#/settings`, `#/pomodoro?task=<id>`) แต่ละหน้าเป็น fragment + ลงทะเบียน `window.pages[name] = { mount(root, params), unmount() }` (เปลี่ยนจากแยกหน้า multi-page ที่ตัดสินไว้ 2026-10-06 ข้อควรระวังเรื่องตัวแปรหายตอนเปลี่ยนหน้าจึงไม่ใช้แล้ว)
 - [x] 0.6 commit `package-lock.json` (อยู่ใน commit แรก)
 
 ## ข้อ 1: ฐานข้อมูลและ Task
@@ -82,6 +82,7 @@ Spec หลักคือ `docs/PROJECT_v0.13.md` ถ้าไฟล์นี�
 - [x] 1.1 เลือกและติดตั้ง SQLite binding เช็ค: require ได้ใน main process
   - เสร็จ: ติดตั้ง `better-sqlite3@^13.0.3` (ไม่ต้อง rebuild ดูหมายเหตุด้านบน) และเช็คใน Electron แล้ว (2026-10-06): `npm run dev` main ไม่ error, `window.api.invoke('tasks:list')` ตอบ `[]`, `tasks:create` แล้ว `tasks:list` เห็น task
 - [x] 1.2 เขียน `schema.sql` ตาม §19 (v0.13: `tasks` มี `course_name` และ `priority`): `tasks`, `classroom_sync_state`, `pomodoro_sessions`, `notification_log`, `settings`
+- [ ] 1.2b (v0.14) เพิ่ม `first_started_at TEXT` ในตาราง `tasks` ของ `schema.sql` และใน `tests/schema.test.js` (รายชื่อคอลัมน์กับเช็คว่าเป็น NULL ได้) แล้วลบไฟล์ `studyflow.sqlite` ใน userData เพราะไม่มีระบบ migration
 - [x] 1.3 เขียน `database.js`: `initDatabase` (ไฟล์ใน `app.getPath('userData')`), `runMigrations` เช็ค: เปิดแอป 2 ครั้ง ตารางไม่ถูกสร้างซ้ำ
 - [x] 1.4 `task.service.js` ส่วน CRUD + soft delete (`deleted_at`) + ตั้ง `completed_at` ตอนเป็น Completed
 - [x] 1.5 `computeDeadlineState` ตามตาราง §9.2 + unit test ใน `tests/`
@@ -93,12 +94,13 @@ Spec หลักคือ `docs/PROJECT_v0.13.md` ถ้าไฟล์นี�
 
 ## ข้อ 2: Settings
 
-- [ ] 2.1 `settings.ipc.js` เป็น key-value get/set บน table `settings`
-- [ ] 2.2 เก็บค่าตาม spec: `has_seen_first_run_prompt` (§19), cutoff date (§13.1), reminder window (§11.1 เริ่มต้น 1 วัน)
+- [x] 2.1 `settings.ipc.js` เป็น key-value get/set บน table `settings`
+- [x] 2.2 เก็บค่าตาม spec: `has_seen_first_run_prompt` (§19), cutoff date (§13.1), reminder window (§11.1 เริ่มต้น 1 วัน)
+  - เสร็จ (2026-10-08): โค้ดอยู่ใน `src/` (`settings.service.js`, `settings.ipc.js`, `ipc/index.js`) เทสและ smoke test ผ่าน และเบลเช็คใน DevTools แล้ว: get/set ได้, payload ผิด reject, ปิด-เปิดแอปใหม่ค่ายังอยู่
 
 ## ข้อ 3: Pomodoro (§15)
 
-- [ ] 3.1 `startBatch`: ตั้ง `last_focus_started_at` ทุกครั้ง, Not Started เป็น In Progress ครั้งแรกเท่านั้น
+- [ ] 3.1 `startBatch`: ตั้ง `last_focus_started_at` ทุกครั้ง, Not Started เป็น In Progress ครั้งแรกเท่านั้น, และ (v0.14) ตั้ง `first_started_at` เฉพาะตอนที่ยังเป็น null ห้ามเขียนทับ + เทส
 - [ ] 3.2 timer ใน main process: focus, break, focus ต่อเนื่องจนครบ batch, มี pause/resume/stop
 - [ ] 3.3 บันทึก `pomodoro_sessions` ทีละ focus period (break ไม่บันทึก) พร้อม `batch_id`, `session_index`, `session_total`
 - [ ] 3.4 ปิดแอปกลางคัน บันทึกเวลาที่ผ่านไปด้วย `completed = false` (§15.1)
@@ -108,9 +110,9 @@ Spec หลักคือ `docs/PROJECT_v0.13.md` ถ้าไฟล์นี�
 
 ## ข้อ 4: Dashboard (§10)
 
-- [ ] 4.1 7 metrics ใน `dashboard.service.js` ตามตาราง §10.2 (Overdue กับ Longest Inactive ไม่ขึ้นกับช่วงเวลา)
-- [ ] 4.2 Average Time-to-Start Lag ตามสูตร §10.3
-- [ ] 4.3 unit test โดยเฉพาะ Time-to-Start Lag
+- [ ] 4.1 6 metrics ใน `dashboard.service.js` ตามตาราง §10.2 (v0.14: ตัด Longest Inactive Assignment แล้ว, มีแค่ Overdue ที่ไม่ขึ้นกับช่วงเวลา)
+- [ ] 4.2 Average Time-to-Start Lag ตามสูตร §10.3 (v0.14: ใช้ `tasks.first_started_at` แทน session แรกใน `pomodoro_sessions`)
+- [ ] 4.3 unit test โดยเฉพาะ Time-to-Start Lag (v0.14: รวมเคส `first_started_at` เป็น null ต้องถูกตัดออก)
 - [ ] 4.4 `dashboard.ipc.js`
 
 ## ข้อ 5: Notification บนเดสก์ท็อป (§11)
@@ -131,7 +133,7 @@ Spec หลักคือ `docs/PROJECT_v0.13.md` ถ้าไฟล์นี�
 
 ## ข้อ 7: Supabase และ Cloud Sync (§18)
 
-- [ ] 7.1 สร้าง Supabase project, migration `tasks` + `pomodoro_sessions` ใน `supabase/migrations/` พร้อม RLS
+- [ ] 7.1 สร้าง Supabase project, migration `tasks` + `pomodoro_sessions` ใน `supabase/migrations/` พร้อม RLS (v0.14: ตาราง `tasks` มีคอลัมน์ `first_started_at`)
 - [ ] 7.2 ตั้ง `updated_at` ฝั่ง server (trigger) สำหรับ LWW
 - [ ] 7.3 Supabase Auth ด้วย Google provider
 - [ ] 7.4 `pushLocalChanges` / `pullRemoteChanges` ด้วย sync cursor
@@ -157,12 +159,18 @@ Spec หลักคือ `docs/PROJECT_v0.13.md` ถ้าไฟล์นี�
 
 ## แทร็กของเพื่อน (Frontend) ทำขนานกัน
 
+ความคืบหน้า (2026-10-25): ทุกหน้าหลักมีหน้าตาตาม Figma ครบและดูใน Electron แล้ว: เพิ่ม Pomodoro (Figma 412:63), Calendar (412:65), floating widget (ออกแบบเอง), ป๊อปอัป Google Classroom รับงานใหม่ + เลือกวัน cutoff (413:66) ต่อกับ Task Board (Sync Classroom, Last sync) และ Settings (Connect/Disconnect) ยังไม่ทำ: first-run prompt (§13.1), หน้าเชื่อม LINE (§14.2)
+ความคืบหน้า (2026-10-20): Settings (Figma 403:64) และ Dashboard (Figma 410:63) ทำหน้าตาแล้ว ยังไม่ทำ: ปุ่ม Connect/Disconnect Classroom/LINE, Sign out/Edit Profile, ค่า Focus/Break, สวิตช์แจ้งเตือน (ยังไม่มีใน spec/Backend ปุ่มแจ้งว่ายังไม่พร้อม), Dashboard ต่อ `dashboard:get-metrics` จริง (ตอนนี้ใช้ข้อมูลตัวอย่างเมื่อ Backend ไม่ตอบ)
+ความคืบหน้า (2026-10-11): Task Board ทำหน้าตาตาม Figma แล้ว (หัวหน้า, แท็บกรอง, ค้นหา, การ์ด 5 คอลัมน์, ป๊อปอัป 4 แบบ: รายละเอียดงาน/Create/Edit/ยืนยันลบ) ยังไม่ทำ: Sync Classroom ใช้งานจริง (ปุ่มปิดไว้), popup review งานจาก Classroom, Start Working ไปหน้า Pomodoro (ลิงก์ไว้แล้ว หน้ายังว่าง)
+ความคืบหน้า (2026-10-07): Room ทำแล้วตาม Figma (`pages/room/`, ฉาก 1920x1080 ย่อตามหน้าต่าง, จุดคลิกไป Task Board/Dashboard/Calendar/Settings, รูปหน้าต่างเปลี่ยนตามเวลาเครื่อง); Task Board ทำแค่ฟอร์ม + รายการแบบบาง ๆ ยังต้องทำต่อหลังข้อ 1.7
+
 ลำดับแนะนำ: Room, Task Board (หลังข้อ 1.7), Settings, Pomodoro + widget (หลังข้อ 3), Dashboard (หลังข้อ 4), Calendar
+(v0.14) Dashboard: แถบ Needs Attention มี Overdue ตัวเดียว (ไม่มี Longest Inactive แล้ว)
 ระหว่างรอ backend ใช้ข้อมูลจำลองใน renderer ได้ แต่ต้องเรียกผ่าน `window.api.invoke` ตาม contract
 
 ## ส่วนที่ควรเขียนเองและอธิบายได้ตอนสอบ
 
-Deadline State, Urgency Score, Time-to-Start Lag, LWW เป็นแกนของโปรเจกต์ (spec §29)
+Deadline State, Urgency Score, Time-to-Start Lag, LWW ต้องเขียนเองและอธิบายได้ตอนสอบ (spec §29: Urgency Score ใช้แค่เป็นลำดับเริ่มต้นของ Task Board ไม่ใช่จุดเด่น)
 ส่วน boilerplate (OAuth flow, SQL migration, โครง Edge Function) ใช้ AI ช่วยได้แต่ต้องอ่านและเข้าใจก่อน commit
 
 ---
@@ -177,3 +185,12 @@ Deadline State, Urgency Score, Time-to-Start Lag, LWW เป็นแกนข�
 | 2026-10-06 | 0.1, 0.4, 0.5, spec, UX | เพิ่ม `TASK_PRIORITY` ใน `constants.js`, อัปเดต `docs/UX-UI-Design-Review_v0.13.md` (Priority/Course และส่วน LINE ของ v0.12: การ์ด LINE ใน Settings, source icon ตัวที่ 3, filter Source), ซิงก์เอกสารใน Claude Project เป็น v0.13, ล้างประวัติ git เหลือ commit เดียวแล้ว force push (`main`/`backend`/`frontend`), ตัดสินวิธีสลับหน้า (multi-page) และ `due_date` = วัน+เวลา | (1) ข้อ 1.1: รัน `npm install better-sqlite3` ใน PowerShell บน Windows เอง แล้วทำต่อ 1.2 (2) เพื่อนยังต้องเพิ่มช่อง Priority/Course ในฟอร์ม และทำ `index.html` ตามวิธีสลับหน้า (3) PR แรกเปิดตอนจบข้อ 1.1 |
 | 2026-10-06 | 1.1 | `npm install better-sqlite3` ได้เวอร์ชัน 13.0.3 (N-API มีไบนารีสำเร็จรูปในแพ็กเกจ ไม่ต้อง rebuild) ถอยโค้ด 1.2-1.7 ที่ Claude เขียนล่วงหน้าไปเก็บใน `_claude-draft/` (ไม่ commit) เพราะเบลจะเขียนเอง | (1) ห้ามรัน `electron-builder install-app-deps` (2) เช็ค `require('better-sqlite3')` ใน main ตอนทำ 1.3 (3) ข้อ 9.2 ตั้ง `npmRebuild: false` |
 | 2026-10-06 | 1.2-1.7 (ติ๊กแล้ว) | เขียนโค้ดข้อ 1 ทั้งชุดแบบเรียบง่าย: `schema.sql` (5 ตาราง), `database.js` (เปิด DB ใน userData แล้วรัน schema.sql, ไม่มีระบบ migration แบบมีเลข version), `task.service.js` (CRUD + soft delete + `computeDeadlineState` + `computeUrgencyScore`), `tasks.ipc.js`, `ipc/index.js`, ต่อ `initDatabase()` + `registerAllIpc()` + `closeDatabase()` ใน `main.js` ทดสอบใน `_claude-draft` ก่อน (66 เทสผ่าน รวมตัวอย่าง Urgency Score = 55.2) แล้วย้ายลง `src/` และ smoke test กับไฟล์จริง จากนั้นเบลเช็คใน Electron เอง: `tasks:list` ได้ `[]`, `tasks:create` แล้ว `tasks:list` เห็น task | (1) ยังไม่ commit/PR: ทำบน branch `backend` แล้วเปิด PR ไป `main` (2) เทสของ draft อยู่ที่ `_claude-draft/tests/` (ไม่ commit) ยังไม่ copy ลง `tests/` ตามที่ข้อ 1.5/1.6 เขียนไว้ มีแต่ `tests/schema.test.js` ที่ยังไม่ track ต้องตัดสินใจว่าจะเอาลงไหม (3) เช็ค 'เปิดแอป 2 ครั้งแล้วตารางไม่ซ้ำ' ของ 1.3 ผมทดสอบด้วย smoke test แล้ว ส่วนใน Electron เบลยังไม่ได้ยืนยันหลังปิด-เปิดแอปใหม่ (4) ถ้าแก้ `schema.sql` ต้องลบไฟล์ `studyflow.sqlite` ใน userData ก่อน เพราะไม่มีระบบ migration (5) เบลต้องอ่านและอธิบายโค้ดได้ โดยเฉพาะ Deadline State กับ Urgency Score (6) เพื่อนต้อง `npm install` ใหม่หลัง merge (มี `better-sqlite3` เพิ่ม ต้อง Node 22+) และห้ามรัน `electron-builder install-app-deps` (7) ข้อถัดไป: ข้อ 2 Settings |
+| 2026-10-06 | 2.1, 2.2 (ยังไม่ติ๊ก รอเบลยืนยันใน DevTools) | เขียนข้อ 2 แบบเรียบง่าย: `settings.service.js` (ใหม่ 2 ฟังก์ชัน `getSettings`/`setSetting`, key ที่รับมี 3 ตัวพร้อม default + ตัวเช็คค่า, เก็บ value เป็น JSON ใน table `settings`), `settings.ipc.js` ผูก `settings:get` / `settings:set { key, value }` และต่อใน `ipc/index.js` ทดสอบใน `_claude-draft` ก่อน (11 เทสใหม่ผ่าน, ของข้อ 1 ยังผ่านครบ) แล้วย้ายลง `src/` + เช็คแบบหลอก electron กับไฟล์จริง (ตั้งค่า -> ปิด -> เปิดใหม่ ค่ายังอยู่) เพิ่ม payload `settings:*` ใน `docs/ipc-contract.md` | (1) ยังไม่ commit: ทำบน branch `backend` แล้วเปิด PR (2) ชื่อ key `classroom_cutoff_date` / `reminder_window_days` และ reminder window ขั้นต่ำ 1 วัน เป็นการตัดสินของเรา spec ไม่ได้ระบุ แจ้งเพื่อนตอน PR เพราะแก้ `ipc-contract.md` (3) เทสอยู่ที่ `_claude-draft/tests/settings.test.js` (ไม่ลง `src/` และ `tests/`) (4) การบังคับตั้ง cutoff ก่อน fetch แรก (§13.1) เป็นของข้อ 6.3 ไม่ได้ทำในข้อนี้ (5) ข้อ 5 อ่าน `reminder_window_days` ผ่าน `getSettings()` ได้ตรง ๆ จาก main process (6) ข้อถัดไป: ข้อ 3 Pomodoro |
+| 2026-10-07 | 0.5 (Frontend) | เขียน `router.js` แบบ hash router, เปลี่ยน `index.html` เป็นหน้าเดียว, แปลง stub 6 หน้าเป็น fragment + `mount/unmount`, ทดสอบด้วยเบราว์เซอร์จำลอง (สลับหน้า, back, route ผิด, สลับรัว ๆ) ผ่าน (เพื่อนเป็นคนเขียนแถวนี้ รวมจาก ROADMAP ฉบับของเพื่อน) | (1) ยังไม่ได้ลองใน Electron จริง: ต้องรัน `npm run dev` เช็คว่า `fetch` ไฟล์ `file://` โหลด fragment ได้ (2) ปุ่ม/ลิงก์ใน room.html และปุ่มกลับห้องในหน้าอื่นเป็นของชั่วคราวไว้ทดสอบ router (3) งานต่อ: หน้า Room ตามดีไซน์ Figma, ฟอร์ม Priority/Course (0.4) (4) ตอนนี้ working tree อยู่บน `main` ยังไม่ได้ย้ายไป branch `frontend` และไฟล์ทั้ง repo โชว์ว่าแก้เพราะ line ending (CRLF) ไม่ใช่เนื้อหา |
+| 2026-10-07 | 0.5 | เบลยืนยันใช้ hash router ของเพื่อน (ไม่ใช้ multi-page แล้ว) แก้ข้อ 0.5 ให้ตรง รวมแถวบันทึกของเพื่อนเข้าไฟล์นี้ ไม่ได้ทับด้วยฉบับของเพื่อน (ฉบับเพื่อนเป็นของก่อนข้อ 1) | (1) backend ไม่ต้องแก้โค้ดอะไร (2) ตรวจ `StudyFlow-frontend.zip` ของเพื่อนแล้ว: เพื่อนแก้เฉพาะ `src/renderer/` (`index.html`, `router.js` ใหม่, `.html`/`.js` ของ 6 หน้า) โครง `pages/<name>/` (.html fragment, .css, .js) ไม่เปลี่ยน `src/shared`, `src/preload`, `widget/` เหมือนของเรา 100% ใน `README.md` มีแค่ยังไม่ได้เขียนถึง `router.js` (ไม่บังคับ) (3) ข้อ 2 (Settings) ยังไม่ติ๊ก รอเบลเช็คใน DevTools |
+| 2026-10-07 | 0.4 (Frontend), Room | ทำฟอร์ม Priority/Course ที่ใช้ร่วม (`task-form.js`), หน้า Task Board แบบบาง (สร้างในโมดัล/แก้ในแผงข้าง), `api-client.js` + `dev-mock-tasks.js` (mock เฉพาะเมื่อ main ยังไม่มี handler), ย้ายไป branch `frontend`, ทำหน้า Room ตาม Figma 4 เฟรม (รูป 33 ไฟล์ใน `src/renderer/assets/room/`) ดูใน Electron จริงแล้วตรงแบบ | (1) `dev-mock-tasks.js` ลบได้หลัง Backend ทำข้อ 1.7 (`deadline_state`/`urgency_score` ในนั้นเป็นค่าประมาณ ไม่ใช่สูตร §9) (2) สมมติฐานที่ยังไม่ยืนยัน: เวลาเริ่มต้นของ due = 23:59, ป้ายในฟอร์มเป็นภาษาอังกฤษ, ช่วงเวลาเช้า/กลางวัน/เย็น/ค่ำ = 05/11/16/19 น., ปุ่ม Settings แสดงทุกช่วงเวลา (Figma เฟรมเช้าไม่มี), token สีใน `tokens.css` ยังเป็นค่าชั่วคราว (3) `window-evening.png` ขนาด 14.7 MB ควรขอไฟล์เล็กลงจากดีไซเนอร์ (4) ยังไม่ทำตัวบอกงานด่วนบนกระดาน (spec แค่อนุญาต) (5) ลบ `download-room-assets.ps1` แล้ว ห้าม commit (6) ไฟล์ใน repo โชว์ว่าแก้เพราะ line ending (CRLF) ไม่ใช่เนื้อหา (เพื่อนเป็นคนเขียนแถวนี้ รวมจาก ROADMAP ฉบับเพื่อน) |
+| 2026-10-08 | 2.1, 2.2 (ติ๊กแล้ว เบลยืนยันใน DevTools) | ตรวจงานข้อ 2 ที่เขียนไว้ 2026-10-06 ซ้ำ ไม่เขียนโค้ดใหม่ (เบลเลือกใช้ของเดิม และใช้ payload `{ key, value }` เดิม): เทสใน `_claude-draft` 11/11 ผ่าน, `settings.service.js` กับ `settings.ipc.js` ใน `src/` ตรงกับ draft, smoke test หลอก electron กับไฟล์จริงใน `src/` (ใช้ไฟล์ DB จริง) ผ่าน: default -> ตั้งครบ 3 key -> payload ผิด 7 แบบ reject และไม่เขียนอะไร -> ปิด-เปิดใหม่ค่ายังอยู่ -> `tasks:list` ยังใช้ได้ รวมส่วน frontend ของเพื่อนที่ยังไม่ได้ merge เข้าไฟล์นี้ (ข้อ 0.4 ฟอร์ม Priority/Course, ความคืบหน้าแทร็กเพื่อน, แถวบันทึก Room) โดยยึดตามที่เพื่อนเขียน ส่วนอื่นของฉบับเพื่อนเป็นของก่อนข้อ 1 จึงไม่เอามาทับ | (1) เบลเช็คใน DevTools แล้วผ่านหมด: get/set, reject key ผิด/ค่าผิด/cutoff ไม่มีเวลา, ปิด-เปิดใหม่ค่ายังอยู่ (2) ยังไม่ commit ทั้งข้อ 2 (`src/main/services/settings.service.js` ใหม่, `settings.ipc.js`, `ipc/index.js`, `docs/ipc-contract.md`, `docs/ROADMAP.md`) ทำบน branch `backend` แล้วเปิด PR (3) แจ้งเพื่อนตอน PR: `ipc-contract.md` เพิ่ม `settings:*` และชื่อ key `classroom_cutoff_date` / `reminder_window_days` กับขั้นต่ำ 1 วันเป็นการตัดสินของเรา (4) ข้อ 1.7 เสร็จแล้ว เพื่อนลบ `dev-mock-tasks.js` และต่อ Task Board กับ `tasks:*` จริงได้ (ฝั่ง renderer เพื่อนทำเอง) (5) ข้อสมมติของเพื่อนเรื่องเวลาเริ่มต้นของ due = 23:59 ต้องส่งมาเป็น ISO 8601 วัน+เวลาตาม `ipc-contract.md` (6) `tests/schema.test.js` ยังไม่ track ต้องตัดสินใจว่าจะเอาลงไหม (7) ข้อถัดไป: ข้อ 3 Pomodoro |
+| 2026-10-11 | spec | ขึ้นสเปก `PROJECT_v0.14.md` และ `UX-UI-Design-Review_v0.14.md` (เพิ่ม `tasks.first_started_at`, ตัด Longest Inactive Assignment เหลือ 6 metrics, ตัดคำโฆษณา Urgency Score ออกจาก §29), ลบไฟล์ v0.13 ทั้งสองไฟล์, แก้ชื่อเวอร์ชันที่ชี้ไปยังสเปกปัจจุบันใน README/ROADMAP/ipc-contract/.env.example | (1) ยังไม่แก้โค้ด: `schema.sql`, `tests/schema.test.js`, ข้อ 3.1, 4.1-4.3, migration ข้อ 7.1 (2) comment ใน `src/`, `tests/`, `supabase/`, `_claude-draft/` ยังอ้าง v0.13 (3) แก้ `schema.sql` แล้วต้องลบ `studyflow.sqlite` ใน userData (4) เพื่อนต้องรู้ว่า Dashboard เหลือ 6 metrics |
+| 2026-10-11 | Task Board UI (Frontend) | ทำหน้า Task Board ตาม Figma node 400:63 และป๊อปอัปตาม node 403:65: พื้นไม้, หัวหน้า (Back to your room, Last sync, Sync Classroom), แท็บกรอง 5 แบบ + ค้นหา + แถวกรอง Source/Course (ออกแบบเอง), การ์ด 5 คอลัมน์ (ป้ายสถานะ, days left, progress, ธง High, ไอคอน Source), ป๊อปอัปรายละเอียดงาน (แถบ Progress เลื่อนแล้วบันทึก, Start Working, Mark as Completed, ปากกา/ถังขยะ), ฟอร์ม Create/Edit ใหม่ (`task-form.js` เขียนใหม่ ใช้ Save/Cancel แทนบันทึกทันที), ยืนยันลบ, เพิ่ม `components/source-icon.js`, ใช้ `window.api.invoke` ตาม contract (ไม่แตะ Backend) ดูใน Electron จริงแล้วตรงแบบ | (1) ป๊อปอัปแทนแผง Detail ที่ UX Review เขียนว่าเป็นแผงข้าง (Figma ใหม่กว่า) (2) Figma มี "Description" กับ "Notes" แยกกัน แต่ spec มี `notes` ช่องเดียว: ใช้ `notes` เป็น Description และไม่ทำกล่อง Notes (3) Figma ไม่มี Priority ในฟอร์ม: เพิ่มเองตาม spec v0.13 (Low/Medium/High สีน้ำตาลเข้ม ไม่ใช้แดง/ส้ม) และเพิ่มไอคอน Source + ตัวกรอง Source/Course เองตาม UX Review v0.14 (4) Start Working ยังแค่ไปหน้า `#/pomodoro?task=<id>` (ต้องตั้ง `first_started_at` ที่ Backend ข้อ 3.1) (5) Sync Classroom/Last sync ยังใช้ไม่ได้ รอ Backend ข้อ 6 (6) ไอคอนถังขยะกับลูกศรลง Status ยังเป็นของชั่วคราว ต้องโหลดจาก Figma เมื่อโควต้า MCP รีเซ็ต (7) สีกรอบป๊อปอัปประมาณจากภาพ (8) `dev-mock-tasks.js` ลบได้แล้วเมื่อ Backend ต่อ `tasks:*` เสร็จและ merge (ข้อ 1.7 ทำแล้วฝั่ง Backend) (9) ยังไม่ตรวจกับ `tasks:*` ของ Backend จริงเพราะเบลเป็นคน merge เอง (10) Dashboard ต้องทำ 6 เมตริกตาม v0.14 |
+| 2026-10-20 | Settings + Dashboard UI (Frontend) | ทำหน้า Settings ตาม Figma node 403:64 (แถบ Sections, การ์ด Account/Google Classroom/LINE/Pomodoro/Notifications, อ่าน `reminder_window_days` จาก `settings:get`) และหน้า Dashboard ตาม node 410:63 (6 metrics, ตัวกรอง This Week/This Month/All Time, กราฟแท่ง + โดนัทวาดเองจากข้อมูล, เรียก `dashboard:get-metrics` พร้อม `{ range }`) ไม่แตะ Backend | (1) Figma Settings มีของที่ไม่อยู่ใน spec v0.14: Edit Profile, Sign out, ชิป "CS student • Year 4", ค่า Focus 25/Break 5 + Save Change (spec ให้เลือกจำนวนรอบตอนเริ่ม Pomodoro), สวิตช์แจ้งเตือน, ส่วน About: ทำเป็น UI อย่างเดียว กดแล้วขึ้นข้อความว่ายังไม่พร้อม ไม่บันทึกค่า ควรคุยกับเบลว่าจะตัดหรือเพิ่มใน spec (2) Figma Dashboard ยังมีการ์ด Longest Inactive Assignment ที่ v0.14 ตัดออกแล้ว: ไม่ทำ ให้การ์ด Overdue กว้างเต็มแถว (3) payload ของ `dashboard:get-metrics` Backend ยังไม่กำหนด: `normalize()` ใน `dashboard.js` เดาชื่อ field ไว้ ต้องให้เบลเช็คให้ตรงตอนทำข้อ 4 (4) รูปโปรไฟล์กับโลโก้ LINE เป็นของชั่วคราว (วงกลมตัวอักษร/สี่เหลี่ยมเขียว) รอ export จาก Figma มาไว้ที่ `assets/settings/line-logo.png` (5) ไอคอนใน Settings และปุ่มเฟืองใน Dashboard วาดเอง ไม่ใช่ชุดไอคอนจริงของ Figma (6) ดูหน้า Dashboard ใน Electron จริงแล้ว (2026-10-25) แก้ให้พอดีจอ (7) Calendar กับ Pomodoro ยังไม่ทำ |
+| 2026-10-25 | Pomodoro, Calendar, Widget, Classroom popups (Frontend) | ทำหน้า Pomodoro ตาม Figma 412:63 (เลือกจำนวนรอบ 1-12 + ปุ่ม 2/4/6, หน้านับถอยหลัง Focus/Break, แถบรอบ, หยุด/เล่นต่อ, เรียก `pomodoro:start-batch` `{ task_id, session_total }` / pause / resume / stop), Calendar ตามภาพอ้างอิง 412:65 (ปฏิทินรายเดือนจาก `tasks:list`, ป้ายสีตามวิชา, แถบ Upcoming Deadlines 5 งาน), floating widget `renderer/widget/` (ออกแบบเอง 320x150 ฟัง `pomodoro:state-changed` + `pomodoro:get-state` เปิดไฟล์ตรงในเบราว์เซอร์จะเห็นข้อมูลตัวอย่าง), `components/classroom-popups.js|css` (ป๊อปอัปรับงานใหม่ §13.5 + เลือกวัน cutoff §13.1 ตาม Figma 413:66) ต่อใน Task Board (ปุ่ม Sync Classroom ใช้ได้, Last sync, toast "No new items from Classroom", ฟัง `classroom:pending-changed`) และ Settings (สถานะ Classroom, Connect -> เลือก cutoff -> `settings:set classroom_cutoff_date`, Disconnect, แถว Last sync), เพิ่ม `classroom:*` และ `settings:*` ใน `dev-mock-tasks.js`, Dashboard พอดีจอ (ย่อตามด้านที่แคบกว่า วางกลาง), แก้ CSS ปุ่มทุกหน้าใหม่ (`:where(button)` ไม่ทับ font-size) ดูใน Electron จริงแล้วทุกส่วน | (1) payload ที่ Frontend เดาไว้ ยังไม่อยู่ใน `ipc-contract.md` ต้องตกลงกับเบล: `pomodoro:*` + `pomodoro:state-changed` (ดู `normalize()` ใน `widget.js`), `classroom:get-status` `{ connected, account_email, last_synced_at, cutoff_date }`, `classroom:get-pending` `[{ id, title, course_name, due_date }]`, `classroom:decide` `{ id, decision: import|ignore }`, `dashboard:get-metrics` (2) ตัวนับเวลาในหน้า Pomodoro นับเองในหน้า (Focus 25/Break 5 ตายตัว) ต้องคุยว่าใครถือเวลาจริง (3) เพิ่มเองนอก Figma: ลิงก์ Back to Task Board และปุ่ม Stop session (§15.3) ในหน้า Pomodoro (4) ข้อความท้ายป๊อปอัป cutoff ใน Figma ยังเป็นแบบ เช้า/กลางวัน/เย็น ที่ v0.11 ยกเลิกแล้ว: เปลี่ยนเป็นดึงทุกครั้งที่เปิดแอป + Sync now (5) "Start of semester" spec ไม่กำหนดวัน: ใช้ 1 มิ.ย. / 1 พ.ย. ล่าสุดแบบประมาณ (6) ยังไม่กันป๊อปอัป Classroom ไม่ให้ขัดตอน Pomodoro กำลังจับเวลา (§13.5 Interruption-safe) เพราะ renderer ยังไม่รู้สถานะ session (7) การเปิดหน้าต่าง widget (`src/main/windows/floating-widget.js`) เป็นงาน Backend (8) ข้อมูลจำลอง classroom/settings ใช้เฉพาะตอนไม่มี handler ลบพร้อม `dev-mock-tasks.js` ได้หลัง merge (9) งานถัดไป: first-run prompt (§13.1), หน้าเชื่อม LINE (§14.2) |

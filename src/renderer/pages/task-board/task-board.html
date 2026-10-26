@@ -1,19 +1,57 @@
 <!-- Owner: Frontend -->
-<!-- หน้าที่: โครง HTML ของหน้า Task Board: รายการ task เรียงตาม Urgency Score, ปุ่ม Sync now, popup review งานจาก Classroom -->
-<!-- TODO: ทำ UI ตาม PROJECT_v0.13 section 9, 13.2, 13.5 และ UX-UI-Design-Review -->
+<!-- หน้าที่: ส่วนเนื้อหา (fragment) ของหน้า Task Board ตาม Figma (เฟรม 1998x1102 ขยายตามความกว้างหน้าต่าง)
+     router.js โหลดไฟล์นี้เข้า #app จึงไม่ใช่เอกสาร HTML เต็ม (ไม่มี html/head/body)
+     ตอนนี้ทำ: หัวหน้า, แท็บกรอง, ค้นหา, การ์ด, ป๊อปอัป 4 แบบตาม Figma (รายละเอียดงาน, Create New Task, Edit Task, ยืนยันลบ)
+     ยังไม่ทำ: Sync Classroom ใช้งานจริง (ปุ่มปิดไว้ รอ Backend ทำข้อ 6), popup review งานจาก Classroom
+     แถวตัวกรอง Source/Course และไอคอน Source ออกแบบเองตาม UX Review v0.14 (ไม่อยู่ใน Figma) -->
 
-<!doctype html>
-<html lang="th">
-<head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:" />
-  <title>StudyFlow - Task Board</title>
-  <link rel="stylesheet" href="../../styles/tokens.css" />
-  <link rel="stylesheet" href="../../styles/global.css" />
-  <link rel="stylesheet" href="task-board.css" />
-</head>
-<body>
-  <main id="page-task-board"></main>
-  <script src="task-board.js"></script>
-</body>
-</html>
+<section id="page-task-board" class="tb" aria-labelledby="tb-title">
+  <div class="tb__bg" aria-hidden="true"></div>
+
+  <header class="tb__top">
+    <a class="tb__back tb__panel" href="#/room">Back to your room</a>
+    <h1 id="tb-title" class="tb__title">Task Board</h1>
+    <div class="tb__sync-area">
+      <p id="tb-last-sync" class="tb__last-sync">Last sync: &mdash;</p>
+      <button type="button" id="tb-sync" class="tb__sync" title="ดึงงานใหม่จาก Google Classroom (spec §13.2)">
+        <img class="tb__sync-icon" src="assets/task-board/classroom-icon.png" alt="" />
+        <span>Sync Classroom</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="tb__tools">
+    <span class="tb__filter-label" id="tb-filter-label">Filter</span>
+    <div class="tb__tabs tb__panel" role="group" aria-labelledby="tb-filter-label">
+      <button type="button" class="tb__tab" data-filter="all" aria-pressed="true">All Tasks</button>
+      <button type="button" class="tb__tab" data-filter="not_started" aria-pressed="false">Not Started</button>
+      <button type="button" class="tb__tab" data-filter="in_progress" aria-pressed="false">In Progress</button>
+      <button type="button" class="tb__tab" data-filter="overdue" aria-pressed="false">Overdue</button>
+      <button type="button" class="tb__tab" data-filter="completed" aria-pressed="false">Completed</button>
+    </div>
+    <input id="tb-search" class="tb__search tb__panel" type="search" placeholder="Search by titles or tasks..." aria-label="Search tasks by title or course" autocomplete="off" />
+    <button type="button" id="tb-new" class="tb__new tb__panel">+ New Task</button>
+  </div>
+
+  <div class="tb__tools tb__tools--sub">
+    <span class="tb__filter-label" id="tb-source-label">Source</span>
+    <div class="tb__tabs tb__tabs--sub tb__panel" role="group" aria-labelledby="tb-source-label">
+      <button type="button" class="tb__tab tb__tab--sub" data-source="all" aria-pressed="true">All</button>
+      <button type="button" class="tb__tab tb__tab--sub" data-source="manual" aria-pressed="false"><span class="tb__tab-icon" data-icon="manual"></span>Manual</button>
+      <button type="button" class="tb__tab tb__tab--sub" data-source="google_classroom" aria-pressed="false"><span class="tb__tab-icon" data-icon="google_classroom"></span>Classroom</button>
+      <button type="button" class="tb__tab tb__tab--sub" data-source="line" aria-pressed="false"><span class="tb__tab-icon" data-icon="line"></span>LINE</button>
+    </div>
+    <label class="tb__course-label" for="tb-course">Course</label>
+    <select id="tb-course" class="tb__course tb__panel">
+      <option value="">All courses</option>
+    </select>
+  </div>
+
+  <p id="tb-mock" class="tb__note" hidden>ข้อมูลจำลอง: Backend ยังไม่เชื่อมต่อ (tasks:* ยังไม่มี handler)</p>
+  <p id="tb-error" class="tb__note tb__note--error" role="alert" hidden></p>
+  <p id="tb-toast" class="tb__toast" role="status" hidden></p>
+  <p id="tb-empty" class="tb__note" hidden></p>
+
+  <ul id="tb-list" class="tb__grid"></ul>
+
+</section>
