@@ -1,0 +1,77 @@
+/* Owner: Frontend */
+/* หน้าที่: สไตล์ป๊อปอัป Google Classroom ตาม Figma node 413:66 (รับงานใหม่ 1453x1232, เลือกวัน cutoff 955x838)
+   --cu ย่อให้ป๊อปอัปพอดีจอเสมอ (ป๊อปอัปใน Figma สูงกว่า 1080) ห้ามใช้ inline style (CSP) */
+
+.cr-popup {
+  --cu: min(calc(100vw / 2400), calc(100vh / 1400));
+  padding: 0;
+  border: 0;
+  border-radius: calc(var(--cu) * 20);
+  background: #f9f5ec;
+  box-shadow: 0 calc(var(--cu) * 8) calc(var(--cu) * 30) rgba(0, 0, 0, 0.25);
+  color: #3b2a1e;
+  font-family: Inter, var(--font-family), sans-serif;
+  max-width: 96vw;
+  max-height: 96vh;
+  overflow: auto;
+}
+.cr-popup::backdrop { background: var(--color-backdrop, rgba(0, 0, 0, 0.45)); }
+.cr-popup :where(button) { font-family: inherit; font-size: inherit; font-weight: inherit; cursor: pointer; }
+.cr-popup [hidden] { display: none !important; }
+.cr-popup p, .cr-popup h2, .cr-popup h3 { margin: 0; }
+
+.cr-error { margin-top: calc(var(--cu) * 12) !important; font-size: calc(var(--cu) * 28); color: #b4532a; }
+
+/* ===== รับงานใหม่ ===== */
+.cr-popup--review { width: calc(var(--cu) * 1453); }
+.cr-review { padding: calc(var(--cu) * 34) calc(var(--cu) * 31) calc(var(--cu) * 40); }
+.cr-review__heading { font-size: calc(var(--cu) * 52); font-weight: 800; line-height: calc(var(--cu) * 66); }
+.cr-review__meta { margin-top: calc(var(--cu) * 13); padding: calc(var(--cu) * 10) calc(var(--cu) * 14) calc(var(--cu) * 20); border-radius: calc(var(--cu) * 30); background: #f2e7d5; }
+.cr-review__synced { font-size: calc(var(--cu) * 42); font-weight: 500; line-height: calc(var(--cu) * 66); }
+.cr-review__hint { margin-top: calc(var(--cu) * 8) !important; font-size: calc(var(--cu) * 32); font-weight: 500; color: #7e7464; }
+
+.cr-list { margin-top: calc(var(--cu) * 25); max-height: calc(var(--cu) * 759); overflow: auto; padding: calc(var(--cu) * 26) calc(var(--cu) * 34) calc(var(--cu) * 16) calc(var(--cu) * 17); box-sizing: border-box; background: #f9f5ea; border: calc(var(--cu) * 5) solid #ded4c8; border-radius: calc(var(--cu) * 30); }
+.cr-course + .cr-course { margin-top: calc(var(--cu) * 28); }
+.cr-course__title { font-size: calc(var(--cu) * 44); line-height: calc(var(--cu) * 66); font-weight: 500; }
+.cr-course__title b { font-weight: 700; }
+
+.cr-item { display: flex; align-items: center; gap: calc(var(--cu) * 33); margin: calc(var(--cu) * 16) 0 0 calc(var(--cu) * 34); min-height: calc(var(--cu) * 189); padding: 0 calc(var(--cu) * 38) 0 calc(var(--cu) * 19); box-sizing: border-box; border-radius: calc(var(--cu) * 30); background: #f1e6d4; }
+.cr-item__info { flex: 1; min-width: 0; }
+.cr-item__title { font-size: calc(var(--cu) * 44); font-weight: 500; line-height: calc(var(--cu) * 66); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cr-item__due { font-size: calc(var(--cu) * 40); font-weight: 500; }
+
+.cr-btn { flex: none; width: calc(var(--cu) * 308); height: calc(var(--cu) * 94); border-radius: calc(var(--cu) * 30); font-size: calc(var(--cu) * 40); font-weight: 500; }
+.cr-btn--create { border: calc(var(--cu) * 3) solid transparent; background: #c97a3e; color: #fff; }
+.cr-btn--ignore { border: calc(var(--cu) * 3) solid #af9780; background: #faf5eb; color: #3b2a1e; }
+/* เลือกแล้ว: ปุ่มที่เลือกมีขอบเข้ม อีกปุ่มจางลง */
+.cr-item.is-create .cr-btn--create { border-color: #3a2312; box-shadow: inset 0 calc(var(--cu) * 4) calc(var(--cu) * 4) rgba(0, 0, 0, 0.25); }
+.cr-item.is-create .cr-btn--ignore, .cr-item.is-ignore .cr-btn--create { opacity: 0.4; }
+.cr-item.is-ignore .cr-btn--ignore { background: #6b5842; border-color: #3b2a1e; color: #fff; }
+
+.cr-confirm { display: block; width: 100%; height: calc(var(--cu) * 100); margin-top: calc(var(--cu) * 26); border: 0; border-radius: calc(var(--cu) * 30); background: #c97a3e; color: #fff; font-size: calc(var(--cu) * 52); font-weight: 500; }
+.cr-confirm:disabled { opacity: 0.6; cursor: wait; }
+
+/* ===== เลือกวัน cutoff ===== */
+.cr-popup--cutoff { width: calc(var(--cu) * 955); border-radius: calc(var(--cu) * 30); background: #f7efe3; }
+.cr-cutoff { padding: calc(var(--cu) * 57) calc(var(--cu) * 28) calc(var(--cu) * 34); }
+.cr-cutoff__banner { display: flex; align-items: center; gap: calc(var(--cu) * 50); padding-left: calc(var(--cu) * 33); }
+.cr-cutoff__logo { width: calc(var(--cu) * 83); height: calc(var(--cu) * 83); border-radius: calc(var(--cu) * 10); }
+.cr-cutoff__brand { flex: 1; font-size: calc(var(--cu) * 40); font-weight: 500; }
+.cr-cutoff__status { font-size: calc(var(--cu) * 32); color: #26ba41; padding-right: calc(var(--cu) * 20); }
+.cr-cutoff__title { margin-top: calc(var(--cu) * 16) !important; padding-left: calc(var(--cu) * 16); font-size: calc(var(--cu) * 40); font-weight: 600; line-height: calc(var(--cu) * 58); }
+.cr-cutoff__desc { margin-top: calc(var(--cu) * 16) !important; padding-left: calc(var(--cu) * 20); font-size: calc(var(--cu) * 32); font-weight: 600; color: #b3a58f; }
+
+.cr-options { display: flex; gap: calc(var(--cu) * 15); margin-top: calc(var(--cu) * 35); padding-left: calc(var(--cu) * 4); }
+.cr-option { width: calc(var(--cu) * 290); height: calc(var(--cu) * 103); border: calc(var(--cu) * 2) solid #e4d5bf; border-radius: calc(var(--cu) * 20); background: #fff; color: #6b5842; font-size: calc(var(--cu) * 32); font-weight: 500; }
+.cr-option.is-on { background: #c97a3e; border-color: #8a5226; color: #fff; }
+
+.cr-date { position: relative; display: flex; align-items: center; gap: calc(var(--cu) * 16); width: calc(var(--cu) * 896); height: calc(var(--cu) * 77); margin-top: calc(var(--cu) * 24); padding-left: calc(var(--cu) * 22); box-sizing: border-box; border: calc(var(--cu) * 2) solid #e4d5bf; border-radius: calc(var(--cu) * 20); background: #fff; cursor: pointer; }
+.cr-date__icon { width: calc(var(--cu) * 30); height: calc(var(--cu) * 28); box-sizing: border-box; border: calc(var(--cu) * 3) solid #3c2a1e; border-top-width: calc(var(--cu) * 8); border-radius: calc(var(--cu) * 5); }
+.cr-date__text { font-size: calc(var(--cu) * 32); font-weight: 600; }
+/* input จริงโปร่งใสคลุมทั้งช่อง กดตรงไหนก็เปิดตัวเลือกวันที่ */
+.cr-date__input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; cursor: pointer; }
+.cr-date__input::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: 100%; height: 100%; cursor: pointer; }
+
+.cr-cutoff__confirm { display: block; width: calc(var(--cu) * 888); height: calc(var(--cu) * 104); margin: calc(var(--cu) * 24) 0 0 calc(var(--cu) * 4); border: 0; border-radius: calc(var(--cu) * 30); background: #6b2e23; color: #fbf4ee; font-size: calc(var(--cu) * 36); font-weight: 500; }
+.cr-cutoff__confirm:disabled { opacity: 0.6; cursor: wait; }
+.cr-cutoff__foot { margin-top: calc(var(--cu) * 34) !important; text-align: center; font-size: calc(var(--cu) * 24); font-weight: 500; color: #b3a58f; }

@@ -1,3 +1,62 @@
 /* Owner: Frontend */
-/* หน้าที่: สไตล์เฉพาะหน้า Pomodoro */
-/* TODO: ใช้ตัวแปรจาก styles/tokens.css */
+/* หน้าที่: สไตล์หน้า Pomodoro ตาม Figma node 412:63 (แผงเลือกรอบ 940x734, แผงนับเวลา 982x864)
+   ขนาดทุกอย่างคูณ --u (= ความกว้างหน้าต่าง / 1998) ห้ามใช้ inline style (CSP) */
+
+.pm {
+  --u: calc(100vw / 1998);
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fdf6ec;
+  border: 1px solid #f9e8cf;
+  box-sizing: border-box;
+  font-family: Inter, var(--font-family), sans-serif;
+  color: #3b2a1e;
+}
+.pm :where(button) { font-family: inherit; font-size: inherit; font-weight: inherit; line-height: inherit; color: inherit; cursor: pointer; }
+.pm [hidden] { display: none !important; }
+.pm svg { stroke: none; fill: currentColor; }
+
+.pm__back { position: absolute; left: calc(var(--u) * 24); top: calc(var(--u) * 20); font-size: calc(var(--u) * 18); color: #978878; text-decoration: none; }
+
+.pm__panel { position: relative; flex: none; background: #fffdf9; border: calc(var(--u) * 1) solid #e4d5bf; border-radius: calc(var(--u) * 20); box-sizing: border-box; }
+.pm__panel--setup { width: calc(var(--u) * 940); height: calc(var(--u) * 734); }
+.pm__panel--run { width: calc(var(--u) * 982); height: calc(var(--u) * 864); }
+
+.pm__task { position: absolute; left: calc(var(--u) * 23); top: calc(var(--u) * 31); right: calc(var(--u) * 23); margin: 0; font-size: calc(var(--u) * 32); font-weight: 500; color: #8a7a65; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pm__task--run { left: 0; right: 0; top: calc(var(--u) * 60); text-align: center; }
+
+/* ตั้งค่า */
+.pm__heading { position: absolute; left: calc(var(--u) * 31); top: calc(var(--u) * 82); margin: 0; font-size: calc(var(--u) * 48); font-weight: 700; }
+.pm__step { position: absolute; top: calc(var(--u) * 190); width: calc(var(--u) * 100); height: calc(var(--u) * 100); padding: 0; border: calc(var(--u) * 1) solid #f0e3cf; border-radius: calc(var(--u) * 10); background: #fdf4e8; font-size: calc(var(--u) * 96); font-weight: 700; line-height: calc(var(--u) * 92); color: #3b2a1e; }
+.pm__step--minus { left: calc(var(--u) * 238); }
+.pm__step--plus { left: calc(var(--u) * 601); }
+.pm__step:disabled { opacity: 0.4; cursor: not-allowed; }
+.pm__count { position: absolute; left: calc(var(--u) * 339); width: calc(var(--u) * 262); top: calc(var(--u) * 186); margin: 0; text-align: center; font-size: calc(var(--u) * 96); font-weight: 700; line-height: calc(var(--u) * 104); }
+.pm__total { position: absolute; left: 0; right: 0; top: calc(var(--u) * 325); margin: 0; text-align: center; font-size: calc(var(--u) * 32); color: #b3a58f; }
+.pm__preset { position: absolute; top: calc(var(--u) * 427); width: calc(var(--u) * 225); height: calc(var(--u) * 99.5); border: calc(var(--u) * 2) solid #e4d5bf; border-radius: calc(var(--u) * 15); background: #fff; font-size: calc(var(--u) * 64); font-weight: 700; color: rgba(0, 0, 0, 0.5); }
+.pm__preset[data-n='2'] { left: calc(var(--u) * 79); }
+.pm__preset[data-n='4'] { left: calc(var(--u) * 357); }
+.pm__preset[data-n='6'] { left: calc(var(--u) * 635); }
+.pm__preset.is-on { background: #c97a3d; border-color: #3a2312; color: #fff9f0; }
+.pm__start { position: absolute; left: calc(var(--u) * 155); top: calc(var(--u) * 579); width: calc(var(--u) * 630); height: calc(var(--u) * 114.6); border: calc(var(--u) * 1) solid #573822; border-radius: calc(var(--u) * 20); background: #c97a3d; box-shadow: inset 0 calc(var(--u) * 4) calc(var(--u) * 4) rgba(0, 0, 0, 0.25); font-size: calc(var(--u) * 40); font-weight: 700; color: #fffbf6; }
+.pm__start:disabled { opacity: 0.6; cursor: wait; }
+.pm__msg { position: absolute; left: 0; right: 0; bottom: calc(var(--u) * 10); margin: 0; text-align: center; font-size: calc(var(--u) * 18); color: #b4532a; }
+
+/* นับเวลา */
+.pm__pill { position: absolute; left: 50%; top: calc(var(--u) * 131); transform: translateX(-50%); width: calc(var(--u) * 474); height: calc(var(--u) * 70); margin: 0; border-radius: calc(var(--u) * 40); background: #f0e6d6; text-align: center; font-size: calc(var(--u) * 40); font-weight: 500; line-height: calc(var(--u) * 70); color: #5e2a1e; }
+.pm__phase { position: absolute; left: 0; right: 0; top: calc(var(--u) * 258); margin: 0; text-align: center; font-size: calc(var(--u) * 40); font-weight: 700; line-height: calc(var(--u) * 47); color: #d37a3d; }
+.pm__phase.is-break { color: #6f9a62; }
+.pm__time { position: absolute; left: 0; right: 0; top: calc(var(--u) * 339); margin: 0; text-align: center; font-size: calc(var(--u) * 128); font-weight: 600; line-height: calc(var(--u) * 160); color: #000; font-variant-numeric: tabular-nums; }
+.pm__streaks { position: absolute; left: 0; right: 0; top: calc(var(--u) * 516); display: flex; justify-content: center; gap: calc(var(--u) * 33); }
+.pm__streak { width: calc(var(--u) * 107.7); height: calc(var(--u) * 16); border-radius: calc(var(--u) * 20); background: #d5d5d5; }
+.pm__streak.is-done { background: #ba6744; }
+.pm__toggle { position: absolute; left: 50%; top: calc(var(--u) * 587); transform: translateX(-50%); width: calc(var(--u) * 100); height: calc(var(--u) * 100); padding: 0; border: calc(var(--u) * 1) solid #e5d7c2; border-radius: calc(var(--u) * 10); background: #f0e6d6; color: rgba(0, 0, 0, 0.35); display: flex; align-items: center; justify-content: center; }
+.pm__icon { width: calc(var(--u) * 50); height: calc(var(--u) * 50); }
+.pm__toggle .pm__icon--play { display: none; }
+.pm__toggle.is-paused .pm__icon--play { display: block; }
+.pm__toggle.is-paused .pm__icon--pause { display: none; }
+.pm__hint { position: absolute; left: 50%; transform: translateX(-50%); width: calc(var(--u) * 730); top: calc(var(--u) * 720); margin: 0; text-align: center; font-size: calc(var(--u) * 32); font-weight: 700; color: #b3a58f; }
+.pm__stop { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--u) * 14); border: 0; background: none; font-size: calc(var(--u) * 18); color: #8a7a65; text-decoration: underline; }

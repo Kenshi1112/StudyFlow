@@ -1,3 +1,96 @@
 /* Owner: Frontend */
-/* หน้าที่: สไตล์เฉพาะหน้า Dashboard */
-/* TODO: ใช้ตัวแปรจาก styles/tokens.css */
+/* หน้าที่: สไตล์หน้า Dashboard ตาม Figma node 410:63 (เฟรม 1998x1080)
+   ขนาดทุกอย่างคูณ --u = ค่าที่เล็กกว่าระหว่าง กว้าง/1998 กับ สูง/1080 ให้ทั้งหน้าพอดีจอไม่ต้องเลื่อน ห้ามใช้ inline style (CSP) */
+
+.db {
+  --u: min(calc(100vw / 1998), calc(100vh / 1080));
+  --db-muted: #978878;
+  position: relative;
+  height: 100vh;
+  background: #fdf6ec;
+  border: 1px solid #f9e8cf;
+  box-sizing: border-box;
+  overflow: hidden;
+  font-family: Inter, var(--font-family), sans-serif;
+  color: #111;
+}
+.db :where(button) { font-family: inherit; font-size: inherit; font-weight: inherit; line-height: inherit; color: inherit; cursor: pointer; }
+.db svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* เวทีขนาด Figma วางกลาง ตำแหน่งลูกทั้งหมดนับจากมุมซ้ายบนของเวที */
+.db__stage { position: relative; width: calc(var(--u) * 1998); height: calc(var(--u) * 1080); margin: 0 auto; }
+
+/* ส่วนหัว (กว้างเต็มหน้าต่าง อยู่นอกเวที) */
+.db__top { position: absolute; z-index: 1; left: 0; top: 0; width: 100%; height: calc(var(--u) * 56.6); display: flex; align-items: center; background: #fffbf3; border-bottom: calc(var(--u) * 2) solid #eee6db; box-sizing: border-box; font-size: calc(var(--u) * 18); }
+.db__back { margin-left: calc(var(--u) * 13); width: calc(var(--u) * 230); color: var(--db-muted); text-decoration: none; }
+.db__divider { width: calc(var(--u) * 2); height: calc(var(--u) * 35); background: #eee6db; }
+.db__title { margin: 0 0 0 calc(var(--u) * 15); font-size: calc(var(--u) * 18); font-weight: 700; color: #544338; }
+.db__gear { position: absolute; right: calc(var(--u) * 27); top: calc(var(--u) * 8); width: calc(var(--u) * 40); height: calc(var(--u) * 40); border-radius: 50%; background: #7a4a22; color: #fff; display: flex; align-items: center; justify-content: center; }
+.db__gear svg { width: calc(var(--u) * 22); height: calc(var(--u) * 22); }
+
+/* Need Attention + Overdue */
+.db__attention { position: absolute; left: calc(var(--u) * 76); top: calc(var(--u) * 102); margin: 0; font-size: calc(var(--u) * 24); opacity: 0.5; }
+.db__attention span { font-weight: 500; }
+.db__overdue { position: absolute; left: calc(var(--u) * 27); top: calc(var(--u) * 154); right: calc(var(--u) * 12); height: calc(var(--u) * 144); box-sizing: border-box; background: #f7e1d4; border: calc(var(--u) * 5) solid #ba9f96; border-radius: calc(var(--u) * 15); box-shadow: 0 calc(var(--u) * 4) calc(var(--u) * 4) rgba(0, 0, 0, 0.25); }
+.db__overdue-label { position: absolute; left: calc(var(--u) * 15); top: calc(var(--u) * 14); margin: 0; font-size: calc(var(--u) * 32); font-weight: 600; color: #a0827b; }
+.db__overdue-value { position: absolute; left: calc(var(--u) * 15); top: calc(var(--u) * 54); margin: 0; font-size: calc(var(--u) * 48); font-weight: 600; color: #715751; }
+
+/* Time range */
+.db__range { position: absolute; left: calc(var(--u) * 27); top: calc(var(--u) * 331); width: calc(var(--u) * 516); height: calc(var(--u) * 50); box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: calc(var(--u) * 18); background: #fff; border: calc(var(--u) * 2) solid #cfcfcf; border-radius: calc(var(--u) * 30); }
+.db__range-btn { border: 0; background: none; padding: 0; font-size: calc(var(--u) * 24); font-weight: 600; color: #86837e; }
+.db__range-btn.is-active { color: #544338; }
+.db__range-sep { width: calc(var(--u) * 2); height: calc(var(--u) * 24); background: #86837e; }
+
+/* Tiles */
+.db__tile { position: absolute; top: calc(var(--u) * 396); width: calc(var(--u) * 373); height: calc(var(--u) * 187); box-sizing: border-box; background: #fff; border: calc(var(--u) * 2) solid #cfcfcf; border-radius: calc(var(--u) * 15); text-align: center; }
+.db__tile--1 { left: calc(var(--u) * 21); }
+.db__tile--2 { left: calc(var(--u) * 416); }
+.db__tile--3 { left: calc(var(--u) * 811); }
+.db__tile--4 { left: calc(var(--u) * 1204); }
+.db__tile--5 { left: calc(var(--u) * 1603); }
+.db__tile-title { position: absolute; left: 0; right: 0; top: calc(var(--u) * 17); margin: 0; font-size: calc(var(--u) * 24); font-weight: 700; opacity: 0.5; }
+.db__tile-value { position: absolute; left: 0; right: 0; top: calc(var(--u) * 69); margin: 0; font-size: calc(var(--u) * 64); font-weight: 700; line-height: calc(var(--u) * 88); opacity: 0.5; }
+.db__tile-value--small { font-size: calc(var(--u) * 40); line-height: calc(var(--u) * 56); }
+.db__tile-sub { top: calc(var(--u) * 138); }
+
+/* กราฟ */
+.db__graph { position: absolute; top: calc(var(--u) * 607); width: calc(var(--u) * 967); height: calc(var(--u) * 455); box-sizing: border-box; background: #fff; border: calc(var(--u) * 2) solid #cfcfcf; border-radius: calc(var(--u) * 15); }
+.db__graph--bar { left: calc(var(--u) * 20); }
+.db__graph--donut { left: calc(var(--u) * 1007); }
+.db__graph-title { position: absolute; left: calc(var(--u) * 27); top: calc(var(--u) * 11); margin: 0; font-size: calc(var(--u) * 23); font-weight: 600; color: #111010; }
+.db__graph--donut .db__graph-title { left: calc(var(--u) * 11); top: calc(var(--u) * 17); }
+
+.db__bars { position: absolute; left: calc(var(--u) * 16); right: calc(var(--u) * 16); top: calc(var(--u) * 80); height: calc(var(--u) * 320); display: flex; align-items: flex-end; justify-content: space-around; padding: 0 calc(var(--u) * 60) 0 calc(var(--u) * 40); box-sizing: border-box; border-bottom: calc(var(--u) * 1) solid #ddd; background: repeating-linear-gradient(to top, #e8e8e8 0, #e8e8e8 1px, transparent 1px, transparent calc(var(--u) * 53.33)); }
+.db__bar { position: relative; width: calc(var(--u) * 334); height: calc(var(--u) * var(--h-n, 0)); }
+.db__bar::before { content: attr(data-value); position: absolute; left: 0; right: 0; bottom: 100%; margin-bottom: calc(var(--u) * 4); text-align: center; font-size: calc(var(--u) * 15); }
+.db__bar--done { background: #5aaa7a; }
+.db__bar--rest { background: #c2a98b; }
+
+.db__legend { position: absolute; display: flex; justify-content: center; gap: calc(var(--u) * 16); font-size: calc(var(--u) * 14); color: #333; }
+.db__legend span { display: inline-flex; align-items: center; gap: calc(var(--u) * 6); }
+.db__sw { display: inline-block; width: calc(var(--u) * 14); height: calc(var(--u) * 14); }
+.db__sw--done { background: #5aaa7a; }
+.db__sw--rest { background: #c2a98b; }
+.db__legend--bar { left: 0; right: 0; bottom: calc(var(--u) * 14); }
+.db__legend--donut { left: calc(var(--u) * 194); width: calc(var(--u) * 579); top: calc(var(--u) * 380); }
+.db__legend--donut .db__sw { border-radius: 50%; }
+.db__sw--upcoming { background: #6b94c9; }
+.db__sw--due { background: #4fa070; }
+.db__sw--overdue { background: #c0393f; }
+.db__sw--none { background: #d3d3d3; }
+.db__sw--completed { background: #8b5a2b; }
+
+.db__donut { position: absolute; left: calc(var(--u) * 330); top: calc(var(--u) * 78); width: calc(var(--u) * 307); height: calc(var(--u) * 295); display: flex; align-items: center; justify-content: center; }
+.db__donut svg { width: calc(var(--u) * 295); height: calc(var(--u) * 295); transform: rotate(-90deg); }
+.db__donut circle { fill: none; stroke-width: 34; }
+.db__donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.db__donut-center b { font-size: calc(var(--u) * 34); font-weight: 700; }
+.db__donut-center span { font-size: calc(var(--u) * 15); font-weight: 600; }
+
+.db__note { position: absolute; right: calc(var(--u) * 90); top: calc(var(--u) * 66); margin: 0; padding: calc(var(--u) * 10) calc(var(--u) * 16); border-radius: calc(var(--u) * 10); background: #fff; border: calc(var(--u) * 1) solid #b4aea5; font-size: calc(var(--u) * 16); color: #b4532a; }
+.db__note[hidden] { display: none; }
+.db__donut .seg--upcoming { stroke: #6b94c9; }
+.db__donut .seg--due { stroke: #4fa070; }
+.db__donut .seg--overdue { stroke: #c0393f; }
+.db__donut .seg--none { stroke: #d3d3d3; }
+.db__donut .seg--completed { stroke: #8b5a2b; }

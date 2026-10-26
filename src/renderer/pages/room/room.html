@@ -1,19 +1,82 @@
 <!-- Owner: Frontend -->
-<!-- หน้าที่: โครง HTML ของหน้า Room: หน้าแรก Interactive Room เป็นแค่ชั้นนำทางไปหน้าอื่น ไม่มี business logic -->
-<!-- TODO: วาง object ของห้อง (Task Board, Monitor, Calendar ...) ตาม PROJECT_v0.13 section 7 -->
+<!-- หน้าที่: ส่วนเนื้อหา (fragment) ของหน้า Room: หน้าแรก Interactive Room เป็นแค่ชั้นนำทางไปหน้าอื่น ไม่มี business logic
+     router.js โหลดไฟล์นี้เข้า #app จึงไม่ใช่เอกสาร HTML เต็ม (ไม่มี html/head/body)
+     เลย์เอาต์ตาม Figma (เฟรม 1920x1080) วางเป็นพิกัดจริงแล้วย่อทั้งฉากด้วย --room-scale (ตั้งใน room.js) -->
 
-<!doctype html>
-<html lang="th">
-<head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:" />
-  <title>StudyFlow - Room</title>
-  <link rel="stylesheet" href="../../styles/tokens.css" />
-  <link rel="stylesheet" href="../../styles/global.css" />
-  <link rel="stylesheet" href="room.css" />
-</head>
-<body>
-  <main id="page-room"></main>
-  <script src="room.js"></script>
-</body>
-</html>
+<section id="page-room" class="room" aria-label="Room">
+  <div class="room__stage" id="room-stage" data-time="morning">
+    <!-- ชั้นภาพ (ตกแต่งล้วน ไม่ต้องอ่านออกเสียง) -->
+    <div class="room__layer room__floor-edge"></div>
+    <div class="room__layer room__floor-light"></div>
+    <div class="room__layer room__floor"></div>
+    <div class="room__layer room__shelf-outer"></div>
+    <div class="room__layer room__shelf-inner"></div>
+    <div class="room__layer room__shelf-line-1"></div>
+    <div class="room__layer room__shelf-line-2"></div>
+    <div class="room__layer room__shelf-line-3"></div>
+    <div class="room__layer room__shelf-box-a"></div>
+    <div class="room__layer room__shelf-box-a-label"></div>
+    <div class="room__layer room__shelf-box-b"></div>
+    <div class="room__layer room__shelf-box-b-label"></div>
+    <div class="room__layer room__shelf-box-c"></div>
+    <div class="room__layer room__shelf-box-c-label"></div>
+    <img class="room__layer room__shelf-file-1" src="assets/room/shelf-file-1.svg" alt="" />
+    <img class="room__layer room__shelf-file-2" src="assets/room/shelf-file-2.svg" alt="" />
+    <img class="room__layer room__shelf-file-3" src="assets/room/shelf-file-3.svg" alt="" />
+    <img class="room__layer room__shelf-file-4" src="assets/room/shelf-file-4.svg" alt="" />
+    <img class="room__layer room__shelf-file-5" src="assets/room/shelf-file-5.svg" alt="" />
+    <img class="room__layer room__shelf-file-6" src="assets/room/shelf-file-6.svg" alt="" />
+    <img class="room__layer room__shelf-file-7" src="assets/room/shelf-file-7.svg" alt="" />
+    <img class="room__layer room__shelf-file-8" src="assets/room/shelf-file-8.svg" alt="" />
+    <img class="room__layer room__shelf-file-9" src="assets/room/shelf-file-9.svg" alt="" />
+    <img class="room__layer room__mug" src="assets/room/mug.svg" alt="" />
+    <div class="room__layer room__rod"></div>
+    <img class="room__layer room__rod-end-left" src="assets/room/rod-end-left.svg" alt="" />
+    <img class="room__layer room__rod-end-right" src="assets/room/rod-end-right.svg" alt="" />
+    <img class="room__layer room__window" src="assets/room/window-morning.png" data-variant="window" alt="" />
+    <img class="room__layer room__curtain-left" src="assets/room/curtain-left.svg" alt="" />
+    <img class="room__layer room__curtain-right" src="assets/room/curtain-right.svg" alt="" />
+    <div class="room__layer room__table-leg-left"></div>
+    <div class="room__layer room__table-leg-right"></div>
+    <div class="room__layer room__table-top"></div>
+    <div class="room__layer room__table-edge"></div>
+    <img class="room__layer room__widget" src="assets/room/dashboard-widget.svg" alt="" />
+    <div class="room__layer room__board-frame"></div>
+    <img class="room__layer room__board-cork" src="assets/room/board.png" alt="" />
+    <img class="room__layer room__note-1" src="assets/room/note-1.svg" alt="" />
+    <img class="room__layer room__note-2" src="assets/room/note-2.svg" alt="" />
+    <img class="room__layer room__note-3" src="assets/room/note-3.svg" alt="" />
+    <img class="room__layer room__note-4" src="assets/room/note-4.svg" alt="" />
+    <img class="room__layer room__note-5" src="assets/room/note-5.svg" alt="" />
+    <img class="room__layer room__note-6" src="assets/room/note-6.svg" alt="" />
+    <img class="room__layer room__note-7" src="assets/room/note-7.svg" alt="" />
+    <img class="room__layer room__note-8" src="assets/room/note-8.svg" alt="" />
+    <div class="room__layer room__desk-box"></div>
+    <div class="room__layer room__desk-box-label"></div>
+    <img class="room__layer room__desk-file" src="assets/room/desk-file.svg" alt="" />
+    <div class="room__layer room__calendar-red"></div>
+    <img class="room__layer room__calendar-page" src="assets/room/calendar-page.png" alt="" />
+    <div class="room__layer room__calendar-ring-1"></div>
+    <div class="room__layer room__calendar-ring-2"></div>
+    <div class="room__layer room__calendar-ring-3"></div>
+    <div class="room__layer room__calendar-ring-4"></div>
+    <img class="room__layer room__calendar-ring-svg" src="assets/room/calendar-ring.svg" alt="" />
+
+    <!-- ตัวหนังสือบนกระดาน -->
+    <p class="room__board-label" aria-hidden="true">Tasks board</p>
+
+    <!-- จุดคลิก (โปร่งใส ซ้อนทับ object ของห้อง) -->
+    <a class="room__hotspot room__hotspot--board" href="#/task-board" aria-label="Task Board"></a>
+    <a class="room__hotspot room__hotspot--dashboard" href="#/dashboard" aria-label="Dashboard"></a>
+    <a class="room__hotspot room__hotspot--calendar" href="#/calendar" aria-label="Calendar"></a>
+
+    <!-- Header -->
+    <header class="room__header">
+      <p class="room__app-title">App Task moment</p>
+      <a class="room__settings" href="#/settings" aria-label="Settings">
+        <img class="room__settings-circle" src="assets/room/settings-circle.svg" alt="" />
+        <img class="room__settings-icon" src="assets/room/settings-icon.svg" alt="" />
+      </a>
+    </header>
+  </div>
+</section>

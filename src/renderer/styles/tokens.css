@@ -1,6 +1,27 @@
 /* Owner: Frontend */
 /* หน้าที่: design tokens (สี, ฟอนต์, spacing) ที่ทุกหน้าใช้ร่วมกัน */
-/* TODO: กำหนดค่าตาม UX-UI-Design-Review */
+/* TODO: ปรับค่าให้ตรง Figma เมื่อทำหน้า Room (ตอนนี้เป็นค่ากลาง ๆ ไว้ให้ฟอร์มใช้งานได้) */
+/* กติกา UX Review: สีแดง/ส้ม/สถานะ สงวนไว้ให้ Deadline State เท่านั้น ห้ามใช้กับ Priority */
 
 :root {
+  --font-family: 'Segoe UI', 'Noto Sans Thai', system-ui, sans-serif;
+  --font-size: 15px;
+
+  --color-bg: #fdf8ef;
+  --color-surface: #ffffff;
+  --color-text: #2b2118;
+  --color-text-muted: #6b5d4f;
+  --color-border: #d9cdbb;
+  --color-accent: #7a4b24;
+  --color-accent-contrast: #ffffff;
+  --color-focus: #1a5fd0;
+  --color-error: #a3201a; /* ใช้กับข้อความ error ของฟอร์มเท่านั้น */
+  --color-backdrop: rgba(43, 33, 24, 0.45);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --radius: 8px;
 }

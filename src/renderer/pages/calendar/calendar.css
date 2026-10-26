@@ -1,3 +1,64 @@
 /* Owner: Frontend */
-/* หน้าที่: สไตล์เฉพาะหน้า Calendar */
-/* TODO: ใช้ตัวแปรจาก styles/tokens.css */
+/* หน้าที่: สไตล์หน้า Calendar ตามภาพอ้างอิง Figma node 412:65 (เฟรม 1554x835)
+   ขนาดทุกอย่างคูณ --u (= ความกว้างหน้าต่าง / 1554) ห้ามใช้ inline style (CSP) */
+
+.cl {
+  --u: calc(100vw / 1554);
+  min-height: 100vh;
+  background: #fdf8f0;
+  border: 1px solid #eadfcd;
+  box-sizing: border-box;
+  font-family: Inter, var(--font-family), sans-serif;
+  font-size: calc(var(--u) * 14);
+  color: #3b2a1e;
+}
+.cl :where(button) { font-family: inherit; font-size: inherit; font-weight: inherit; line-height: inherit; color: inherit; cursor: pointer; }
+.cl svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.cl__top { position: relative; display: flex; align-items: center; height: calc(var(--u) * 42); background: #fffbf4; border-bottom: calc(var(--u) * 1) solid #eee6db; }
+.cl__back { margin-left: calc(var(--u) * 28); width: calc(var(--u) * 100); color: #978878; text-decoration: none; font-size: calc(var(--u) * 12); }
+.cl__divider { width: calc(var(--u) * 1); height: calc(var(--u) * 20); background: #eee6db; }
+.cl__title { margin: 0 0 0 calc(var(--u) * 18); font-size: calc(var(--u) * 15); font-weight: 600; }
+.cl__gear { position: absolute; right: calc(var(--u) * 20); top: calc(var(--u) * 8); width: calc(var(--u) * 26); height: calc(var(--u) * 26); border-radius: 50%; background: #c4714a; color: #fff; display: flex; align-items: center; justify-content: center; }
+.cl__gear svg { width: calc(var(--u) * 14); height: calc(var(--u) * 14); }
+
+.cl__body { display: flex; align-items: flex-start; min-height: calc(var(--u) * 793); }
+.cl__main { flex: 1; min-width: 0; padding: calc(var(--u) * 30) calc(var(--u) * 12) calc(var(--u) * 20) calc(var(--u) * 17); }
+
+.cl__nav { display: flex; align-items: center; justify-content: space-between; padding: 0 calc(var(--u) * 6); margin-bottom: calc(var(--u) * 24); }
+.cl__month { margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: calc(var(--u) * 21); font-weight: 600; }
+.cl__arrow { border: 0; background: none; font-size: calc(var(--u) * 26); line-height: 1; color: #8a7a65; padding: 0 calc(var(--u) * 10); }
+
+.cl__week, .cl__grid { display: grid; grid-template-columns: repeat(7, 1fr); column-gap: calc(var(--u) * 4); }
+.cl__week { margin-bottom: calc(var(--u) * 10); text-align: center; color: #978878; font-size: calc(var(--u) * 12); }
+.cl__grid { row-gap: calc(var(--u) * 5); }
+
+.cl__cell { position: relative; height: calc(var(--u) * 64); box-sizing: border-box; padding: calc(var(--u) * 6) calc(var(--u) * 6) 0; background: #fff; border: calc(var(--u) * 1) solid #f1e8da; border-radius: calc(var(--u) * 12); overflow: hidden; }
+.cl__cell--blank { background: none; border: 0; }
+.cl__cell--today { background: #f9e9db; border-color: #d9a07e; }
+.cl__day { display: inline-flex; align-items: center; justify-content: center; min-width: calc(var(--u) * 16); height: calc(var(--u) * 16); font-size: calc(var(--u) * 12); font-weight: 500; color: #504b45; }
+.cl__cell--today .cl__day { min-width: calc(var(--u) * 20); height: calc(var(--u) * 20); border-radius: 50%; background: #c4714a; color: #fff; font-weight: 700; }
+.cl__chip { display: block; width: 100%; margin-top: calc(var(--u) * 3); padding: 0 calc(var(--u) * 4); box-sizing: border-box; border: 0; border-radius: calc(var(--u) * 4); font-size: calc(var(--u) * 10.5); line-height: calc(var(--u) * 14); text-align: left; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cl__chip--more { background: #f3ece0; color: #8a7a65; }
+
+.cl__side { flex: none; width: calc(var(--u) * 205); min-height: calc(var(--u) * 793); box-sizing: border-box; padding: calc(var(--u) * 24) calc(var(--u) * 14); background: #fffbf4; border-left: calc(var(--u) * 1) solid #eee6db; }
+.cl__side-title { margin: 0 0 calc(var(--u) * 14); font-size: calc(var(--u) * 13); font-weight: 600; }
+.cl__up { display: block; margin-bottom: calc(var(--u) * 10); padding: calc(var(--u) * 10) calc(var(--u) * 12); background: #fff; border: calc(var(--u) * 1) solid #f1e8da; border-radius: calc(var(--u) * 12); text-decoration: none; color: inherit; }
+.cl__up-head { display: flex; align-items: center; gap: calc(var(--u) * 6); font-size: calc(var(--u) * 12); font-weight: 500; }
+.cl__up-head span:last-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cl__dot { flex: none; width: calc(var(--u) * 6); height: calc(var(--u) * 6); border-radius: 50%; }
+.cl__up-course { margin: calc(var(--u) * 1) 0 0 calc(var(--u) * 12); font-size: calc(var(--u) * 10); }
+.cl__up-foot { display: flex; align-items: center; justify-content: space-between; margin-top: calc(var(--u) * 10); font-size: calc(var(--u) * 10); color: #978878; }
+.cl__days { padding: calc(var(--u) * 1) calc(var(--u) * 6); border-radius: calc(var(--u) * 8); font-weight: 600; }
+.cl__days--soon { background: #fbe6d4; color: #c4714a; }
+.cl__days--later { background: #e4f4e6; color: #3a9a4a; }
+.cl__days--late { background: #f7d9d4; color: #b4532a; }
+.cl__empty { margin: 0; color: #978878; font-size: calc(var(--u) * 12); }
+.cl__msg { margin: calc(var(--u) * 12) 0 0; color: #b4532a; font-size: calc(var(--u) * 12); }
+
+/* สีตามวิชา (วนใช้ 5 ชุด) */
+.cl__c0 { background: #f9e5e1; color: #b4532a; } .cl__d0 { background: #d9704f; } .cl__t0 { color: #d9704f; }
+.cl__c1 { background: #e0f2e6; color: #3a9a4a; } .cl__d1 { background: #4aa564; } .cl__t1 { color: #4aa564; }
+.cl__c2 { background: #e3eefc; color: #4b78c2; } .cl__d2 { background: #5b8bd6; } .cl__t2 { color: #5b8bd6; }
+.cl__c3 { background: #ebe5fb; color: #7a5ac8; } .cl__d3 { background: #8a6cd9; } .cl__t3 { color: #8a6cd9; }
+.cl__c4 { background: #fdeede; color: #d98a3d; } .cl__d4 { background: #e8944a; } .cl__t4 { color: #e8944a; }
