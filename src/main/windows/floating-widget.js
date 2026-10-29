@@ -1,6 +1,6 @@
 // Owner: Backend
 // หน้าที่: สร้าง/ปิด BrowserWindow ตัวที่ 2 (floating widget, always-on-top) ของ Pomodoro
-// widget แสดงผลอย่างเดียว (PROJECT_v0.14 section 15.4): ขอ state ผ่าน pomodoro:get-state ตอนเปิด แล้วฟัง event pomodoro:state-changed
+// widget แสดงผลอย่างเดียว (PROJECT_v0.15 section 15.4): ขอ state ผ่าน pomodoro:get-state ตอนเปิด แล้วฟัง event pomodoro:state-changed
 
 'use strict';
 

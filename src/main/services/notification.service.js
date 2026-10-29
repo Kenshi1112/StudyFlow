@@ -1,6 +1,6 @@
 // Owner: Backend
 // หน้าที่: เช็ค Deadline State เป็นระยะและส่ง OS notification (กันซ้ำด้วย notification_log)
-// อ้างอิง: PROJECT_v0.14 section 11 (11.1 กฎ, 11.2 ตั้งเวลา, 11.3 กันซ้ำ) และ 9.2 (Deadline State)
+// อ้างอิง: PROJECT_v0.15 section 11 (11.1 กฎ, 11.2 ตั้งเวลา, 11.3 กันซ้ำ) และ 9.2 (Deadline State)
 
 'use strict';
 
