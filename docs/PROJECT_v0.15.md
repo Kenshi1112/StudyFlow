@@ -1,5 +1,8 @@
 # PROJECT.md
 
+**Version:** 0.15 (Classroom Review Queue Stores the Details It Displays; Imported Tasks Carry the Assignment's Description and a Link Back to Classroom)
+**Status (v0.15):** One targeted change to the Google Classroom integration (Sections 13.5, 19); no new integration, service, table or section. `classroom_sync_state` gains three columns, `title`, `due_date` and `notes`, so the review popup can list pending items from local data instead of asking Google again each time it opens (which would show nothing offline and after every restart). When the user chooses Create Task, these values are copied into the new task: `notes` holds the assignment's description followed by a link to the assignment in Classroom, so the student can see what is being asked and reach any attachment without searching Classroom first. `classroom_assignment_id` is now stored as `courseId:courseWorkId`, because Classroom only guarantees that a CourseWork id is unique inside its course. Also written down: how Classroom's due date and time (given in UTC) become the ISO 8601 `due_date` used everywhere else, and that a task imported as Completed is stamped with the import time, not the submission time.
+
 **Version:** 0.14 (Dashboard Trimmed to Six Metrics; Time-to-Start Lag Captured from the First "Start Working" Press; Urgency Score No Longer Presented as a Highlight)
 **Status (v0.14):** Three targeted changes made after a scope review before the final exam; no new integrations, services, tables or sections. (1) A new nullable field `tasks.first_started_at` records the first time the user presses "Start Working" on a task and is never overwritten; Average Time-to-Start Lag is now computed from it instead of from "the first linked Pomodoro session" (Sections 10.2, 10.3, 15.3, 19). The press is the signal; the timer does not have to run to completion. (2) The dashboard metric "Longest Inactive Assignment" is removed, so the Dashboard has six metrics, not seven (Section 10.2): Task Board already lists every open task, and a tile that shows only one of them picks arbitrarily. `last_focus_started_at` is kept, since it still feeds the Urgency Score's Neglect Factor. (3) The Urgency Score formula, weights and Priority input are unchanged, but the defense framing no longer calls it part of the project's main contribution; it is described only as Task Board's default ordering, with untuned weights (Sections 9.5, 29). Nothing else changes: no change to Deadline State, notifications, Classroom, LINE, Pomodoro mechanics, or sync.
 
@@ -17,7 +20,7 @@
 
 **Version:** 0.9 (First-Run Google-Connect Prompt Added; Two Known Limitations Documented — No-Backup-Without-Connection, Single-Account-Per-Device)
 **Status:** Active — This version adds a one-time, dismissible first-run prompt offering to connect Google Classroom (Section 13.1), so users who never open Settings are still made aware of the choice between connecting (Classroom sync + cloud backup) and staying local-only. Declining the prompt does not gate or delay entry into the app in any way — it is offered, never required, consistent with this project's existing low-friction and no-separate-account-system principles (Sections 6, 19). Two accepted limitations that were previously undocumented are now recorded explicitly: (1) a user who never connects Google Classroom has no cloud backup, since Supabase Auth relies exclusively on Google identity (Section 19); (2) switching Google accounts on the same device is not guarded against at the data layer and could mix local data across accounts (Section 19). Neither limitation changes existing behavior — both are pre-existing consequences of decisions already made in v0.5–v0.8 (single Classroom account, Google-only auth) that had not yet been written down. No business logic, data model field beyond one new `settings` key, or Classroom/Pomodoro/Dashboard behavior changes in this version.
-**Supersedes:** PROJECT.md v0.13
+**Supersedes:** PROJECT.md v0.14
 **Purpose:** This document is the Single Source of Truth for this project. It is not a thesis report. It exists so that any developer or AI assistant can understand the project's purpose, scope, and current decisions within a few minutes.
 
 ---
@@ -35,6 +38,7 @@
 - **(v0.12 note)** Inserting the new Section 14 (LINE Integration) shifted every subsequent top-level section by one number relative to v0.11 (old Section 14 Pomodoro → new Section 15, and so on through old Section 28 Thesis Readiness → new Section 29). All cross-references within the *active* body of this document (Sections 1–29) have been updated to the new numbers. Changelog entries recorded under earlier versions (Section 28) retain the section numbers as they were at the time each entry was written, since they are a historical record of past edits, not live cross-references — treat any section number inside a changelog row as relative to that row's own version, not the current document.
 - **(v0.13 note)** No section is added, removed, or renumbered in this version; Section 9.3 is reused for the reinstated Priority field (kept at the same number it held before v0.8) and the section numbering from v0.12 is unchanged. Derived documents (UX-UI-Design-Review, Database-Design, DFD) must be brought in line with this version before they are relied on again: Priority selector on the task create/edit form and task card, an optional Course field on the manual task form, and the renamed `course_name` column.
 - **(v0.14 note)** No section is added, removed, or renumbered. One data-model field is added (`tasks.first_started_at`, Section 19) and one Dashboard metric is removed (Section 10.2). Derived documents must be brought in line before they are relied on again: UX-UI-Design-Review (Dashboard: six metrics, Needs Attention strip holds Overdue only), `schema.sql`, the Supabase `tasks` migration, and the Dashboard service and its tests. The SQLite file in `userData` must be deleted after `schema.sql` changes, since the project has no migration system.
+- **(v0.15 note)** No section is added, removed, or renumbered. Three columns are added to `classroom_sync_state` (`title`, `due_date`, `notes`, Section 19) and the format of `classroom_assignment_id` is fixed (Section 19). Derived files to bring in line: `schema.sql`, `tests/schema.test.js`, `docs/ipc-contract.md` and the Classroom services. The SQLite file in `userData` must be deleted after `schema.sql` changes, since the project has no migration system. UX-UI-Design-Review needs no change: the review popup already shows title, course and due date (Section 13.5).
 
 ---
 
@@ -405,12 +409,14 @@ A Classroom assignment is considered changed **only** when Google Classroom's ow
 1. Fetch all CourseWork items from every connected course, restricted to `workType = ASSIGNMENT`.
 2. Filter out any item whose `creationTime` falls before the cutoff date.
 3. Check each remaining item's `classroom_assignment_id` against `classroom_sync_state`; skip if already `imported`, `ignored`, `excluded`, or `pending`.
-4. New items are recorded with `state = pending`.
+4. New items are recorded with `state = pending`, together with the title, due date and notes needed to display them (Section 19).
 5. If items are newly `pending`, a review popup is shown the next time the app is opened (or next periodic check).
 6. The popup lists all currently pending items.
-7. For each item: **Create Task** (sets `status` per Section 9.1, sets `classroom_sync_state.state = imported`) or **Ignore** (`state = ignored`).
+7. For each item: **Create Task** (copies the stored title, due date and notes into the new task, sets `status` per Section 9.1, sets `classroom_sync_state.state = imported`) or **Ignore** (`state = ignored`).
 8. Undecided items stay `pending` and reappear in the popup.
 9. If a fetch run finds zero new items, no popup is shown.
+
+**Imported details (New in v0.15):** `title` is the assignment's title. `due_date` is built from Classroom's `dueDate` and `dueTime`, which Classroom gives in UTC, and stored as an ISO 8601 date-time like every other `due_date`; an assignment with a date but no time becomes 23:59 local time of that day, and one with no date has no `due_date`. `notes` is the assignment's description followed, on its own line, by a link to the assignment in Classroom (empty when it has neither). These values are a snapshot taken when the item is first recorded and are not refreshed by later fetches, consistent with Section 13.3. The link is plain text inside `notes`, so the student can copy it; making it clickable is a UI matter. A task imported as Completed (Section 9.1) gets `progress_percentage = 100` and `completed_at` equal to the moment of import, because the submission time is not read from Classroom; the Dashboard therefore counts it as completed on the import day, a known limitation.
 
 **Manual (On-Demand) Sync:** the user can trigger a fetch manually at any time via "Sync now" on Task Board (Section 13.2). Calls the identical fetch-and-review pipeline; no separate business rule, data path, or field is needed.
 
@@ -650,7 +656,7 @@ This section defines entities and key fields at a specification level. Exact SQL
 | progress_percentage | Manual, 0–100 |
 | priority | Nullable. **(New in v0.13.)** `low` / `medium` / `high`; `null` = not set. User-set only (Section 9.3). Feeds the Priority Factor of the Urgency Score (Section 9.5). Synced like other task fields. |
 | source | manual / google_classroom / **line** *(new value, v0.12 — Section 14.3)* |
-| classroom_assignment_id | Nullable, unique when present |
+| classroom_assignment_id | Nullable, unique when present. For Classroom-sourced tasks it is `courseId:courseWorkId` (see `classroom_sync_state`). |
 | course_name | Nullable. **(Renamed in v0.13 from `classroom_course_name`.)** The course a task belongs to, used for Task Board grouping and for the LINE Quick Reply options (Section 14.3). Filled from the Classroom course name when a Classroom item is imported (Section 13.5); for manual and LINE-created tasks it is entered by the user (optional). |
 | classroom_last_updated | Nullable — Classroom's own `updateTime` (Section 13.3) |
 | completed_at | Nullable, set on transition to Completed |
@@ -663,11 +669,14 @@ This section defines entities and key fields at a specification level. Exact SQL
 
 | Field | Notes |
 |---|---|
-| classroom_assignment_id | Primary key |
+| classroom_assignment_id | Primary key. Stored as `courseId:courseWorkId` (for example `1111:9001`), because Classroom guarantees a CourseWork id is unique only within its course. |
 | course_name | |
 | last_seen_updated | Last-seen `updateTime` from Classroom |
 | state | pending / imported / ignored / excluded |
 | linked_task_id | Nullable FK to `tasks.id`, set when `state = imported`. Not cleared when the linked task is later soft-deleted. |
+| title | **(New in v0.15.)** The assignment's title, shown in the review popup and copied to `tasks.title` on import. Required. |
+| due_date | **(New in v0.15.)** Nullable ISO 8601 date-time, same format as `tasks.due_date` (Section 13.5, Imported details). |
+| notes | **(New in v0.15.)** Nullable. The assignment's description followed by a link to the assignment in Classroom; copied to `tasks.notes` on import. |
 
 **`pomodoro_sessions`**
 
@@ -918,6 +927,16 @@ This document overrides any conflicting assumptions from previous conversations.
 ## 28. Changelog
 
 *(Section numbers referenced inside each changelog entry below reflect the numbering that was current **at the time that entry was written** — they are a historical record, not live cross-references. See Section 1 for the v0.12 renumbering note.)*
+
+### v0.14 → v0.15
+
+| Section | Change | Reason |
+|---|---|---|
+| Header | Version bumped to 0.15; Supersedes line updated to v0.14 | Team rule: change the spec version before the code |
+| 1 | Added a v0.15 note listing the added columns and the files to update | Keeps derived files and code in sync |
+| 13.5 | Steps 4 and 7 mention the stored details; added the "Imported details" paragraph (due date conversion, notes content, snapshot rule, Completed-import timestamps) | The review popup and the import need these values, and the spec did not say where they come from |
+| 19 | `classroom_sync_state` gains `title`, `due_date`, `notes`; `classroom_assignment_id` format fixed as `courseId:courseWorkId` in both tables | The popup should work offline and after a restart; a CourseWork id is unique only per course |
+| 28 | Added this v0.14 → v0.15 changelog entry | Standard practice for this document |
 
 ### v0.13 → v0.14
 

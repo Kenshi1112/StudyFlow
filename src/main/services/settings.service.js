@@ -1,6 +1,6 @@
 // Owner: Backend
 // หน้าที่: อ่าน/เขียน table settings (key-value, local only) — ข้อ 5 (แจ้งเตือน) กับข้อ 6 (Classroom) เรียกใช้จาก main process ได้ตรง ๆ
-// อ้างอิง: PROJECT_v0.14 section 11.1, 13.1, 15.3, 19 และ docs/ipc-contract.md
+// อ้างอิง: PROJECT_v0.15 section 11.1, 13.1, 15.3, 19 และ docs/ipc-contract.md
 
 'use strict';
 
@@ -8,6 +8,10 @@ const { getDb } = require('../db/database');
 
 // cutoff date ต้องเป็นวัน+เวลา (กฎเดียวกับ due_date ใน task.service.js) ปฏิเสธ "2026-10-10" เพราะ JS ตีความเป็นเที่ยงคืน UTC
 const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+
+// วัน+เวลา ISO 8601 หรือ null (ใช้กับ cutoff date และเวลา sync ล่าสุด)
+const isIsoDateTimeOrNull = (value) =>
+  value === null || (typeof value === 'string' && ISO_DATE_TIME.test(value) && !Number.isNaN(new Date(value).getTime()));
 
 // key ที่เก็บได้ทั้งหมด พร้อมค่า default และตัวเช็คค่า (ไม่อยู่ในนี้ = ห้ามเก็บ)
 const SETTINGS = {
@@ -19,8 +23,12 @@ const SETTINGS = {
   // §13.1: import งาน Classroom ที่สร้างตั้งแต่วันนี้ขึ้นไป เช่น '2026-08-01T00:00:00.000Z' (null = ยังไม่ตั้ง)
   classroom_cutoff_date: {
     default: null,
-    isValid: (value) =>
-      value === null || (typeof value === 'string' && ISO_DATE_TIME.test(value) && !Number.isNaN(new Date(value).getTime())),
+    isValid: isIsoDateTimeOrNull,
+  },
+  // §13.1: เวลาที่ sync Classroom สำเร็จครั้งล่าสุด (service เขียนเอง Settings แค่โชว์) null = ยังไม่เคย sync
+  classroom_last_synced_at: {
+    default: null,
+    isValid: isIsoDateTimeOrNull,
   },
   // §11.1: เตือนก่อนถึง due date กี่วัน เช่น 3 = เตือนเมื่อเหลือไม่เกิน 3 วัน (default 1)
   reminder_window_days: {
@@ -39,7 +47,7 @@ const SETTINGS = {
   },
 };
 
-// อ่านค่าทั้ง 5 key เริ่มจาก default แล้วเอาค่าใน DB มาทับ (key ที่ยังไม่เคยตั้ง = ค่า default)
+// อ่านค่าทั้ง 6 key เริ่มจาก default แล้วเอาค่าใน DB มาทับ (key ที่ยังไม่เคยตั้ง = ค่า default)
 // เช่น DB มีแค่ reminder_window_days = '3' -> { has_seen_first_run_prompt: false, classroom_cutoff_date: null, reminder_window_days: 3 }
 function getSettings() {
   const result = {};

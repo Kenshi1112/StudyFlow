@@ -1,5 +1,5 @@
 // Owner: Frontend
-// หน้าที่: logic ฝั่ง UI ของหน้า Dashboard (Figma node 410:63, spec v0.14 หัวข้อ 10: 6 metrics)
+// หน้าที่: logic ฝั่ง UI ของหน้า Dashboard (Figma node 410:63, spec v0.15 หัวข้อ 10: 6 metrics)
 // เรียก backend ผ่าน window.apiClient.invoke ('dashboard:get-metrics') ถ้า Backend ยังไม่มี handler / รูปแบบข้อมูลต่าง
 // จะแสดงข้อมูลตัวอย่างจาก Figma พร้อมข้อความเตือน (payload ของ channel นี้ Backend ยังไม่กำหนด)
 // ไม่มี "Longest Inactive Assignment" เพราะ v0.14 ตัดออกแล้ว (Figma ยังมีอยู่)
@@ -23,7 +23,7 @@
   const SEG_CLASS = { upcoming: 'upcoming', due_today: 'due', overdue: 'overdue', no_deadline: 'none', completed: 'completed' };
 
   let root = null;
-  let range = 'all';
+  let range = 'all_time';
   let alive = false;
   let cleanups = [];
 

@@ -1,5 +1,5 @@
 // Owner: Backend
-// หน้าที่: เทสข้อ 1.2 — เช็คว่า src/main/db/schema.sql ตรง PROJECT_v0.14 section 19
+// หน้าที่: เทสข้อ 1.2 — เช็คว่า src/main/db/schema.sql ตรง PROJECT_v0.15 section 19
 // รัน: node --test tests/schema.test.js   (ต้อง Node 22+ และ npm install แล้ว)
 'use strict';
 
@@ -20,6 +20,7 @@ const EXPECTED_COLUMNS = {
   ],
   classroom_sync_state: [
     'classroom_assignment_id', 'course_name', 'last_seen_updated', 'state', 'linked_task_id',
+    'title', 'due_date', 'notes', // (v0.15) ข้อมูลที่ popup review แสดง
   ],
   pomodoro_sessions: [
     'id', 'task_id', 'started_at', 'planned_duration_seconds', 'actual_duration_seconds',
@@ -138,7 +139,7 @@ test('classroom_sync_state: PK คือ classroom_assignment_id และ state
   assert.deepEqual(pk, ['classroom_assignment_id']);
 
   const ins = db.prepare(
-    'INSERT INTO classroom_sync_state (classroom_assignment_id, course_name, last_seen_updated, state) VALUES (?,?,?,?)'
+    "INSERT INTO classroom_sync_state (classroom_assignment_id, course_name, last_seen_updated, state, title) VALUES (?,?,?,?,'Lab')"
   );
   let n = 0;
   for (const state of ['pending', 'imported', 'ignored', 'excluded']) ins.run(`C${n++}`, 'Math', '2026-10-01T00:00:00Z', state);
@@ -146,10 +147,21 @@ test('classroom_sync_state: PK คือ classroom_assignment_id และ state
   assert.throws(() => ins.run('C0', 'Math', '2026-10-01T00:00:00Z', 'pending')); // PK ซ้ำ
 });
 
+test('classroom_sync_state: title ห้ามว่าง ส่วน due_date กับ notes ว่างได้ (v0.15)', () => {
+  const db = freshDb();
+  const base = ['C1', 'Math', '2026-10-01T00:00:00Z', 'pending'];
+  assert.throws(() =>
+    db.prepare('INSERT INTO classroom_sync_state (classroom_assignment_id, course_name, last_seen_updated, state) VALUES (?,?,?,?)').run(...base)
+  );
+  db.prepare('INSERT INTO classroom_sync_state (classroom_assignment_id, course_name, last_seen_updated, state, title) VALUES (?,?,?,?,?)').run(...base, 'Lab');
+  const row = db.prepare('SELECT due_date, notes FROM classroom_sync_state').get();
+  assert.deepEqual(row, { due_date: null, notes: null });
+});
+
 test('classroom_sync_state: linked_task_id เป็น FK ไป tasks.id (nullable)', () => {
   const db = freshDb();
   const ins = db.prepare(
-    'INSERT INTO classroom_sync_state (classroom_assignment_id, course_name, last_seen_updated, state, linked_task_id) VALUES (?,?,?,?,?)'
+    "INSERT INTO classroom_sync_state (classroom_assignment_id, course_name, last_seen_updated, state, linked_task_id, title) VALUES (?,?,?,?,?,'Lab')"
   );
   ins.run('C1', 'Math', '2026-10-01T00:00:00Z', 'pending', null); // NULL ได้
   assert.throws(() => ins.run('C2', 'Math', '2026-10-01T00:00:00Z', 'imported', 'ไม่มีtaskนี้'));

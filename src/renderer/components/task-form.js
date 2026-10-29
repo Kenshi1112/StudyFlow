@@ -1,7 +1,7 @@
 // Owner: Frontend
 // หน้าที่: ฟอร์ม task ตัวเดียวที่ใช้ทั้งป๊อปอัป "Create New Task" (mode 'create') และ "Edit Task" (mode 'edit') ตาม Figma
 // ช่อง: Subject / Classroom (course_name), Status (เฉพาะ edit), Task Name (title), Description (notes), Deadline (due_date)
-// เพิ่มเอง (ไม่อยู่ใน Figma แต่ spec v0.13+ ให้มี): Priority แบบ segmented control ไม่บังคับ ไม่มีค่าเริ่มต้น กดซ้ำเพื่อล้าง
+// เพิ่มเอง (ไม่อยู่ใน Figma แต่ spec v0.15 ให้มี): Priority แบบ segmented control ไม่บังคับ ไม่มีค่าเริ่มต้น กดซ้ำเพื่อล้าง
 // ตัวฟอร์มไม่เรียก IPC เอง ให้หน้าที่เรียกใช้ส่ง onSubmit เข้ามา
 //   create: onSubmit(payload)  ตรงกับ tasks:create
 //   edit  : onSubmit(changes)  ตรงกับ changes ของ tasks:update (ส่งเฉพาะช่องที่เปลี่ยน)

@@ -1,7 +1,7 @@
 # IPC Contract: `tasks:*`, `settings:*`, `pomodoro:*` และ `dashboard:*`
 
 หน้าจอ (Frontend) ไม่แตะฐานข้อมูลตรง ต้องขอผ่าน `window.api.invoke(channel, payload)` เท่านั้น (spec §17.2)
-ไฟล์นี้คือข้อตกลงว่าแต่ละ channel รับอะไร ส่งอะไรกลับ ถ้าไฟล์นี้ขัดกับ spec (`PROJECT_v0.14.md`) ให้ยึด spec
+ไฟล์นี้คือข้อตกลงว่าแต่ละ channel รับอะไร ส่งอะไรกลับ ถ้าไฟล์นี้ขัดกับ spec (`PROJECT_v0.15.md`) ให้ยึด spec
 
 **สถานะ: ตกลงแล้ว** (เบลตัดสิน 2026-10-05) ถ้าเพื่อนอยากเปลี่ยน ให้แก้ไฟล์นี้แล้วบอกกัน
 ครอบคลุม `tasks:*`, `settings:*`, `pomodoro:*` และ `dashboard:*` (ดูท้ายไฟล์) กลุ่มอื่นจะเพิ่มเมื่อถึงข้อของมัน
@@ -79,28 +79,29 @@ field ตรงกับตาราง `tasks` ใน spec §19 ทั้งห
 
 ---
 
-## `settings:*` (ข้อ 2, เบลตัดสิน 2026-10-06, ข้อ 3 เพิ่ม 2 key)
+## `settings:*` (ข้อ 2, เบลตัดสิน 2026-10-06, ข้อ 3 เพิ่ม 2 key, ข้อ 6 เพิ่ม 1 key)
 
-เก็บใน table `settings` (local only ไม่ sync §19) มี 5 key (3 key แรกตาม spec, 2 key Pomodoro เพิ่มในข้อ 3)
+เก็บใน table `settings` (local only ไม่ sync §19) มี 6 key (3 key ตาม spec, 2 key Pomodoro เพิ่มในข้อ 3, `classroom_last_synced_at` เพิ่มในข้อ 6)
 
 | channel | ส่งไป | ได้กลับ |
 |---|---|---|
-| `settings:get` | ไม่มี | object ครบทั้ง 5 key (key ที่ยังไม่เคยตั้ง = ค่า default) |
-| `settings:set` | `{ key, value }` ทีละ key | object ครบทั้ง 5 key หลังอัปเดต |
+| `settings:get` | ไม่มี | object ครบทั้ง 6 key (key ที่ยังไม่เคยตั้ง = ค่า default) |
+| `settings:set` | `{ key, value }` ทีละ key | object ครบทั้ง 6 key หลังอัปเดต |
 
 ```js
 await window.api.invoke('settings:get')
-// { has_seen_first_run_prompt: false, classroom_cutoff_date: null, reminder_window_days: 1,
-//   pomodoro_focus_minutes: 25, pomodoro_break_minutes: 5 }
+// { has_seen_first_run_prompt: false, classroom_cutoff_date: null, classroom_last_synced_at: null,
+//   reminder_window_days: 1, pomodoro_focus_minutes: 25, pomodoro_break_minutes: 5 }
 await window.api.invoke('settings:set', { key: 'reminder_window_days', value: 3 })
-// { has_seen_first_run_prompt: false, classroom_cutoff_date: null, reminder_window_days: 3,
-//   pomodoro_focus_minutes: 25, pomodoro_break_minutes: 5 }
+// { has_seen_first_run_prompt: false, classroom_cutoff_date: null, classroom_last_synced_at: null,
+//   reminder_window_days: 3, pomodoro_focus_minutes: 25, pomodoro_break_minutes: 5 }
 ```
 
 | key | type | default | ที่มา |
 |---|---|---|---|
 | `has_seen_first_run_prompt` | boolean | `false` | §19, §13.1 |
 | `classroom_cutoff_date` | ISO 8601 วัน+เวลา \| `null` (เช่น `2026-08-01T00:00:00.000Z`) | `null` | §13.1 |
+| `classroom_last_synced_at` | ISO 8601 วัน+เวลา \| `null` | `null` | §13.1 (ข้อ 6 ตั้งให้เองทุกครั้งที่ sync สำเร็จ หน้า Settings แค่แสดง ไม่ต้องตั้งเอง) |
 | `reminder_window_days` | จำนวนเต็ม ≥ 1 (วัน) | `1` | §11.1 |
 | `pomodoro_focus_minutes` | จำนวนเต็ม ≥ 1 (นาที) | `25` | §15.3 (ชื่อ key และค่า default เป็นการตัดสินของเรา spec ไม่ได้ระบุ) |
 | `pomodoro_break_minutes` | จำนวนเต็ม ≥ 1 (นาที) | `5` | §15.3 (เหมือนด้านบน) |
@@ -164,3 +165,42 @@ await window.api.invoke('settings:set', { key: 'reminder_window_days', value: 3 
 - **`null`:** `percent_completed_before_deadline` เป็น `null` เมื่อไม่มี task ที่ completed และ due อยู่ในช่วง, `average_time_to_start_lag` เป็น `null` เมื่อไม่มี task ที่เข้าเงื่อนไข §10.3 ให้หน้าจอแสดง empty state (ไม่ใช่ 0)
 - **ตัวนับ:** Total/Remaining นับตาม `due_date` (task ไม่มี due นับเฉพาะ `all_time`), Completed นับตาม `completed_at`, Overdue เป็น real-time จึงอาจไม่เท่ากับ Total - Completed - Remaining ตาม spec
 - **ไม่มี field จำนวน task ที่ใช้คำนวณ Lag** (spec ไม่ได้ขอ) ถ้าหน้าจอต้องแยกกรณีข้อมูลน้อย ให้คุยกันแล้วเพิ่มทีหลัง
+
+---
+
+## `classroom:*` (ข้อ 6, เบลตัดสิน 2026-10-29)
+
+login Google กับ token อยู่ฝั่ง main ทั้งหมด หน้าจอไม่เห็น token (§20) token เก็บเป็นไฟล์เข้ารหัสด้วย `safeStorage` ใน userData ไม่อยู่ใน SQLite ต้องมี `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` ใน `.env`
+
+| channel | ส่งไป | ได้กลับ |
+|---|---|---|
+| `classroom:get-status` | ไม่มี | `Status` |
+| `classroom:connect` | ไม่มี | `Status` (เปิดเบราว์เซอร์ให้ login แล้วรอจนจบ ไม่เกิน 3 นาที) |
+| `classroom:disconnect` | ไม่มี | `Status` |
+| `classroom:sync-now` | ไม่มี | `{ new_items, pending }` |
+| `classroom:get-pending` | ไม่มี | `[{ id, title, course_name, due_date }]` |
+| `classroom:decide` | `{ id, decision }` (`'import'` \| `'ignore'`) | `{ id, decision }` |
+| event `classroom:pending-changed` | - | `{ pending_count }` |
+
+```js
+// Status
+{ connected: true, account_email: 'student@gmail.com',
+  last_synced_at: '2026-10-29T09:30:00.000Z',   // null = ยังไม่เคย sync
+  cutoff_date: '2026-08-01T00:00:00.000Z' }     // null = ยังไม่ตั้ง (ตั้งผ่าน settings:set classroom_cutoff_date)
+await window.api.invoke('classroom:get-pending')
+// [{ id: '1111:9001', title: 'Lab 3', course_name: 'Calculus 101', due_date: '2026-11-02T16:59:00.000Z' }]
+await window.api.invoke('classroom:decide', { id: '1111:9001', decision: 'import' })
+// { id: '1111:9001', decision: 'import' }   -> หน้าจอเรียก tasks:list ใหม่เพื่อเห็น task ที่เพิ่งสร้าง
+```
+
+- **cutoff (§13.1):** `connect` ไม่บังคับตั้ง cutoff แต่ `sync-now` จะ reject ("ตั้งวัน cutoff ก่อน") จนกว่าจะตั้ง ส่วน fetch ตอนเปิดแอปจะข้ามเงียบ ๆ
+- **connect / disconnect:** เชื่อมอยู่แล้วเรียก `connect` ซ้ำ = คืน status เดิม ไม่เปิดเบราว์เซอร์ (รองรับบัญชีเดียว) ผู้ใช้กดไม่อนุญาต / ติ๊กสิทธิ์ไม่ครบ / ไม่ login ใน 3 นาที = reject `disconnect` ลบแค่ token ไม่ลบ task ที่ import แล้ว ไม่แตะ cutoff (§13.4)
+- **`sync-now`:** reject ถ้ายังไม่เชื่อมบัญชี / ยังไม่ตั้ง cutoff / ต่อ Google ไม่ได้ ถ้า token หมดอายุ (`invalid_grant`) จะลบ token และ reject พร้อมข้อความให้ Connect ใหม่ (consent screen ที่ยังเป็น Testing ทำให้ token อายุ 7 วัน) `new_items` = จำนวนที่เพิ่งเจอรอบนี้ `pending` = ที่รอตัดสินใจทั้งหมด ถ้า `new_items` เป็น 0 หน้าจอเป็นคนตัดสินว่าจะแสดง toast (§13.5) เอง
+- **`id`:** รูป `courseId:courseWorkId` เช่น `1111:9001` (§19)
+- **`get-pending`:** อ่านจาก DB (ไม่ยิง Google) ใช้ออฟไลน์ได้ เรียงตาม `due_date` งานไม่มี due ไว้ท้าย ยังไม่เชื่อมบัญชี = `[]`
+- **`decide`:** payload ต้องมีแค่ `id` กับ `decision` และ `id` ต้องเป็นรายการ `pending` ไม่งั้น reject ทั้งสองแบบถาวร (§13.5)
+  `ignore` ไม่ยิง Google ทำตอนออฟไลน์ได้ `import` ต้องออนไลน์ เพราะถามสถานะการส่งงานจาก Google ตอนนั้น (`TURNED_IN` / `RETURNED` = `completed` ที่เหลือ = `not_started` §9.1) ถ้าไม่สำเร็จ (ออฟไลน์ / งานถูกลบ) = reject และรายการยังเป็น `pending`
+  task ที่สร้าง: `source = 'google_classroom'`, `title` / `due_date` / `course_name` / `notes` ตามที่เก็บไว้, `classroom_last_updated` = `updateTime` ตอน fetch, `priority` = `null` ถ้า import เป็น `completed` จะตั้ง `progress_percentage = 100` และ `completed_at` = เวลาที่กด import
+- **`notes` ของ task ที่ import:** `<คำอธิบายงาน>` เว้นบรรทัด `ลิงก์งานใน Classroom:` ขึ้นบรรทัดใหม่แล้วตามด้วย URL ไม่มีคำอธิบายจะเหลือแค่ส่วนลิงก์ เป็นข้อความธรรมดา ต้องให้หน้าจอทำเองถ้าต้องการให้กดได้
+- **`due_date`:** แปลงจาก UTC ของ Classroom เป็น ISO เช่น 2 พ.ย. 16:59 UTC = `2026-11-02T16:59:00.000Z` มีวันแต่ไม่มีเวลา = 23:59 เวลาเครื่อง ไม่มีวัน = `null`
+- **event `classroom:pending-changed`:** ส่งให้ทุกหน้าต่างเฉพาะตอน fetch เจอรายการใหม่ (ทั้งตอนเปิดแอปและ Sync now) ไม่ส่งหลัง `decide` main ไม่เปิด popup เอง หน้าจอเป็นคนตัดสินว่าจะเด้ง popup หรือแสดงตัวบอกเงียบ ๆ ถ้ากำลังจับเวลา Pomodoro (§13.5 Interruption-safe) โดยเรียก `pomodoro:get-state` เช็คเอง (หน้าจอต้องเช็คตอนเข้า Task Board ด้วย เพราะตอนนั้นไม่มี event)
