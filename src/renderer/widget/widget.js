@@ -1,8 +1,9 @@
 // Owner: Frontend
 // หน้าที่: อัปเดตหน้า widget จาก state ที่ได้รับผ่าน IPC (แสดงผลอย่างเดียว spec §15.4)
 // ฟัง event pomodoro:state-changed ผ่าน window.api.on และขอ state ตั้งต้นด้วย pomodoro:get-state
-// payload ยังไม่กำหนดใน ipc-contract: อ่านแบบยืดหยุ่น (ดู normalize) ต้องให้ Backend ตกลงชื่อ field ก่อน merge
-// widget นับถอยหลังเองจาก ends_at (หรือ remaining ที่ได้ล่าสุด) เพื่อไม่ต้องให้ main ส่ง event ทุกวินาที
+// State ตาม docs/ipc-contract.md: { status: idle|running|paused, phase: focus|break|null, task_id, session_index,
+//   session_total, phase_total_seconds, remaining_seconds } (ไม่มีชื่อ task: widget เรียก tasks:list มาหาชื่อจาก task_id เอง)
+// main ส่ง event ทุก 1 วินาที widget นับถอยหลังต่อเองระหว่างรอ event ถัดไปให้ตัวเลขเดินลื่น
 
 'use strict';
 
@@ -13,20 +14,23 @@
   let endsAt = 0; // เวลาจบของ phase นี้ (ms ตามนาฬิกาเครื่อง)
   let frozen = 0; // เวลาที่เหลือตอนหยุดชั่วคราว
   let timer = null;
+  let titles = null; // แคช id -> ชื่อ task (โหลดจาก tasks:list ครั้งเดียวต่อครั้งที่หาไม่เจอ)
+  let titleLoading = false;
+  let triedFor = null;
 
   const $ = (id) => document.getElementById(id);
 
   function normalize(raw) {
     if (!raw || typeof raw !== 'object') return null;
-    const phase = raw.phase || raw.state || 'idle';
+    const active = raw.status === 'running' || raw.status === 'paused';
     let remaining = null;
-    if (Number.isFinite(raw.remaining_ms)) remaining = raw.remaining_ms;
-    else if (Number.isFinite(raw.remaining_seconds)) remaining = raw.remaining_seconds * 1000;
-    else if (raw.ends_at) remaining = new Date(raw.ends_at).getTime() - Date.now();
+    if (Number.isFinite(raw.remaining_seconds)) remaining = raw.remaining_seconds * 1000;
+    else if (Number.isFinite(raw.remaining_ms)) remaining = raw.remaining_ms; // ใช้กับข้อมูลตัวอย่างตอนเปิดไฟล์ตรง
     return {
-      phase: phase === 'break' ? 'break' : phase === 'focus' ? 'focus' : 'idle',
-      paused: Boolean(raw.paused || raw.is_paused || phase === 'paused'),
-      title: raw.task_title || (raw.task && raw.task.title) || '',
+      phase: active && raw.phase === 'break' ? 'break' : active && raw.phase === 'focus' ? 'focus' : 'idle',
+      paused: raw.status === 'paused' || raw.paused === true,
+      taskId: raw.task_id ?? null,
+      title: raw.task_title || '',
       index: raw.session_index ?? null,
       total: raw.session_total ?? null,
       remaining,
@@ -55,6 +59,33 @@
     $('wg-time').textContent = mmss(left);
   }
 
+  // หาชื่อ task จาก task_id (State ของ Backend ไม่มีชื่อมาให้) แล้วอัปเดตชื่อบน widget
+  async function resolveTitle(s) {
+    if (!s || s.title || s.taskId == null) return;
+    const key = String(s.taskId);
+    if (titles && titles[key] !== undefined) {
+      s.title = titles[key];
+      return;
+    }
+    if (titleLoading || triedFor === key || !window.api) return; // เคยโหลดแล้วยังไม่เจอ task นี้: ไม่ยิงซ้ำทุกวินาที
+    titleLoading = true;
+    triedFor = key;
+    try {
+      const list = await window.api.invoke('tasks:list');
+      titles = {};
+      (Array.isArray(list) ? list : []).forEach((t) => {
+        titles[String(t.id)] = t.title;
+      });
+    } catch (err) {
+      titles = null;
+    }
+    titleLoading = false;
+    if (state === s && titles && titles[key] !== undefined) {
+      s.title = titles[key];
+      $('wg-task').textContent = s.title;
+    }
+  }
+
   function apply(raw) {
     const s = normalize(raw);
     state = s;
@@ -73,6 +104,7 @@
       $('wg-streaks').replaceChildren();
       return;
     }
+    resolveTitle(s);
     $('wg-task').textContent = s.title || 'Focus session';
     $('wg-phase').textContent = s.paused ? 'Paused' : s.phase === 'break' ? 'Break time' : 'Focus time';
     $('wg-session').textContent = Number.isFinite(s.index) && Number.isFinite(s.total) ? `Session ${s.index} of ${s.total}` : '';
