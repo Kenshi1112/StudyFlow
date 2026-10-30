@@ -2,6 +2,7 @@
 // หน้าที่: ป๊อปอัป Google Classroom 2 แบบ ตาม Figma node 413:66 ใช้ร่วมกันระหว่างหน้า
 //   ClassroomPopups.review({ items, syncedAt, onConfirm })  ป๊อปอัปรับงานใหม่ (spec §13.5 ข้อ 5-8)
 //   ClassroomPopups.cutoff({ onConfirm, onCancel })          เลือกวัน cutoff ตอนเชื่อมครั้งแรก (spec §13.1)
+//   ClassroomPopups.firstRun({ onConnect, onSkip })          หน้าต่างครั้งแรกที่เปิดแอป ถามว่าจะเชื่อม Classroom ไหม (spec §13.1 First-Run, UX Review หัวข้อ 0)
 // เป็น UI อย่างเดียว: หน้าที่เรียกเป็นคนส่ง IPC (classroom:decide / settings:set) ตามผลที่ได้จาก onConfirm
 
 'use strict';
@@ -218,5 +219,67 @@
     return dialog;
   }
 
-  window.ClassroomPopups = { review, cutoff };
+  // ---------- หน้าต่าง first-run (spec §13.1) ----------
+  // onConnect(): ทำ OAuth ต่อ (throw = แสดงข้อความ error แล้วให้ลองใหม่ได้) ถ้าสำเร็จ ผู้เรียกเป็นคนปิดหน้าต่างเอง
+  // onSkip(): "Use without it" ปิดถาวร  ปุ่ม Esc นับเป็นข้อนี้เหมือนกัน
+  // ปุ่มทั้งสองมีน้ำหนักเท่ากัน ไม่โฟกัสที่ปุ่มไหนก่อน (กัน Enter เผลอเริ่ม OAuth) ไม่มี countdown ไม่มีหน้ายืนยันซ้ำ
+  function firstRun({ onConnect, onSkip }) {
+    const error = el('p', { class: 'cr-error', role: 'status', hidden: true });
+    const connectBtn = el('button', { type: 'button', class: 'cr-first__btn cr-first__btn--connect', text: 'Connect Google Classroom' });
+    const skipBtn = el('button', { type: 'button', class: 'cr-first__btn cr-first__btn--skip', text: 'Use without it' });
+    let busy = false;
+    let settled = false;
+
+    const dialog = open('cr-popup--first', 'Connect Google Classroom',
+      el('div', { class: 'cr-first', tabindex: '-1' },
+        el('div', { class: 'cr-first__banner' },
+          el('img', { class: 'cr-cutoff__logo', src: 'assets/settings/classroom-icon.png', alt: '' }),
+          el('p', { class: 'cr-cutoff__brand', text: 'Google Classroom' })),
+        el('h2', { class: 'cr-first__title', text: 'Bring your assignments into StudyFlow' }),
+        el('p', { class: 'cr-first__desc', text: 'Connect Google Classroom to pull in new assignments for you to review, and keep a cloud backup of your tasks so you can pick up on another device.' }),
+        el('p', { class: 'cr-first__note', text: 'If you skip this, the app still works fully — your data just stays on this device. You can connect anytime later from Settings.' }),
+        error,
+        el('div', { class: 'cr-first__actions' }, connectBtn, skipBtn)),
+      () => {
+        // ปิดด้วยทางอื่นนอกจากสองปุ่ม (เช่น Esc) นับเป็น "Use without it"
+        if (!settled) {
+          settled = true;
+          onSkip();
+        }
+      });
+    dialog.classList.add('cr-popup--soft'); // ฉากหลังไม่มืด (UX Review: ไม่ให้เหมือนหน้า login)
+    dialog.addEventListener('cancel', (e) => {
+      if (busy) e.preventDefault(); // กำลังรอ OAuth: ไม่ให้ Esc ปิดกลางทาง
+    });
+    dialog.querySelector('.cr-first').focus(); // โฟกัสที่กรอบ ไม่ใช่ปุ่ม
+
+    function setBusy(v) {
+      busy = v;
+      connectBtn.disabled = v;
+      skipBtn.disabled = v;
+      connectBtn.textContent = v ? 'Waiting for Google…' : 'Connect Google Classroom';
+    }
+
+    connectBtn.addEventListener('click', async () => {
+      error.hidden = true;
+      setBusy(true);
+      try {
+        await onConnect(dialog);
+      } catch (err) {
+        error.textContent = String((err && err.message) || err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
+        error.hidden = false;
+      } finally {
+        setBusy(false);
+      }
+    });
+    skipBtn.addEventListener('click', () => dialog.close('skipped'));
+    // เรียกจาก onConnect เมื่อทำสำเร็จ: ปิดโดยไม่ถือเป็นการข้าม
+    dialog.finish = () => {
+      settled = true;
+      dialog.close('connected');
+    };
+    return dialog;
+  }
+
+  window.ClassroomPopups = { review, cutoff, firstRun };
 })();

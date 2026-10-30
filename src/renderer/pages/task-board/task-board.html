@@ -2,7 +2,7 @@
 <!-- หน้าที่: ส่วนเนื้อหา (fragment) ของหน้า Task Board ตาม Figma (เฟรม 1998x1102 ขยายตามความกว้างหน้าต่าง)
      router.js โหลดไฟล์นี้เข้า #app จึงไม่ใช่เอกสาร HTML เต็ม (ไม่มี html/head/body)
      ตอนนี้ทำ: หัวหน้า, แท็บกรอง, ค้นหา, การ์ด, ป๊อปอัป 4 แบบตาม Figma (รายละเอียดงาน, Create New Task, Edit Task, ยืนยันลบ)
-     ยังไม่ทำ: Sync Classroom ใช้งานจริง (ปุ่มปิดไว้ รอ Backend ทำข้อ 6), popup review งานจาก Classroom
+     Sync Classroom + popup review งานจาก Classroom ต่อกับ Backend ข้อ 6 แล้ว (ลิงก์ #tb-pending-link = ตัวบอกเงียบ ๆ ตอน Pomodoro วิ่ง, spec §13.5)
      แถวตัวกรอง Source/Course และไอคอน Source ออกแบบเองตาม UX Review v0.14 (ไม่อยู่ใน Figma) -->
 
 <section id="page-task-board" class="tb" aria-labelledby="tb-title">
@@ -12,6 +12,7 @@
     <a class="tb__back tb__panel" href="#/room">Back to your room</a>
     <h1 id="tb-title" class="tb__title">Task Board</h1>
     <div class="tb__sync-area">
+      <button type="button" id="tb-pending-link" class="tb__pending-link" hidden></button>
       <p id="tb-last-sync" class="tb__last-sync">Last sync: &mdash;</p>
       <button type="button" id="tb-sync" class="tb__sync" title="ดึงงานใหม่จาก Google Classroom (spec §13.2)">
         <img class="tb__sync-icon" src="assets/task-board/classroom-icon.png" alt="" />

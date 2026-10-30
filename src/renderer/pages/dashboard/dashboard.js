@@ -1,7 +1,13 @@
 // Owner: Frontend
 // หน้าที่: logic ฝั่ง UI ของหน้า Dashboard (Figma node 410:63, spec v0.15 หัวข้อ 10: 6 metrics)
-// เรียก backend ผ่าน window.apiClient.invoke ('dashboard:get-metrics') ถ้า Backend ยังไม่มี handler / รูปแบบข้อมูลต่าง
-// จะแสดงข้อมูลตัวอย่างจาก Figma พร้อมข้อความเตือน (payload ของ channel นี้ Backend ยังไม่กำหนด)
+// ตัวเลข 6 metrics มาจาก dashboard:get-metrics { range } ตาม docs/ipc-contract.md (Backend คำนวณทั้งหมด หน้านี้แค่แสดง)
+//   Metrics = { range, total_assignments, completed_assignments, remaining_assignments, overdue_assignments,
+//               percent_completed_before_deadline (0-100 | null), average_time_to_start_lag (% | null) }
+//   null = ยังไม่มีข้อมูลพอ แสดง "—" (empty state ไม่ใช่ 0)
+// กราฟโดนัท "By Deadline State": Backend ยังไม่ส่งจำนวนแยกตาม state มาใน Metrics จึงนับจาก tasks:list
+//   (แต่ละ task มี deadline_state ที่ Backend คำนวณให้แล้ว ไม่คิดซ้ำเอง) โดยนับเฉพาะ task ที่ due_date อยู่ในช่วงที่เลือก
+//   ตามกฎเดียวกับ Total Assignments (task ไม่มี due นับเฉพาะ All Time) ถ้าโหลดไม่ได้ โดนัทจะว่าง
+// โหลด metrics ไม่ได้: แสดง "—" พร้อมข้อความ error ไม่แสดงข้อมูลตัวอย่าง
 // ไม่มี "Longest Inactive Assignment" เพราะ v0.14 ตัดออกแล้ว (Figma ยังมีอยู่)
 
 'use strict';
@@ -9,12 +15,6 @@
 (function () {
   const api = window.apiClient;
   const NS = 'http://www.w3.org/2000/svg';
-
-  const SAMPLE = {
-    total: 7, completed: 6, remaining: 1, overdue: 1,
-    completed_before_deadline_pct: 80, avg_time_to_start_pct: 45,
-    by_state: { upcoming: 2, due_today: 1, overdue: 1, no_deadline: 1, completed: 2 },
-  };
 
   const STATES = [
     ['upcoming', 'Upcoming'], ['due_today', 'Due Today'], ['overdue', 'Overdue'],
@@ -28,7 +28,11 @@
   let cleanups = [];
 
   const $ = (s) => root.querySelector(s);
-  const pct = (v) => (Number.isFinite(v) ? `${Math.round(v)}%` : '—');
+  // Backend ส่งทศนิยม 1 ตำแหน่ง: แสดงตามจริง ตัดศูนย์ท้าย (80 -> "80", 33.3 -> "33.3") null -> "—"
+  const num = (v) => (Number.isFinite(v) ? String(Number(v.toFixed(1))) : '—');
+  const pct = (v) => (Number.isFinite(v) ? `${num(v)}%` : '—');
+  const EMPTY = { total: null, completed: null, remaining: null, overdue: null, completed_before_deadline_pct: null, avg_time_to_start_pct: null, by_state: {} };
+  let loadSeq = 0; // กันผลของคำขอเก่าที่ตอบกลับหลังผู้ใช้เปลี่ยนช่วงเวลาไปแล้ว
 
   function note(text) {
     const box = $('#db-note');
@@ -36,19 +40,47 @@
     box.hidden = !text;
   }
 
-  function normalize(raw) {
-    if (!raw || typeof raw !== 'object') return null;
-    const m = raw.metrics && typeof raw.metrics === 'object' ? raw.metrics : raw;
-    if (!Number.isFinite(m.total) && !Number.isFinite(m.total_assignments)) return null;
+  // แปลง Metrics ตาม contract เป็นรูปที่ render ใช้ ถ้ารูปไม่ตรง contract (ไม่มี total_assignments เป็นตัวเลข) คืน null
+  function normalize(m) {
+    if (!m || typeof m !== 'object' || !Number.isFinite(m.total_assignments)) return null;
     return {
-      total: m.total ?? m.total_assignments,
-      completed: m.completed ?? m.completed_assignments,
-      remaining: m.remaining ?? m.remaining_assignments,
-      overdue: m.overdue ?? m.overdue_assignments,
-      completed_before_deadline_pct: m.completed_before_deadline_pct ?? m.percent_completed_before_deadline,
-      avg_time_to_start_pct: m.avg_time_to_start_pct ?? m.average_time_to_start_lag,
-      by_state: m.by_state || m.by_deadline_state || {},
+      total: m.total_assignments,
+      completed: m.completed_assignments,
+      remaining: m.remaining_assignments,
+      overdue: m.overdue_assignments,
+      completed_before_deadline_pct: m.percent_completed_before_deadline,
+      avg_time_to_start_pct: m.average_time_to_start_lag,
+      by_state: {},
     };
+  }
+
+  // ช่วงเวลา [start, end) ตามเวลาเครื่อง ตรงกับ getRangeBounds ของ Backend (สัปดาห์เริ่มวันจันทร์) null = ไม่จำกัด
+  function rangeBounds(r, now = new Date()) {
+    const y = now.getFullYear();
+    const mo = now.getMonth();
+    const d = now.getDate();
+    if (r === 'this_week') {
+      const back = (now.getDay() + 6) % 7;
+      return { start: new Date(y, mo, d - back), end: new Date(y, mo, d - back + 7) };
+    }
+    if (r === 'this_month') return { start: new Date(y, mo, 1), end: new Date(y, mo + 1, 1) };
+    return null;
+  }
+
+  // จำนวน task แยกตาม deadline_state (ที่ Backend คำนวณมาใน tasks:list) เฉพาะที่ due_date อยู่ในช่วง: กฎเดียวกับ Total Assignments
+  function countByState(list, r) {
+    const b = rangeBounds(r);
+    const counts = {};
+    (Array.isArray(list) ? list : []).forEach((task) => {
+      if (task.due_date) {
+        const due = new Date(task.due_date);
+        if (b && !(due >= b.start && due < b.end)) return;
+      } else if (b) {
+        return; // ไม่มี due_date นับเฉพาะ All Time
+      }
+      counts[task.deadline_state] = (counts[task.deadline_state] || 0) + 1;
+    });
+    return counts;
   }
 
   function renderBars(d) {
@@ -105,27 +137,30 @@
     $('#db-remaining').textContent = d.remaining ?? '—';
     $('#db-overdue').textContent = d.overdue ?? '—';
     $('#db-before').textContent = pct(d.completed_before_deadline_pct);
-    // ไม่มีงานที่เข้าเกณฑ์ (ไม่มี first_started_at) Backend ควรส่ง null -> แสดง —
-    $('#db-lag').textContent = Number.isFinite(d.avg_time_to_start_pct) ? `${Math.round(d.avg_time_to_start_pct)} %` : '—';
+    // ไม่มีงานที่เข้าเกณฑ์ (ไม่มี first_started_at) Backend ส่ง null -> แสดง —
+    $('#db-lag').textContent = Number.isFinite(d.avg_time_to_start_pct) ? `${num(d.avg_time_to_start_pct)} %` : '—';
     renderBars({ ...d, completed: d.completed || 0, remaining: d.remaining || 0 });
     renderDonut(d);
   }
 
   async function load() {
-    let data = null;
-    try {
-      data = normalize(await api.invoke('dashboard:get-metrics', { range }));
-    } catch (err) {
-      data = null;
+    const seq = (loadSeq += 1);
+    const r = range;
+    const [metrics, list] = await Promise.all([
+      api.invoke('dashboard:get-metrics', { range: r }).then((v) => ({ v }), (err) => ({ err })),
+      api.invoke('tasks:list').then((v) => ({ v }), () => ({ v: null })),
+    ]);
+    if (!alive || seq !== loadSeq) return;
+    const data = metrics.err ? null : normalize(metrics.v);
+    if (!data) {
+      const why = metrics.err ? String((metrics.err && metrics.err.message) || metrics.err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : 'รูปแบบข้อมูลไม่ตรง contract';
+      note(`โหลดข้อมูล Dashboard ไม่ได้: ${why}`);
+      render(EMPTY);
+      return;
     }
-    if (!alive) return;
-    if (data) {
-      note('');
-      render(data);
-    } else {
-      note('ข้อมูลตัวอย่างจาก Figma (Backend ยังไม่ส่ง dashboard:get-metrics)');
-      render(SAMPLE);
-    }
+    note('');
+    data.by_state = countByState(list.v, r);
+    render(data);
   }
 
   window.pages['dashboard'] = {

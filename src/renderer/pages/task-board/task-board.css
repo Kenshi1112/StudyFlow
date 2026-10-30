@@ -84,6 +84,22 @@
   gap: calc(var(--u) * 12);
 }
 
+.tb__pending-link {
+  margin: calc(var(--u) * 25) 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: calc(var(--u) * 24);
+  font-weight: 500;
+  line-height: calc(var(--u) * 29);
+  color: #7d5534;
+  text-decoration: underline;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tb__pending-link[hidden] { display: none; }
+
 .tb__last-sync {
   margin: calc(var(--u) * 25) 0 0;
   font-size: calc(var(--u) * 24);
@@ -476,6 +492,7 @@
   display: block;
   width: calc(var(--u) * 32);
   height: calc(var(--u) * 32);
+  object-fit: contain; /* Trashbin.svg เป็นสัดส่วน 30x39 ไม่ให้ยืดเป็นสี่เหลี่ยมจัตุรัส */
 }
 
 .dt__icon-btn--delete {

@@ -26,7 +26,8 @@
 .db__divider { width: calc(var(--u) * 2); height: calc(var(--u) * 35); background: #eee6db; }
 .db__title { margin: 0 0 0 calc(var(--u) * 15); font-size: calc(var(--u) * 18); font-weight: 700; color: #544338; }
 .db__gear { position: absolute; right: calc(var(--u) * 27); top: calc(var(--u) * 8); width: calc(var(--u) * 40); height: calc(var(--u) * 40); border-radius: 50%; background: #7a4a22; color: #fff; display: flex; align-items: center; justify-content: center; }
-.db__gear svg { width: calc(var(--u) * 22); height: calc(var(--u) * 22); }
+.db__gear svg,
+.db__gear img { width: calc(var(--u) * 22); height: calc(var(--u) * 22); }
 
 /* Need Attention + Overdue */
 .db__attention { position: absolute; left: calc(var(--u) * 76); top: calc(var(--u) * 102); margin: 0; font-size: calc(var(--u) * 24); opacity: 0.5; }

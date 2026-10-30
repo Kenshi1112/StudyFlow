@@ -241,19 +241,9 @@
     return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
   }
 
-  // ไอคอนถังขยะชั่วคราว: ยังโหลดไฟล์จาก Figma ไม่ได้ (โควต้า MCP หมด) เปลี่ยนเป็น <img> ของ Figma เมื่อได้ไฟล์
+  // ไอคอนถังขยะจาก Figma (assets/task-board/Trashbin.svg สีแดง #B3261E อยู่ในไฟล์แล้ว)
   function trashIcon() {
-    const ns = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(ns, 'svg');
-    for (const [k, v] of Object.entries({ viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' })) {
-      svg.setAttribute(k, v);
-    }
-    for (const d of ['M4 7h16', 'M9 7V4h6v3', 'M6 7l1 13h10l1-13', 'M10 11v6', 'M14 11v6']) {
-      const path = document.createElementNS(ns, 'path');
-      path.setAttribute('d', d);
-      svg.append(path);
-    }
-    return svg;
+    return el('img', { src: 'assets/task-board/Trashbin.svg', alt: '' });
   }
 
   async function updateTask(id, changes) {
@@ -480,11 +470,13 @@
   }
 
   // ---------- Google Classroom: Sync now + ป๊อปอัปรับงานใหม่ (spec §13.2, §13.5) ----------
-  // payload ของ classroom:* ยังไม่อยู่ใน ipc-contract (การเดาของ Frontend):
-  //   classroom:get-status -> { connected, account_email, last_synced_at }
+  // payload ตาม docs/ipc-contract.md หัวข้อ classroom:*
+  //   classroom:get-status -> { connected, account_email, last_synced_at, cutoff_date }
   //   classroom:get-pending -> [{ id, title, course_name, due_date }]
-  //   classroom:decide { id, decision: 'import' | 'ignore' }
-  // ยังไม่ได้กันกรณีกำลังจับเวลา Pomodoro (spec §13.5 Interruption-safe) เพราะ renderer ยังไม่รู้สถานะ session จริง
+  //   classroom:decide { id, decision: 'import' | 'ignore' } -> { id, decision } (ตัดสินแล้วถาวร, import ต้องออนไลน์)
+  // Interruption-safe (spec §13.5): ถ้ามี Pomodoro วิ่งอยู่ (pomodoro:get-state status running/paused) ไม่เด้งป๊อปอัป
+  // แสดงลิงก์ข้อความเงียบ ๆ "N Classroom items to review" แทน ผู้ใช้กดลิงก์เองเมื่อพร้อมเพื่อเปิดป๊อปอัป
+  // ลิงก์นี้แสดงด้วยเมื่อผู้ใช้ปิดป๊อปอัปโดยยังมีรายการ pending เหลือ (UX Review หัวข้อ 2)
 
   let reviewDialog = null;
   let toastTimer = null;
@@ -520,7 +512,24 @@
     }
   }
 
-  async function checkPending(manual) {
+  async function pomodoroActive() {
+    try {
+      const s = await api.invoke('pomodoro:get-state');
+      return Boolean(s && (s.status === 'running' || s.status === 'paused'));
+    } catch (err) {
+      return false; // อ่านสถานะไม่ได้: ไม่กันป๊อปอัป
+    }
+  }
+
+  function setPendingLink(count) {
+    const link = $('#tb-pending-link');
+    if (!link) return;
+    link.hidden = !count;
+    link.textContent = `${count} Classroom item${count === 1 ? '' : 's'} to review`;
+  }
+
+  // manual = มาจากปุ่ม Sync now (ต้องมี toast ถ้าไม่มีของใหม่) force = ผู้ใช้กดลิงก์เอง เปิดป๊อปอัปแม้ Pomodoro วิ่งอยู่
+  async function checkPending(manual, force) {
     let items = [];
     try {
       items = await api.invoke('classroom:get-pending');
@@ -530,23 +539,55 @@
     }
     if (!alive) return;
     if (!Array.isArray(items) || !items.length) {
+      setPendingLink(0);
       if (manual) toast('No new items from Classroom');
       return;
     }
     if (reviewDialog) return;
+    if (!force && (await pomodoroActive())) {
+      if (alive) setPendingLink(items.length);
+      return;
+    }
     const status = await loadSyncStatus();
-    if (!alive) return;
+    if (!alive || reviewDialog) return;
+    setPendingLink(0);
     reviewDialog = window.ClassroomPopups.review({
       items,
       syncedAt: status && status.last_synced_at,
       onConfirm: async (decisions) => {
-        for (const d of decisions) await api.invoke('classroom:decide', d);
+        // ทำทีละรายการ: ตัวที่ล้ม (เช่น import ตอนออฟไลน์) ไม่ทำให้ตัวที่เหลือหยุด และตัวที่สำเร็จแล้วไม่ถูกส่งซ้ำ
+        let ok = 0;
+        const failed = [];
+        for (const d of decisions) {
+          try {
+            await api.invoke('classroom:decide', d);
+            ok += 1;
+          } catch (err) {
+            failed.push(message(err));
+          }
+        }
         await load();
+        if (!alive) return;
+        showError(
+          failed.length
+            ? `ทำรายการ Classroom สำเร็จ ${ok} รายการ ไม่สำเร็จ ${failed.length} รายการ (${failed[0]}) รายการที่ไม่สำเร็จยังรออยู่ กดลิงก์ "Classroom items to review" เพื่อลองอีกครั้ง`
+            : ''
+        );
       },
       onClose: () => {
         reviewDialog = null;
+        if (alive) refreshPendingLink(); // ยังเหลือ pending (เลือกไม่ครบ / ล้มบางรายการ): แสดงลิงก์เงียบ ๆ
       },
     });
+  }
+
+  async function refreshPendingLink() {
+    try {
+      const items = await api.invoke('classroom:get-pending');
+      if (alive) setPendingLink(Array.isArray(items) ? items.length : 0);
+    } catch (err) {
+      // อ่านไม่ได้: คงสถานะเดิม
+    }
   }
 
   async function syncNow() {
@@ -584,6 +625,7 @@
       root.querySelector('.tb__tabs:not(.tb__tabs--sub)').addEventListener('click', onTabClick);
       $('#tb-search').addEventListener('input', onSearch);
       $('#tb-sync').addEventListener('click', syncNow);
+      $('#tb-pending-link').addEventListener('click', () => checkPending(false, true));
       try {
         // Backend แจ้งเมื่อมีงาน pending ใหม่ (เช่น fetch ตอนเปิดแอปเสร็จ)
         if (window.api && typeof window.api.on === 'function') offPending = window.api.on('classroom:pending-changed', () => checkPending(false));
