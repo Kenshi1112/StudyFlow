@@ -1,8 +1,9 @@
 // Owner: Frontend
 // หน้าที่: logic ฝั่ง UI ของหน้า Settings (Figma node 403:64)
 // เรียก backend ผ่าน window.apiClient.invoke เท่านั้น
-// ส่วนที่ spec/Backend มีจริง: settings:get / settings:set (reminder_window_days)
-// ส่วนที่ยังไม่มี Backend (Classroom/LINE connect, โปรไฟล์, Pomodoro duration, toggle แจ้งเตือน) เป็น UI อย่างเดียว ยังไม่บันทึก
+// ส่วนที่ Backend มีจริง: settings:get / settings:set (reminder_window_days, pomodoro_focus_minutes, pomodoro_break_minutes, classroom_cutoff_date)
+// ปุ่ม Save Change ของ Pomodoro บันทึก Focus/Break ผ่าน settings:set ทีละ key (ใช้ตอนกด Start Working ของ batch ถัดไป)
+// ส่วนที่ยังไม่มี Backend (LINE connect, โปรไฟล์, Sign out, toggle แจ้งเตือน) เป็น UI อย่างเดียว ยังไม่บันทึก
 
 'use strict';
 
@@ -24,16 +25,51 @@
     cleanups.push(() => target.removeEventListener(type, fn));
   }
 
-  async function loadReminderWindow() {
+  async function loadSettings() {
     try {
       // settings:get คืน object ของทุก key (ตาม settings.service ของ Backend) ถ้ารูปแบบต่างไปจะข้าม ไม่พัง
       const res = await api.invoke('settings:get');
-      const days = res && typeof res === 'object' ? res.reminder_window_days : undefined;
+      if (!root || !res || typeof res !== 'object') return;
+      const days = res.reminder_window_days;
       if (Number.isFinite(days) && days >= 1) {
         $('#st-reminder-desc').textContent = `Notify ${days * 24} hours before due dates`;
       }
+      if (Number.isInteger(res.pomodoro_focus_minutes) && res.pomodoro_focus_minutes >= 1) $('#st-focus').value = res.pomodoro_focus_minutes;
+      if (Number.isInteger(res.pomodoro_break_minutes) && res.pomodoro_break_minutes >= 1) $('#st-break').value = res.pomodoro_break_minutes;
     } catch (err) {
-      // ไม่มี handler / mock: คงข้อความตาม Figma
+      // ไม่มี handler / mock: คงข้อความและค่าตาม Figma
+    }
+  }
+
+  function errText(err) {
+    return String((err && err.message) || err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
+  }
+
+  // อ่านค่าจากช่องตัวเลข: ต้องเป็นจำนวนเต็มในช่วง min-max ของช่อง ไม่งั้นคืน null
+  function readMinutes(id) {
+    const input = $(id);
+    const v = Number(input.value);
+    const min = Number(input.min) || 1;
+    const max = Number(input.max) || 999;
+    return input.value.trim() !== '' && Number.isInteger(v) && v >= min && v <= max ? v : null;
+  }
+
+  async function savePomodoro() {
+    const focus = readMinutes('#st-focus');
+    const brk = readMinutes('#st-break');
+    if (focus === null) return note(`Focus Duration ต้องเป็นจำนวนเต็ม ${$('#st-focus').min}-${$('#st-focus').max} นาที`);
+    if (brk === null) return note(`Break Duration ต้องเป็นจำนวนเต็ม ${$('#st-break').min}-${$('#st-break').max} นาที`);
+    const btn = $('#st-save');
+    btn.disabled = true;
+    note('');
+    try {
+      await api.invoke('settings:set', { key: 'pomodoro_focus_minutes', value: focus });
+      await api.invoke('settings:set', { key: 'pomodoro_break_minutes', value: brk });
+      note('บันทึกแล้ว ใช้กับ Pomodoro batch ถัดไป');
+    } catch (err) {
+      note(`บันทึกไม่สำเร็จ: ${errText(err)}`);
+    } finally {
+      if (root) btn.disabled = false;
     }
   }
 
@@ -74,7 +110,7 @@
     pending('#st-line-btn', 'การเชื่อม LINE ยังไม่พร้อม รอ Backend');
     pending('#st-signout', 'Sign out ยังไม่พร้อม รอ Backend');
     pending('#st-edit-profile', 'Edit Profile ยังไม่พร้อม');
-    pending('#st-save', 'ค่า Focus/Break ยังไม่ถูกบันทึก (ยังไม่มีใน spec/Backend)');
+    listen($('#st-save'), 'click', savePomodoro);
   }
 
   // ---------- Google Classroom (spec §13.1) ----------
@@ -151,7 +187,7 @@
       bindSwitches();
       bindPending();
       listen($('#st-cls-btn'), 'click', toggleClassroom);
-      loadReminderWindow();
+      loadSettings();
       loadClassroom();
     },
     unmount() {
