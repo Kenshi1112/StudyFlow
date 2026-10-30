@@ -61,6 +61,8 @@
   text-align: left;
 }
 .st__nav svg { width: calc(var(--u) * 20); height: calc(var(--u) * 20); flex: none; }
+.st__nav svg.st__ico--thin { stroke-width: 1.6; } /* Figma: Wifi/Clock/Bell เส้น 1.6 ที่เหลือ 2 (ค่ากลางของ .st svg คือ 1.8) */
+.st__nav svg:not(.st__ico--thin) { stroke-width: 2; }
 .st__nav.is-active { background: #f9ede3; color: var(--st-accent); }
 .st__nav:disabled { cursor: default; opacity: 0.6; }
 
@@ -117,9 +119,8 @@
 .st__brand-img { flex: none; display: block; }
 .st__brand-img--classroom { width: calc(var(--u) * 55); height: calc(var(--u) * 55); }
 .st__brand-img--line {
-  width: calc(var(--u) * 57); height: calc(var(--u) * 57); border-radius: calc(var(--u) * 14);
-  background: #06c755 url('../../assets/settings/line-logo.png') center / cover no-repeat;
-  display: flex; align-items: center; justify-content: center; color: #fff; font-size: calc(var(--u) * 14);
+  width: calc(var(--u) * 57); height: calc(var(--u) * 57);
+  background: url('../../assets/settings/Line.png') center / contain no-repeat; /* โลโก้จาก Figma (มุมมนในรูปเอง) */
 }
 .st__brand-title { margin: 0; font-size: calc(var(--u) * 20); font-weight: 500; }
 

@@ -114,7 +114,7 @@
   }
 
   // ---------- Google Classroom (spec §13.1) ----------
-  // payload เป็นการเดาของ Frontend (ยังไม่อยู่ใน ipc-contract): classroom:get-status -> { connected, account_email, last_synced_at, cutoff_date }
+  // payload ตาม docs/ipc-contract.md หัวข้อ classroom:*: classroom:get-status -> { connected, account_email, last_synced_at, cutoff_date }
   // เชื่อมครั้งแรก (ยังไม่มี cutoff) ต้องเลือกวัน cutoff ก่อน fetch แรก -> settings:set { key: 'classroom_cutoff_date', value: ISO }
   let classroom = null;
 
