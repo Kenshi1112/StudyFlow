@@ -1,5 +1,5 @@
 // Owner: Shared (ต้องคุยกันก่อนแก้)
-// หน้าที่: ค่าคงที่ที่ทั้ง main และ preload ใช้ร่วมกัน (ค่า enum ตาม PROJECT_v0.13)
+// หน้าที่: ค่าคงที่ที่ทั้ง main และ preload ใช้ร่วมกัน (ค่า enum ตาม PROJECT_v0.15)
 // TODO: เพิ่มเฉพาะค่าที่มีใน spec — renderer ให้ขอค่าผ่าน IPC แทนการ import ตรง
 'use strict';
 

@@ -1,5 +1,5 @@
 <!-- Owner: Frontend -->
-<!-- หน้าที่: ส่วนเนื้อหา (fragment) ของหน้า Dashboard ตาม Figma node 410:63 (เฟรม 1998x1080) + spec v0.14 หัวข้อ 10 (6 metrics)
+<!-- หน้าที่: ส่วนเนื้อหา (fragment) ของหน้า Dashboard ตาม Figma node 410:63 (เฟรม 1998x1080) + spec v0.15 หัวข้อ 10 (6 metrics)
      router.js โหลดไฟล์นี้เข้า #app จึงไม่ใช่เอกสาร HTML เต็ม -->
 
 <section id="page-dashboard" class="db" aria-label="Dashboard">
@@ -21,11 +21,11 @@
   </div>
 
   <div class="db__range" role="group" aria-label="Time range">
-    <button type="button" class="db__range-btn" data-range="week">This Week</button>
+    <button type="button" class="db__range-btn" data-range="this_week">This Week</button>
     <span class="db__range-sep" aria-hidden="true"></span>
-    <button type="button" class="db__range-btn" data-range="month">This Month</button>
+    <button type="button" class="db__range-btn" data-range="this_month">This Month</button>
     <span class="db__range-sep" aria-hidden="true"></span>
-    <button type="button" class="db__range-btn is-active" data-range="all">All Time</button>
+    <button type="button" class="db__range-btn is-active" data-range="all_time">All Time</button>
   </div>
 
   <div class="db__tile db__tile--1"><p class="db__tile-title">Total Assignments</p><p class="db__tile-value" id="db-total">7</p></div>

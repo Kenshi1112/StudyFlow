@@ -1,5 +1,5 @@
 -- Owner: Backend
--- หน้าที่: schema SQLite ฝั่ง local (ตาม PROJECT_v0.14 section 19)
+-- หน้าที่: schema SQLite ฝั่ง local (ตาม PROJECT_v0.15 section 19)
 -- หมายเหตุ: วัน-เวลาเก็บเป็น TEXT ISO 8601 (ตัดสินใน ROADMAP ข้อ 0.4), boolean เก็บเป็น INTEGER 0/1
 --          ทุกตารางใช้ IF NOT EXISTS เพราะ database.js จะรันไฟล์นี้ทุกครั้งที่เปิดแอป
 --          ถ้าแก้ไฟล์นี้ระหว่างพัฒนา ตารางที่มีอยู่แล้วไม่เปลี่ยนตาม ให้ลบไฟล์ studyflow.sqlite ใน userData ทิ้ง
@@ -34,7 +34,12 @@ CREATE TABLE IF NOT EXISTS classroom_sync_state (
   last_seen_updated       TEXT NOT NULL,
   state                   TEXT NOT NULL
                             CHECK (state IN ('pending', 'imported', 'ignored', 'excluded')),
-  linked_task_id          TEXT REFERENCES tasks(id)  -- ไม่ล้างตอน task ถูก soft delete
+  linked_task_id          TEXT REFERENCES tasks(id), -- ไม่ล้างตอน task ถูก soft delete
+  -- (v0.15) เก็บข้อมูลที่ popup review ต้องแสดง ไม่ต้องยิง Google ซ้ำ และ import ลง tasks ได้ตรง ๆ
+  -- classroom_assignment_id เป็นรูป 'courseId:courseWorkId' เช่น '1111:9001' (courseWork id ไม่ซ้ำเฉพาะในวิชาเดียวกัน)
+  title                   TEXT NOT NULL,
+  due_date                TEXT,  -- ISO 8601 เหมือน tasks.due_date
+  notes                   TEXT   -- คำอธิบายงาน + ลิงก์ไปงานใน Classroom
 );
 
 CREATE TABLE IF NOT EXISTS pomodoro_sessions (

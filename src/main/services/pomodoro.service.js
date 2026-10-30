@@ -1,6 +1,6 @@
 // Owner: Backend
 // หน้าที่: จัดการ batch ของ Pomodoro (focus/break) จับเวลาใน main process, บันทึก session, ส่ง state ให้ widget/หน้าจอ
-// อ้างอิง: PROJECT_v0.14 section 9.1, 15 และ docs/ipc-contract.md
+// อ้างอิง: PROJECT_v0.15 section 9.1, 15 และ docs/ipc-contract.md
 
 'use strict';
 

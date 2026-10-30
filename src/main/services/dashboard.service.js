@@ -1,6 +1,6 @@
 // Owner: Backend
 // หน้าที่: คำนวณ metrics ของ Dashboard ตามช่วงเวลา This Week / This Month / All Time
-// อ้างอิง: PROJECT_v0.14 section 10 (ตาราง 10.2 และสูตร Time-to-Start Lag 10.3)
+// อ้างอิง: PROJECT_v0.15 section 10 (ตาราง 10.2 และสูตร Time-to-Start Lag 10.3)
 
 'use strict';
 

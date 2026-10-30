@@ -9,6 +9,7 @@ const { initDatabase, closeDatabase } = require('./db/database');
 const { registerAllIpc } = require('./ipc');
 const pomodoroService = require('./services/pomodoro.service');
 const notificationService = require('./services/notification.service');
+const classroomSyncService = require('./services/classroom-sync.service');
 
 const isDev = process.argv.includes('--dev');
 
@@ -52,6 +53,9 @@ app.whenReady().then(() => {
   }
 
   createMainWindow();
+
+  // ดึงงานใหม่จาก Classroom 1 ครั้งตอนเปิดแอป (ข้อ 6.6) ไม่รอผล ยังไม่เชื่อมบัญชี/ไม่ตั้ง cutoff = ข้าม, พังแค่ log
+  classroomSyncService.fetchOnLaunch();
 });
 
 app.on('window-all-closed', () => {
