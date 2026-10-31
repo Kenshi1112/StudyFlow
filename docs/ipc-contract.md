@@ -1,10 +1,10 @@
-# IPC Contract: `tasks:*`, `settings:*`, `pomodoro:*` และ `dashboard:*`
+# IPC Contract: `tasks:*`, `settings:*`, `pomodoro:*`, `dashboard:*`, `classroom:*` และ `line:*`
 
 หน้าจอ (Frontend) ไม่แตะฐานข้อมูลตรง ต้องขอผ่าน `window.api.invoke(channel, payload)` เท่านั้น (spec §17.2)
 ไฟล์นี้คือข้อตกลงว่าแต่ละ channel รับอะไร ส่งอะไรกลับ ถ้าไฟล์นี้ขัดกับ spec (`PROJECT_v0.15.md`) ให้ยึด spec
 
 **สถานะ: ตกลงแล้ว** (เบลตัดสิน 2026-10-05) ถ้าเพื่อนอยากเปลี่ยน ให้แก้ไฟล์นี้แล้วบอกกัน
-ครอบคลุม `tasks:*`, `settings:*`, `pomodoro:*` และ `dashboard:*` (ดูท้ายไฟล์) กลุ่มอื่นจะเพิ่มเมื่อถึงข้อของมัน
+ครอบคลุม `tasks:*`, `settings:*`, `pomodoro:*`, `dashboard:*`, `classroom:*` และ `line:*` (ดูท้ายไฟล์)
 
 ## ตัวอย่างการใช้
 
@@ -28,7 +28,7 @@ await window.api.invoke('tasks:delete', { id: task.id });
 3. **ย้อน status จาก `completed`:** main ล้าง `completed_at` เป็น `null`
 4. **course และ priority (spec v0.13):** `classroom_course_name` เปลี่ยนชื่อเป็น `course_name` ใช้กับทุก source ส่วน `priority` เป็น `'low'` | `'medium'` | `'high'` | `null` (ผู้ใช้ใส่เอง `null` = ไม่ตั้ง) ทั้งสอง field ส่งตอนสร้างและแก้ได้ (ไม่บังคับ) ค่า `urgency_score` รวม priority แล้ว ฝั่งหน้าจอเรียงตามค่านี้เหมือนเดิม ไม่ต้องคิดเอง
 5. **วันที่/เวลาทุก field** เป็น ISO 8601 string, `id` ให้มองเป็น string ทึบ ๆ
-6. **Channel ที่เป็นการตีความของเรา** เก็บไว้ทั้งหมด: `classroom:get-status`, `settings:get`, `settings:set`, `line:get-status` (`settings:*` และ `pomodoro:*` กำหนด payload แล้ว ดูท้ายไฟล์ ที่เหลือค่อยกำหนดตอนถึงข้อของมัน)
+6. **Channel ที่เป็นการตีความของเรา** เก็บไว้ทั้งหมด: `classroom:get-status`, `settings:get`, `settings:set`, `line:get-status` (ทุกกลุ่มกำหนด payload แล้ว ดูท้ายไฟล์ สำหรับ `line:*` ทั้ง 3 channel ชื่อเป็นการตีความของเรา spec §14.2 บอกแค่ว่ามี Connect / Disconnect)
 7. ไม่มี event ของ tasks ถ้า task ใหม่เข้ามาจาก sync/LINE ให้เรียก `tasks:list` ใหม่ตอนเปิดหน้า
 
 ## Channels
@@ -215,3 +215,32 @@ await window.api.invoke('classroom:decide', { id: '1111:9001', decision: 'import
 - `Task.updated_at` หลัง sync จะเป็นเวลาของ server (ตัดเหลือมิลลิวินาที) ยังห้ามใช้เป็นสัญญาณ activity ตามเดิม
 - ถ้าเครื่องสองเครื่องแก้ task เดียวกัน เครื่องที่ส่งถึง server ทีหลังชนะทั้งแถว (§18.2) ไม่ merge ทีละ field
 - sync ไม่สำเร็จ (ออฟไลน์, token Google หมดอายุ) = แค่ log ในหน้าต่าง main แล้วลองใหม่รอบถัดไป หน้าจอไม่ได้รับแจ้ง
+
+## `line:*` (ข้อ 8.5, เบลตัดสิน 2026-10-31)
+
+ฝั่งแอปของ §14.2: ขอโค้ดผูก LINE / ดูว่าผูกแล้วไหม / ยกเลิกการผูก ทำใน main (`cloud-sync.service.js`) ผ่าน Supabase ในนามผู้ใช้ที่ login (RLS) ไม่ใช้ `service_role`
+การผูกจริงทำโดย Edge Function `line-webhook` ตอนผู้ใช้ส่งโค้ดมาใน LINE หน้าจอไม่ต้องทำอะไรในขั้นนั้น
+
+| channel | ส่งไป | ได้กลับ |
+|---|---|---|
+| `line:generate-code` | ไม่มี | `{ code, expires_at }` |
+| `line:get-status` | ไม่มี | `{ connected, linked_at }` |
+| `line:disconnect` | ไม่มี | `{ connected: false, linked_at: null }` |
+
+```js
+await window.api.invoke('line:generate-code')
+// { code: '042917', expires_at: '2026-10-31T09:10:00.456Z' }   -> หน้าจอโชว์โค้ดให้ผู้ใช้พิมพ์ส่งใน LINE OA
+await window.api.invoke('line:get-status')
+// { connected: false, linked_at: null }   ยังไม่ผูก
+// { connected: true, linked_at: '2026-10-31T09:05:00.000Z' }   ผูกแล้ว
+await window.api.invoke('line:disconnect')
+// { connected: false, linked_at: null }
+```
+
+- **ทั้ง 3 channel ไม่รับ payload** (ส่งมาก็ถูกเมิน) ชื่อ channel อยู่ใน `IPC.LINE` ของ `src/shared/ipc-channels.js` อยู่แล้ว
+- **ต้องเชื่อม Google ก่อน:** Supabase login ใช้บัญชี Google เดียวกัน (§20) ยังไม่เชื่อม = `generate-code` / `disconnect` reject ("ต้องเชื่อม Google ก่อน") ส่วน `get-status` ตอบ `connected: false` ไม่ reject หน้าจอเช็ค `classroom:get-status.connected` เพื่อปิดปุ่มหรือขึ้นข้อความเองได้
+- **`generate-code`:** โค้ดเลข 6 หลักสุ่มใหม่ทุกครั้ง (มีเลขศูนย์นำหน้าได้ เช่น `'000042'`) อายุ 10 นาทีนับจาก `expires_at` ที่ server ตั้ง (หน้าจอใช้ค่านี้ ไม่คิดจากนาฬิกาเครื่อง) กดซ้ำได้ โค้ดเก่าที่ยังไม่หมดอายุใช้ได้ต่อ ผูกสำเร็จแล้วโค้ดทั้งหมดของผู้ใช้ถูกลบ ชนกับโค้ดที่มีอยู่ลองใหม่เองไม่เกิน 3 ครั้ง ถ้ายังชนอยู่ = reject
+- **ไม่มี event:** หน้าจอรู้ว่าผูกสำเร็จโดย poll `line:get-status` (เช่นทุก 3 วินาที ระหว่างโชว์โค้ด ไม่เกิน 10 นาที) การ "รอโค้ด" (โค้ด + เวลาหมดอายุ) หน้าจอเก็บเอง `get-status` ไม่ส่งโค้ดที่ค้างกลับ และไม่ส่ง `line_user_id`
+- **`disconnect`:** ลบแถวของตัวเองใน `line_account_links` ไม่ลบ task ที่เคยสร้างผ่าน LINE (§14.5) กดซ้ำ / ยังไม่ได้ผูก = ไม่ error
+- **ออฟไลน์ / Supabase ล่ม:** reject พร้อมข้อความ error (เหมือน `classroom:*`) ไม่ retry เอง
+- **ข้อจำกัดที่รู้:** ถ้าผู้ใช้ Disconnect Google ทั้งที่ผูก LINE ไว้ แอปจะมองไม่เห็นลิงก์ LINE เดิม (ลิงก์ยังอยู่บน cloud) ต้องเชื่อม Google ใหม่ก่อนถึงจะ Disconnect LINE ได้ และตาม §20 หนึ่งบัญชีต่อเครื่อง

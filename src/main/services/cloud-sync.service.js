@@ -1,9 +1,10 @@
 // Owner: Backend
 // หน้าที่: sync tasks และ pomodoro_sessions กับ Supabase (push/pull, LWW) และจัดการการเชื่อมต่อ LINE ฝั่งแอป
-// อ้างอิง: PROJECT_v0.15 section 14.2, 18 — ส่วน LINE (ข้อ 8) ยังเป็น stub
+// อ้างอิง: PROJECT_v0.15 section 14.2, 18, 19.4, 20 — ส่วน LINE ฝั่งแอปคือ 3 ฟังก์ชันท้ายไฟล์ (ข้อ 8.5)
 
 'use strict';
 
+const crypto = require('crypto');
 const path = require('path');
 const { app } = require('electron');
 const { createClient } = require('@supabase/supabase-js');
@@ -231,13 +232,55 @@ function stopSync() {
   dirtyTimer = null;
 }
 
-// ---- ส่วน LINE (ข้อ 8) ยังไม่ทำ ----
+// ---- ส่วน LINE ฝั่งแอป (ข้อ 8.5, §14.2) ----
+// แอปทำได้แค่ 3 อย่างผ่าน RLS ในนามผู้ใช้ที่ login (ไม่ใช้ service_role): ขอโค้ด / ดูว่าผูกแล้วไหม / ยกเลิกการผูก
+// การผูกจริงทำโดย Edge Function line-webhook ตอนผู้ใช้ส่งโค้ดมาใน LINE (ฟังก์ชัน line_link_account)
 
-function createLineLinkCode() {}
+const NO_GOOGLE_MESSAGE = 'ต้องเชื่อม Google ก่อน (Supabase ใช้บัญชี Google เดียวกัน §20)';
+const MAX_CODE_TRIES = 3; // โค้ด 6 หลักมี 1,000,000 แบบ ชนกันได้ยากมาก แต่ถ้าชน (primary key ซ้ำ) ลองสุ่มใหม่
 
-function disconnectLine() {}
+// สร้างโค้ดผูก LINE: คืน { code: '042917', expires_at: '2026-10-31T09:10:00.000Z' }
+// ส่งไปแค่ code: app_user_id ใช้ default auth.uid() ส่วน expires_at server ตั้งเป็น +10 นาที (แอปตั้งเองไม่ได้ ตาม D1)
+async function createLineLinkCode() {
+  const supabase = await getClient();
+  if (!supabase) throw new Error(NO_GOOGLE_MESSAGE);
 
-function getLineStatus() {}
+  for (let i = 0; i < MAX_CODE_TRIES; i++) {
+    // randomInt สุ่มแบบปลอดภัย (ไม่ใช้ Math.random เพราะโค้ดนี้คือกุญแจผูกบัญชี) เช่น 42 -> '000042'
+    const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+    const { data, error } = await supabase.from('line_link_codes').insert({ code }).select('code, expires_at').single();
+    if (!error) return { code: data.code, expires_at: new Date(data.expires_at).toISOString() };
+    if (error.code !== '23505') throw new Error(`สร้างโค้ด LINE ไม่สำเร็จ: ${error.message}`); // 23505 = โค้ดซ้ำ ลองใหม่
+  }
+  throw new Error('สร้างโค้ด LINE ไม่สำเร็จ (โค้ดชนกันหลายครั้ง) ลองกดใหม่อีกครั้ง');
+}
+
+// ผูก LINE แล้วหรือยัง: คืน { connected, linked_at } ยังไม่เชื่อม Google = ยังไม่ผูก (ไม่ throw)
+// ไม่ใส่ filter เพราะ RLS ให้เห็นแถวของตัวเองเท่านั้น และ app_user_id เป็น primary key (มีได้แถวเดียว)
+async function getLineStatus() {
+  const supabase = await getClient();
+  if (!supabase) return { connected: false, linked_at: null };
+
+  const { data, error } = await supabase.from('line_account_links').select('linked_at').maybeSingle();
+  if (error) throw new Error(`เช็คสถานะ LINE ไม่สำเร็จ: ${error.message}`);
+  return data ? { connected: true, linked_at: new Date(data.linked_at).toISOString() } : { connected: false, linked_at: null };
+}
+
+// ยกเลิกการผูก: ลบแถวของตัวเองใน line_account_links (ไม่ลบ task ที่สร้างผ่าน LINE §14.5) ลบซ้ำได้ ไม่เป็นไร
+async function disconnectLine() {
+  const supabase = await getClient();
+  if (!supabase) throw new Error(NO_GOOGLE_MESSAGE);
+
+  // ต้องมี filter เพราะ Supabase อาจ reject DELETE ที่ไม่มี WHERE: ใช้ user id จาก session ในหน่วยความจำ (ไม่ยิงเน็ต)
+  const { data } = await supabase.auth.getSession();
+  if (!data.session) {
+    client = null; // session หายไป ล้าง client ให้รอบหน้า login ใหม่
+    throw new Error('login Supabase หมดอายุ ลองกด Disconnect อีกครั้ง');
+  }
+  const { error } = await supabase.from('line_account_links').delete().eq('app_user_id', data.session.user.id);
+  if (error) throw new Error(`ยกเลิกการผูก LINE ไม่สำเร็จ: ${error.message}`);
+  return { connected: false, linked_at: null };
+}
 
 module.exports = {
   startSync,
