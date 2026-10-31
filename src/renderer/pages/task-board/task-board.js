@@ -277,6 +277,51 @@
     );
   }
 
+  // ประวัติ session ของ task (UX Review: "linked Pomodoro session history") พับไว้เป็นค่าเริ่มต้น
+  // ดึงผ่าน pomodoro:list-sessions { task_id } (ข้อเสนอที่เบลตกลง) ถ้า Backend ยังไม่มี/ไม่มี session จะไม่แสดงส่วนนี้เลย
+  function sessionDuration(seconds) {
+    const mins = Math.round((Number(seconds) || 0) / 60);
+    return mins < 1 ? '<1 min' : `${mins} min`;
+  }
+
+  function sessionWhen(iso) {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '-';
+    const h = d.getHours();
+    return `${formatLong(iso)} · ${((h + 11) % 12) + 1}:${String(d.getMinutes()).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+  }
+
+  function sessionHistory(task) {
+    const list = el('ul', { class: 'dt-hist__list' });
+    const box = el('details', { class: 'dt-hist', hidden: true }, el('summary', { class: 'dt-hist__summary', text: 'Session history' }), list);
+    api
+      .invoke('pomodoro:list-sessions', { task_id: task.id })
+      .then((rows) => {
+        if (!Array.isArray(rows) || rows.length === 0) return;
+        const sorted = rows.slice().sort((a, b) => String(b.started_at).localeCompare(String(a.started_at)));
+        box.querySelector('summary').textContent = `Session history (${sorted.length})`;
+        sorted.forEach((row) => {
+          const partial = row.completed === false || row.completed === 0;
+          const meta = [sessionDuration(row.actual_duration_seconds)];
+          if (row.session_index && row.session_total) meta.push(`session ${row.session_index} of ${row.session_total}`);
+          if (partial) meta.push('stopped early');
+          list.append(
+            el(
+              'li',
+              { class: 'dt-hist__item' },
+              el('p', { class: 'dt-hist__meta', text: `${sessionWhen(row.started_at)} · ${meta.join(' · ')}` }),
+              el('p', row.notes ? { class: 'dt-hist__note', text: row.notes } : { class: 'dt-hist__note dt-hist__note--empty', text: 'No note' }),
+            ),
+          );
+        });
+        box.hidden = false;
+      })
+      .catch(() => {
+        // ยังไม่มี handler / โหลดไม่ได้: ไม่แสดงส่วนนี้ ไม่รบกวนหน้ารายละเอียด
+      });
+    return box;
+  }
+
   // Description ใน Figma = ฟิลด์ notes ของ task (spec มี notes ช่องเดียว จึงไม่ทำกล่อง Notes แยก)
   function buildDetails(task) {
     const completed = task.status === 'completed';
@@ -340,6 +385,7 @@
           }),
         ),
       ),
+      sessionHistory(task),
       errorBox,
       el(
         'div',

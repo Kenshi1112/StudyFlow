@@ -34,6 +34,11 @@
       <svg class="pm__icon pm__icon--play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg>
     </button>
     <p class="pm__hint" id="pm-hint">You can close this window. We&rsquo;ll notify you when it&rsquo;s time for a break.</p>
+    <!-- โน้ตของ session ที่เพิ่งจบ (ขึ้นตอน Break และตอนจบ batch ไม่บังคับ ข้ามได้) แสดงเมื่อ Backend ส่ง last_session_id มาเท่านั้น -->
+    <div class="pm__note" id="pm-note" hidden>
+      <textarea id="pm-note-input" class="pm__note-input" rows="3" maxlength="1000" aria-label="Session note" placeholder="What did you work on this session? What&rsquo;s left?"></textarea>
+      <p class="pm__note-status" id="pm-note-status" role="status">Optional note for this session</p>
+    </div>
     <button type="button" class="pm__stop" id="pm-stop">Stop session</button>
   </div>
 </section>
