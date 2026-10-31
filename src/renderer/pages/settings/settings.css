@@ -102,6 +102,13 @@
 .st__name { margin: 0; font-weight: 500; line-height: calc(var(--u) * 22); }
 .st__handle { margin: calc(var(--u) * 3) 0 0; line-height: calc(var(--u) * 18); font-size: calc(var(--u) * 15); color: var(--st-muted); }
 
+/* banner "Not connected" (UX Review §5): โทนเดียวกับการ์ด ห้ามใช้สีแดง/ส้ม/ไอคอนเตือน */
+.st__banner { display: flex; align-items: center; gap: calc(var(--u) * 12); margin: 0 0 calc(var(--u) * 17); padding: calc(var(--u) * 12) calc(var(--u) * 12) calc(var(--u) * 12) calc(var(--u) * 24); background: #f7efe4; border: calc(var(--u) * 2) solid var(--st-line); border-radius: calc(var(--u) * 14); }
+.st__banner[hidden] { display: none; }
+.st__banner-text { flex: 1; margin: 0; line-height: 1.45; color: var(--st-text); }
+.st__banner-close { flex: none; width: calc(var(--u) * 34); height: calc(var(--u) * 34); padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--st-muted); font-size: calc(var(--u) * 26); line-height: 1; }
+.st__banner-close:hover { background: #efe4d6; }
+
 /* Integration */
 .st__card--classroom { height: calc(var(--u) * 281); }
 .st__card--line { height: calc(var(--u) * 207); }

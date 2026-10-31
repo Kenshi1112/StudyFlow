@@ -53,8 +53,14 @@
     return `${MONTHS[d.getMonth()]} ${d.getDate()},${d.getFullYear()}`;
   }
 
+  // นับเป็นวันตามปฏิทินของเครื่อง (แบบเดียวกับ Deadline State §9.2) ไม่ใช่ชั่วโมงที่เหลือหาร 24
+  // เช่น ตอนนี้ 21:50 งาน due พรุ่งนี้ 23:59 = 1 วัน (แบบเดิมปัดขึ้นเป็น 2)
   function daysLeft(iso) {
-    return Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000);
+    const due = new Date(iso);
+    const now = new Date();
+    const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return Math.round((dueDay - today) / 86400000);
   }
 
   function matchesFilter(task) {
@@ -91,9 +97,15 @@
     let leftText = null;
     let urgent = false;
     if (task.due_date && !completed && !pill.overdue) {
-      const n = Math.max(1, daysLeft(task.due_date));
-      leftText = `${n} ${n === 1 ? 'day' : 'days'} left`;
-      urgent = n <= 2;
+      if (task.deadline_state === 'due_today') {
+        // ครบกำหนดวันนี้: เดิมบังคับขั้นต่ำ 1 จึงขึ้น "1 day left" ทั้งที่ต้องส่งคืนนี้
+        leftText = 'Due today';
+        urgent = true;
+      } else {
+        const n = Math.max(1, daysLeft(task.due_date));
+        leftText = `${n} ${n === 1 ? 'day' : 'days'} left`;
+        urgent = n <= 2;
+      }
     }
 
     const fill = el('span', { class: 'tb-card__fill' });
@@ -261,7 +273,9 @@
     if (task.status === 'completed') return 'Completed';
     if (!task.due_date) return 'No deadline';
     if (task.deadline_state === 'overdue') return 'Overdue';
-    return `Due in ${Math.max(1, daysLeft(task.due_date))} day(s)`;
+    if (task.deadline_state === 'due_today') return 'Due today';
+    const n = Math.max(1, daysLeft(task.due_date));
+    return `Due in ${n} ${n === 1 ? 'day' : 'days'}`;
   }
 
   function formatLong(iso) {

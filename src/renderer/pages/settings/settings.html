@@ -47,6 +47,12 @@
       </section>
 
       <h2 class="st__label st__label--integration" id="st-integration">INTEGRATION</h2>
+      <!-- banner "Not connected" (UX Review §5): ขึ้นเฉพาะตอนยังไม่เชื่อม Classroom ไม่ใช้สีเตือน ปิดได้ทีละ session (เปิดแอปใหม่ขึ้นอีกจนกว่าจะเชื่อม)
+           ไม่มี banner แบบนี้สำหรับ LINE (UX Review §5: LINE ไม่เชื่อมเป็นสถานะปกติ) -->
+      <div class="st__banner" id="st-cls-banner" role="note" hidden>
+        <p class="st__banner-text">Not connected &mdash; your data is stored on this device only. Connect to back up your data and use it across devices.</p>
+        <button type="button" class="st__banner-close" id="st-cls-banner-close" aria-label="Dismiss">&times;</button>
+      </div>
       <section class="st__card st__card--classroom" aria-label="Google Classroom">
         <div class="st__brand">
           <img class="st__brand-img st__brand-img--classroom" src="assets/settings/classroom-icon.png" alt="">
