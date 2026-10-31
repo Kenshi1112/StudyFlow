@@ -186,6 +186,34 @@
     renderList();
   }
 
+  // โหลดรายการซ้ำเงียบ ๆ: งานที่เข้ามาจาก LINE / เครื่องอื่นผ่าน cloud sync ไม่มี event (ipc-contract ข้อ 7 และหัวข้อ Cloud sync)
+  // เรียกตอนหน้าต่างกลับมาโฟกัสและทุก 20 วินาทีขณะเปิดหน้านี้ ข้ามถ้ามีป๊อปอัปเปิดอยู่, วาดการ์ดใหม่เฉพาะเมื่อข้อมูลเปลี่ยน (ไม่กระตุก ไม่เสียโฟกัส)
+  const REFRESH_MS = 20000;
+  let refreshTimer = null;
+  let refreshing = false;
+
+  function signature(list) {
+    return JSON.stringify((list || []).map((t) => [t.id, t.updated_at, t.status, t.title]));
+  }
+
+  async function refreshQuietly() {
+    if (!alive || refreshing || document.hidden) return;
+    if ((dialog && dialog.open) || (reviewDialog && reviewDialog.open)) return;
+    refreshing = true;
+    try {
+      const result = await api.invoke('tasks:list');
+      if (!alive || (dialog && dialog.open) || (reviewDialog && reviewDialog.open)) return;
+      if (signature(result) !== signature(tasks)) {
+        tasks = result;
+        renderList();
+      }
+    } catch (err) {
+      // เงียบ: รอบถัดไปลองใหม่ (ข้อความ error ของ load() ใช้ตอนเปิดหน้าอย่างเดียว)
+    } finally {
+      refreshing = false;
+    }
+  }
+
   // ---------- ป๊อปอัป (Figma: รายละเอียดงาน / Create New Task / Edit Task / ยืนยันลบ) ----------
 
   let dialog = null;
@@ -678,6 +706,9 @@
       } catch (err) {
         offPending = null;
       }
+      window.addEventListener('focus', refreshQuietly);
+      document.addEventListener('visibilitychange', refreshQuietly);
+      refreshTimer = setInterval(refreshQuietly, REFRESH_MS);
       load().then(() => {
         loadSyncStatus();
         checkPending(false);
@@ -685,6 +716,10 @@
     },
     unmount() {
       alive = false;
+      clearInterval(refreshTimer);
+      refreshTimer = null;
+      window.removeEventListener('focus', refreshQuietly);
+      document.removeEventListener('visibilitychange', refreshQuietly);
       if (offPending) offPending();
       offPending = null;
       clearTimeout(toastTimer);
