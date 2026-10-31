@@ -60,13 +60,3 @@
 .pm__toggle.is-paused .pm__icon--pause { display: none; }
 .pm__hint { position: absolute; left: 50%; transform: translateX(-50%); width: calc(var(--u) * 730); top: calc(var(--u) * 720); margin: 0; text-align: center; font-size: calc(var(--u) * 32); font-weight: 700; color: #b3a58f; }
 .pm__stop { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--u) * 14); border: 0; background: none; font-size: calc(var(--u) * 18); color: #8a7a65; text-decoration: underline; }
-.pm__note { position: absolute; left: 50%; transform: translateX(-50%); width: calc(var(--u) * 730); top: calc(var(--u) * 706); }
-.pm__note-input {
-  display: block; width: 100%; height: calc(var(--u) * 84); margin: 0; padding: calc(var(--u) * 10) calc(var(--u) * 14);
-  border: calc(var(--u) * 2) solid #e4d5bf; border-radius: calc(var(--u) * 12); box-sizing: border-box; resize: none;
-  background: #fff; color: #3b2a1e; font: inherit; font-size: calc(var(--u) * 20); line-height: 1.3;
-}
-.pm__note-input::placeholder { color: #b3a58f; }
-.pm__note-input:focus { outline: none; border-color: #c97a3d; }
-.pm__note-status { margin: calc(var(--u) * 4) 0 0; height: calc(var(--u) * 20); font-size: calc(var(--u) * 15); line-height: calc(var(--u) * 20); text-align: center; color: #b3a58f; }
-.pm__note-status.is-error { color: #b4532a; }

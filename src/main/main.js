@@ -17,6 +17,8 @@ function createMainWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
+    // ไอคอนแอป (โลโก้ StudyFlow) ตอนรันด้วย npm start ตอน build ใช้ build/icon.ico จาก package.json
+    icon: path.join(__dirname, '..', 'renderer', 'assets', 'logo', 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, '..', 'preload', 'preload.js'),
       contextIsolation: true,
