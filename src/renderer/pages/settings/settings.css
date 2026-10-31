@@ -89,7 +89,7 @@
 .st__rule--thin { height: calc(var(--u) * 1); background: #e4ddd2; }
 
 /* Account */
-.st__card--account { height: calc(var(--u) * 157.5); }
+.st__card--account { height: calc(var(--u) * 100); }
 .st__avatar {
   position: absolute; left: calc(var(--u) * 24); top: calc(var(--u) * 11);
   width: calc(var(--u) * 75); height: calc(var(--u) * 75);
@@ -101,16 +101,6 @@
 .st__who { position: absolute; left: calc(var(--u) * 120); top: calc(var(--u) * 12); }
 .st__name { margin: 0; font-weight: 500; line-height: calc(var(--u) * 22); }
 .st__handle { margin: calc(var(--u) * 3) 0 0; line-height: calc(var(--u) * 18); font-size: calc(var(--u) * 15); color: var(--st-muted); }
-.st__chip {
-  display: inline-block; margin-top: calc(var(--u) * 6);
-  padding: calc(var(--u) * 2) calc(var(--u) * 14); border-radius: calc(var(--u) * 20);
-  background: #fcebde; font-size: calc(var(--u) * 15); line-height: calc(var(--u) * 18);
-}
-.st__card--account .st__rule { position: absolute; left: 0; right: 0; top: calc(var(--u) * 100); }
-.st__account-actions { position: absolute; left: calc(var(--u) * 54); right: calc(var(--u) * 52); top: calc(var(--u) * 118); display: flex; justify-content: space-between; }
-.st__link { display: flex; align-items: center; gap: calc(var(--u) * 8); padding: 0; border: 0; background: none; font-size: calc(var(--u) * 15); color: var(--st-text); }
-.st__link svg { width: calc(var(--u) * 20); height: calc(var(--u) * 20); }
-.st__link--danger { color: #f91414; }
 
 /* Integration */
 .st__card--classroom { height: calc(var(--u) * 281); }
