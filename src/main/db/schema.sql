@@ -70,3 +70,43 @@ CREATE TABLE IF NOT EXISTS settings (
   key   TEXT PRIMARY KEY,
   value TEXT
 );
+
+-- (ข้อ 7) Cloud Sync: จดแถวที่แก้ในเครื่องแล้วยังไม่ได้ส่งขึ้น Supabase
+-- เป็นของใหม่ทั้งหมด (IF NOT EXISTS) ไม่แตะตารางเดิม จึงไม่ต้องลบ studyflow.sqlite
+-- local only ไม่ sync: 1 แถว = 1 แถวของ tasks / pomodoro_sessions ที่รอส่ง เช่น ('tasks', 'a1b2c3...')
+CREATE TABLE IF NOT EXISTS sync_dirty (
+  table_name TEXT NOT NULL,   -- 'tasks' หรือ 'pomodoro_sessions'
+  row_id     TEXT NOT NULL,
+  PRIMARY KEY (table_name, row_id)
+);
+
+-- ใครเขียนตารางพวกนี้ก็ตาม (task.service, pomodoro.service, classroom-sync หรือ SQL ตรง) trigger จะใส่ id ลง sync_dirty ให้เอง
+-- แก้แถวเดิมหลายรอบก็มีแถวเดียวใน sync_dirty (ใช้ WHERE NOT EXISTS แทน OR IGNORE เพราะ SQLite ให้คำสั่งที่ทำให้ trigger ทำงาน
+-- เป็นคนกำหนดวิธีจัดการข้อมูลซ้ำ ถ้าคำสั่งนั้นเป็น INSERT ... ON CONFLICT DO UPDATE (เช่นตอน pull) OR IGNORE ในนี้จะไม่ทำงานแล้ว error)
+CREATE TRIGGER IF NOT EXISTS tasks_mark_dirty_on_insert AFTER INSERT ON tasks
+BEGIN
+  INSERT INTO sync_dirty (table_name, row_id)
+  SELECT 'tasks', NEW.id
+  WHERE NOT EXISTS (SELECT 1 FROM sync_dirty WHERE table_name = 'tasks' AND row_id = NEW.id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS tasks_mark_dirty_on_update AFTER UPDATE ON tasks
+BEGIN
+  INSERT INTO sync_dirty (table_name, row_id)
+  SELECT 'tasks', NEW.id
+  WHERE NOT EXISTS (SELECT 1 FROM sync_dirty WHERE table_name = 'tasks' AND row_id = NEW.id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS pomodoro_sessions_mark_dirty_on_insert AFTER INSERT ON pomodoro_sessions
+BEGIN
+  INSERT INTO sync_dirty (table_name, row_id)
+  SELECT 'pomodoro_sessions', NEW.id
+  WHERE NOT EXISTS (SELECT 1 FROM sync_dirty WHERE table_name = 'pomodoro_sessions' AND row_id = NEW.id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS pomodoro_sessions_mark_dirty_on_update AFTER UPDATE ON pomodoro_sessions
+BEGIN
+  INSERT INTO sync_dirty (table_name, row_id)
+  SELECT 'pomodoro_sessions', NEW.id
+  WHERE NOT EXISTS (SELECT 1 FROM sync_dirty WHERE table_name = 'pomodoro_sessions' AND row_id = NEW.id);
+END;

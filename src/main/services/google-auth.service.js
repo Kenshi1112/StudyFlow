@@ -161,9 +161,20 @@ function getAuthClient() {
   return client;
 }
 
+// ขอ id token ใหม่จาก refresh token ที่เก็บไว้ (อายุประมาณ 1 ชม.) เพื่อเอาไป login Supabase (ข้อ 7.3)
+// id token = "บัตรยืนยันตัวตน" ที่ Google เซ็นให้ว่าคนนี้คือบัญชีนี้ (ต่างจาก access token ที่ใช้เรียก Classroom API)
+async function getIdToken() {
+  const { credentials } = await getAuthClient().refreshAccessToken();
+  if (!credentials.id_token) {
+    throw new Error('Google ไม่ส่ง id token มา ลองกด Connect Google ใหม่');
+  }
+  return credentials.id_token;
+}
+
 module.exports = {
   signIn,
   signOut,
   getAccount,
   getAuthClient,
+  getIdToken,
 };

@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@googleapis/classroom": "^19.1.0",
+    "@supabase/supabase-js": "^2.118.0",
     "better-sqlite3": "^13.0.3",
     "google-auth-library": "^11.3.2"
   }
