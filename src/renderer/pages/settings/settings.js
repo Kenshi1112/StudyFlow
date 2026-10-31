@@ -115,6 +115,8 @@
   // payload ตาม docs/ipc-contract.md หัวข้อ classroom:*: classroom:get-status -> { connected, account_email, last_synced_at, cutoff_date }
   // เชื่อมครั้งแรก (ยังไม่มี cutoff) ต้องเลือกวัน cutoff ก่อน fetch แรก -> settings:set { key: 'classroom_cutoff_date', value: ISO }
   let classroom = null;
+  // ปิด banner "Not connected" แล้วไม่ขึ้นอีกจนปิดแอป (เก็บระดับโมดูลเพราะ router ถอดหน้าตอนสลับหน้า) เปิดแอปใหม่ขึ้นอีกจนกว่าจะเชื่อม (UX Review §5)
+  let bannerDismissed = false;
 
   function fmtWhen(iso) {
     const d = new Date(iso);
@@ -136,6 +138,8 @@
     $('#st-avatar').textContent = email ? email.charAt(0).toUpperCase() : 'G';
     $('#st-cls-account').textContent = on && classroom.account_email ? classroom.account_email : '\u2014';
     $('#st-cls-sync').textContent = on && classroom.last_synced_at ? fmtWhen(classroom.last_synced_at) : '\u2014';
+    // อ่านสถานะไม่ได้ (classroom = null) ไม่โชว์ เพราะไม่รู้ว่าเชื่อมอยู่หรือเปล่า
+    $('#st-cls-banner').hidden = bannerDismissed || !classroom || on;
     renderLine();
     $('#st-cls-btn').textContent = !on ? '[ Connect ]' : classroom.cutoff_date ? '[ Disconnect ]' : '[ Choose import date ]';
   }
@@ -166,11 +170,9 @@
     note('');
     try {
       if (classroom && classroom.connected && classroom.cutoff_date) {
-        await api.invoke('classroom:disconnect');
-        // Disconnect แล้วล้างวัน cutoff ด้วย: Connect ครั้งหน้าจะเด้งป๊อปอัปให้เลือกวันใหม่ (Backend ไม่ล้างให้ ตาม §13.4)
+        // Backend ล้างวัน cutoff ให้เองตอน disconnect และคืน Status กลับมา: Connect ครั้งหน้าจึงเด้งป๊อปอัปให้เลือกวันใหม่
         // งานที่เคยเห็นแล้วยังอยู่ใน classroom_sync_state จึงไม่ถูกดึงซ้ำ
-        await api.invoke('settings:set', { key: 'classroom_cutoff_date', value: null });
-        classroom = await api.invoke('classroom:get-status');
+        classroom = await api.invoke('classroom:disconnect');
       } else {
         if (!(classroom && classroom.connected)) classroom = await api.invoke('classroom:connect');
         if (classroom && classroom.connected && !classroom.cutoff_date) askCutoff();
@@ -181,6 +183,9 @@
       if (root) {
         btn.disabled = false;
         renderClassroom();
+        // สถานะ LINE ขึ้นกับการเชื่อม Google (ipc-contract: ยังไม่เชื่อม Google = line:get-status ตอบ connected: false)
+        // ต้องถามใหม่ ไม่งั้นหลัง Disconnect Classroom การ์ด LINE ยังค้างเป็น Connected
+        loadLine();
       }
     }
   }
@@ -330,6 +335,10 @@
       bindSwitches();
       bindPending();
       listen($('#st-cls-btn'), 'click', toggleClassroom);
+      listen($('#st-cls-banner-close'), 'click', () => {
+        bannerDismissed = true;
+        $('#st-cls-banner').hidden = true;
+      });
       listen($('#st-line-btn'), 'click', toggleLine);
       listen($('#st-line-dlg-new'), 'click', newLineCode);
       listen($('#st-line-dlg-close'), 'click', () => $('#st-line-dlg').close());

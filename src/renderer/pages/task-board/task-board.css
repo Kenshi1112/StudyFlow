@@ -389,6 +389,7 @@
 }
 
 .tb-card__fill {
+  display: block; /* span เป็น inline โดยปริยาย ถ้าไม่ใส่ width/height จะไม่มีผล */
   height: 100%;
   width: calc(var(--fill, 0) * 1%);
   border-radius: calc(var(--u) * 30);
