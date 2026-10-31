@@ -21,6 +21,7 @@ function createFloatingWidget() {
     alwaysOnTop: true,
     resizable: false,
     title: 'StudyFlow - Pomodoro',
+    icon: path.join(__dirname, '..', '..', 'renderer', 'assets', 'logo', 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, '..', '..', 'preload', 'preload.js'),
       contextIsolation: true,

@@ -319,52 +319,33 @@
     );
   }
 
-  // ประวัติ session ของ task (UX Review: "linked Pomodoro session history") พับไว้เป็นค่าเริ่มต้น
-  // ดึงผ่าน pomodoro:list-sessions { task_id } (ข้อเสนอที่เบลตกลง) ถ้า Backend ยังไม่มี/ไม่มี session จะไม่แสดงส่วนนี้เลย
-  function sessionDuration(seconds) {
-    const mins = Math.round((Number(seconds) || 0) / 60);
-    return mins < 1 ? '<1 min' : `${mins} min`;
+  // กล่อง Notes (Figma) แบบง่าย: เก็บในเครื่อง (localStorage) ตาม id ของ task ไม่เกี่ยวกับ Backend
+  // ยังไม่ sync ขึ้น cloud และไม่ติดไปกับ tasks:* (ถ้าจะให้เก็บใน DB ต้องคุยกับเบล/ขึ้นสเปกก่อน)
+  const noteKey = (id) => `studyflow.note.${id}`;
+  function readNote(id) {
+    try {
+      return localStorage.getItem(noteKey(id)) || '';
+    } catch (err) {
+      return '';
+    }
+  }
+  function writeNote(id, text) {
+    try {
+      if (text) localStorage.setItem(noteKey(id), text);
+      else localStorage.removeItem(noteKey(id));
+    } catch (err) {
+      // เก็บไม่ได้ก็ข้าม ไม่รบกวนผู้ใช้
+    }
   }
 
-  function sessionWhen(iso) {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return '-';
-    const h = d.getHours();
-    return `${formatLong(iso)} · ${((h + 11) % 12) + 1}:${String(d.getMinutes()).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+  function notesBox(task) {
+    const input = el('textarea', { class: 'dt-notes__input', rows: '3', 'aria-label': 'Notes' });
+    input.value = readNote(task.id);
+    input.addEventListener('input', () => writeNote(task.id, input.value));
+    return el('label', { class: 'dt-box dt-notes' }, el('span', { class: 'dt-box__label', text: 'Notes' }), input);
   }
 
-  function sessionHistory(task) {
-    const list = el('ul', { class: 'dt-hist__list' });
-    const box = el('details', { class: 'dt-hist', hidden: true }, el('summary', { class: 'dt-hist__summary', text: 'Session history' }), list);
-    api
-      .invoke('pomodoro:list-sessions', { task_id: task.id })
-      .then((rows) => {
-        if (!Array.isArray(rows) || rows.length === 0) return;
-        const sorted = rows.slice().sort((a, b) => String(b.started_at).localeCompare(String(a.started_at)));
-        box.querySelector('summary').textContent = `Session history (${sorted.length})`;
-        sorted.forEach((row) => {
-          const partial = row.completed === false || row.completed === 0;
-          const meta = [sessionDuration(row.actual_duration_seconds)];
-          if (row.session_index && row.session_total) meta.push(`session ${row.session_index} of ${row.session_total}`);
-          if (partial) meta.push('stopped early');
-          list.append(
-            el(
-              'li',
-              { class: 'dt-hist__item' },
-              el('p', { class: 'dt-hist__meta', text: `${sessionWhen(row.started_at)} · ${meta.join(' · ')}` }),
-              el('p', row.notes ? { class: 'dt-hist__note', text: row.notes } : { class: 'dt-hist__note dt-hist__note--empty', text: 'No note' }),
-            ),
-          );
-        });
-        box.hidden = false;
-      })
-      .catch(() => {
-        // ยังไม่มี handler / โหลดไม่ได้: ไม่แสดงส่วนนี้ ไม่รบกวนหน้ารายละเอียด
-      });
-    return box;
-  }
-
-  // Description ใน Figma = ฟิลด์ notes ของ task (spec มี notes ช่องเดียว จึงไม่ทำกล่อง Notes แยก)
+  // Description ใน Figma = ฟิลด์ notes ของ task, กล่อง Notes = เก็บในเครื่อง (ดู notesBox)
   function buildDetails(task) {
     const completed = task.status === 'completed';
     const errorBox = el('p', { class: 'dt__error', role: 'alert', hidden: true });
@@ -373,9 +354,11 @@
       errorBox.hidden = true;
       try {
         await action();
+        return true;
       } catch (err) {
         errorBox.textContent = message(err);
         errorBox.hidden = false;
+        return false;
       }
     }
 
@@ -427,7 +410,7 @@
           }),
         ),
       ),
-      sessionHistory(task),
+      notesBox(task),
       errorBox,
       el(
         'div',
@@ -438,11 +421,7 @@
           class: 'dt__btn dt__btn--done',
           text: 'Mark as Completed',
           disabled: completed,
-          onclick: () =>
-            guarded(async () => {
-              const updated = await updateTask(task.id, { status: 'completed' });
-              if (dialog && alive) refreshDetails(updated);
-            }),
+          onclick: () => openComplete(task),
         }),
       ),
     );
@@ -497,6 +476,41 @@
     });
     showDialog('tb-popup--form', isEdit ? 'Edit Task' : 'Create New Task', form);
     form.focusFirst();
+  }
+
+  // ยืนยันก่อน Mark as Completed (หน้าตาเหมือนยืนยันลบ แต่ปุ่มยืนยันเป็นสีน้ำตาล)
+  function openComplete(task) {
+    const errorBox = el('p', { class: 'dt__error', role: 'alert', hidden: true });
+    const confirmButton = el('button', { type: 'button', class: 'dl__btn dl__btn--ok', text: 'Confirm' });
+    confirmButton.addEventListener('click', async () => {
+      confirmButton.disabled = true;
+      errorBox.hidden = true;
+      try {
+        const updated = await updateTask(task.id, { status: 'completed' });
+        if (alive) openDetails(updated.id);
+      } catch (err) {
+        errorBox.textContent = message(err);
+        errorBox.hidden = false;
+        confirmButton.disabled = false;
+      }
+    });
+    showDialog(
+      'tb-popup--delete',
+      'Complete this task',
+      el(
+        'div',
+        { class: 'dl' },
+        el('h2', { class: 'dl__title', text: 'Mark as Completed?' }),
+        el('p', { class: 'dl__text', text: 'This task will be marked as completed. Do you want to proceed?' }),
+        errorBox,
+        el(
+          'div',
+          { class: 'dl__actions' },
+          el('button', { type: 'button', class: 'dl__btn dl__btn--cancel', text: 'Cancel', onclick: () => openDetails(task.id) }),
+          confirmButton,
+        ),
+      ),
+    );
   }
 
   function openDelete(task) {
