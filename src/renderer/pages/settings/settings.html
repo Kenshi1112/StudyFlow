@@ -71,9 +71,27 @@
           <h3 class="st__brand-title">LINE</h3>
         </div>
         <p class="st__line-status">Status : <span id="st-line-status">Not Connected</span></p>
-        <p class="st__line-hint">Add our LINE account as a friend, then send a one-time code to link it</p>
+        <p class="st__line-hint" id="st-line-hint">Add our LINE account as a friend, then send a one-time code to link it</p>
         <button type="button" class="st__btn st__btn--solid" id="st-line-btn">[ Connect LINE ]</button>
       </section>
+
+      <dialog class="st__dlg" id="st-line-dlg" aria-label="Connect LINE">
+        <h3 class="st__dlg-title">Connect LINE</h3>
+        <div class="st__dlg-top">
+          <img class="st__dlg-qr" src="assets/settings/line-qr.png" alt="QR code for our LINE Official Account">
+          <div class="st__dlg-steps">
+            <p><b>1.</b> Add our LINE account as a friend: scan the QR code or search this ID</p>
+            <p class="st__dlg-id">LINE ID <b>@071apfig</b></p>
+            <p><b>2.</b> Send the code below to that chat</p>
+          </div>
+        </div>
+        <p class="st__dlg-code" id="st-line-dlg-code" aria-live="polite">------</p>
+        <p class="st__dlg-timer" id="st-line-dlg-timer"></p>
+        <div class="st__dlg-actions">
+          <button type="button" class="st__dlg-btn st__dlg-btn--ghost" id="st-line-dlg-new">Get a new code</button>
+          <button type="button" class="st__dlg-btn st__dlg-btn--solid" id="st-line-dlg-close">Close</button>
+        </div>
+      </dialog>
 
       <h2 class="st__label st__label--pomodoro" id="st-pomodoro">POMODORO TIMER</h2>
       <section class="st__card st__card--white st__card--pomodoro" aria-label="Pomodoro Timer">
