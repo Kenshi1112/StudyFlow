@@ -7,6 +7,8 @@
 //   - ความยาว Focus/Break อ่านจาก settings:get (pomodoro_focus_minutes / pomodoro_break_minutes) ไว้ preview เวลารวมเท่านั้น
 // State ตาม docs/ipc-contract.md: { status: idle|running|paused, phase: focus|break|null, task_id, batch_id,
 //   session_index, session_total, phase_total_seconds, remaining_seconds }
+// โน้ตของ session (ข้อเสนอที่เบลตกลง รอเขาใส่ใน contract): State มี last_session_id (id แถวใน pomodoro_sessions ของ focus ล่าสุดที่บันทึกแล้ว)
+//   ช่องโน้ตขึ้นตอน Break และตอนจบ batch เมื่อมี last_session_id เท่านั้น บันทึกผ่าน pomodoro:set-note { session_id, notes } (notes ว่าง = null)
 
 'use strict';
 
@@ -31,6 +33,10 @@
   let last = null; // State ล่าสุดที่เป็น running/paused
   let offState = null;
   let cleanups = [];
+
+  let noteSessionId = null; // session ที่ช่องโน้ตกำลังแก้อยู่
+  let noteDirty = false;
+  let noteTimer = null;
 
   const $ = (s) => root.querySelector(s);
 
@@ -63,6 +69,44 @@
   function taskLabel() {
     if (!task) return 'ไม่พบงานนี้';
     return task.course_name ? `${task.title} | ${task.course_name}` : task.title;
+  }
+
+  // --- โน้ตของ session ---
+  function noteStatus(text, isError) {
+    const box = $('#pm-note-status');
+    box.textContent = text;
+    box.classList.toggle('is-error', Boolean(isError));
+  }
+
+  async function saveNote() {
+    clearTimeout(noteTimer);
+    noteTimer = null;
+    if (!noteDirty || !noteSessionId) return;
+    const id = noteSessionId;
+    const text = $('#pm-note-input').value.trim();
+    noteDirty = false;
+    noteStatus('Saving…');
+    try {
+      await api.invoke('pomodoro:set-note', { session_id: id, notes: text === '' ? null : text });
+      if (alive && id === noteSessionId) noteStatus('Saved');
+    } catch (err) {
+      if (alive && id === noteSessionId) {
+        noteDirty = true;
+        noteStatus(`บันทึกโน้ตไม่สำเร็จ: ${errText(err)}`, true);
+      }
+    }
+  }
+
+  // เปลี่ยน session ที่ช่องโน้ตผูกอยู่: บันทึกของเดิมที่ค้างก่อน แล้วล้างช่องสำหรับ session ใหม่
+  function adoptNoteSession(id) {
+    const next = typeof id === 'string' && id ? id : null;
+    if (next === noteSessionId) return;
+    if (noteDirty) saveNote();
+    noteSessionId = next;
+    noteDirty = false;
+    const input = $('#pm-note-input');
+    input.value = '';
+    noteStatus('Optional note for this session');
   }
 
   // --- หน้าเลือกรอบ ---
@@ -111,6 +155,9 @@
     toggle.classList.toggle('is-paused', paused);
     toggle.setAttribute('aria-label', paused ? 'เริ่มต่อ' : 'หยุดชั่วคราว');
     $('#pm-stop').textContent = finished ? 'Back to Task Board' : 'Stop session';
+    const showNote = Boolean(noteSessionId) && (finished || isBreak);
+    $('#pm-note').hidden = !showNote;
+    $('#pm-hint').hidden = showNote;
     renderStreaks(total, s.session_index);
   }
 
@@ -140,6 +187,7 @@
     if (s.status === 'running' || s.status === 'paused') {
       last = s;
       finished = false;
+      adoptNoteSession(s.last_session_id);
       // batch ที่วิ่งอยู่อาจเป็นของ task อื่นที่ไม่ใช่ใน URL: โหลดชื่อ task ของ batch จริงมาแสดง
       if (!task || String(task.id) !== String(s.task_id)) {
         const t = await loadTask(s.task_id);
@@ -152,6 +200,7 @@
     // idle: ถ้าเคยวิ่งอยู่และผู้ใช้ไม่ได้กดหยุดเอง แปลว่า batch จบครบทุกรอบ
     if (running && !stopping) {
       finished = true;
+      adoptNoteSession(s.last_session_id); // ไม่มี id = ซ่อนช่องโน้ต (กันเขียนผิด session)
       renderRun();
     }
   }
@@ -211,6 +260,9 @@
       stopping = false;
       last = null;
       cleanups = [];
+      noteSessionId = null;
+      noteDirty = false;
+      noteTimer = null;
       taskId = params && params.task ? params.task : null;
       n = 4;
       listen($('#pm-minus'), 'click', () => setN(n - 1));
@@ -219,6 +271,13 @@
       listen($('#pm-start'), 'click', start);
       listen($('#pm-toggle'), 'click', togglePause);
       listen($('#pm-stop'), 'click', stop);
+      listen($('#pm-note-input'), 'input', () => {
+        noteDirty = true;
+        noteStatus('');
+        clearTimeout(noteTimer);
+        noteTimer = setTimeout(saveNote, 800);
+      });
+      listen($('#pm-note-input'), 'blur', saveNote);
 
       // subscribe ก่อนขอ state ตั้งต้น (ตามที่ contract แนะนำ) event ที่มาก่อนขอ state ก็ไม่หาย
       if (window.api && typeof window.api.on === 'function') {
@@ -249,6 +308,7 @@
     },
     unmount() {
       // ออกจากหน้าไม่ได้หยุด session: Backend/widget ถือสถานะจริง หน้านี้แค่เลิกฟัง event
+      if (noteDirty) saveNote(); // ออกจากหน้าก่อนครบเวลาหน่วง: บันทึกโน้ตที่ค้างอยู่
       alive = false;
       if (offState) offState();
       offState = null;

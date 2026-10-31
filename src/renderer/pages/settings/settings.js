@@ -3,7 +3,7 @@
 // เรียก backend ผ่าน window.apiClient.invoke เท่านั้น
 // ส่วนที่ Backend มีจริง: settings:get / settings:set (reminder_window_days, pomodoro_focus_minutes, pomodoro_break_minutes, classroom_cutoff_date)
 // ปุ่ม Save Change ของ Pomodoro บันทึก Focus/Break ผ่าน settings:set ทีละ key (ใช้ตอนกด Start Working ของ batch ถัดไป)
-// ส่วนที่ยังไม่มี Backend (LINE connect, โปรไฟล์, Sign out, toggle แจ้งเตือน) เป็น UI อย่างเดียว ยังไม่บันทึก
+// ส่วนที่ยังไม่มี Backend (LINE connect, toggle แจ้งเตือน) เป็น UI อย่างเดียว ยังไม่บันทึก
 
 'use strict';
 
@@ -108,8 +108,6 @@
   function bindPending() {
     const pending = (id, text) => listen($(id), 'click', () => note(text));
     pending('#st-line-btn', 'การเชื่อม LINE ยังไม่พร้อม รอ Backend');
-    pending('#st-signout', 'Sign out ยังไม่พร้อม รอ Backend');
-    pending('#st-edit-profile', 'Edit Profile ยังไม่พร้อม');
     listen($('#st-save'), 'click', savePomodoro);
   }
 
@@ -132,6 +130,10 @@
     const label = $('#st-cls-status');
     label.classList.toggle('is-off', !on);
     label.textContent = on ? 'Connected' : 'Not connected';
+    // การ์ด Account แสดงบัญชี Google Classroom ที่เชื่อมอยู่ (Backend ส่งมาแค่ account_email)
+    const email = on && classroom.account_email ? classroom.account_email : null;
+    $('#st-name').textContent = on ? email || 'Google account' : 'Not connected';
+    $('#st-avatar').textContent = email ? email.charAt(0).toUpperCase() : 'G';
     $('#st-cls-account').textContent = on && classroom.account_email ? classroom.account_email : '\u2014';
     $('#st-cls-sync').textContent = on && classroom.last_synced_at ? fmtWhen(classroom.last_synced_at) : '\u2014';
     $('#st-cls-btn').textContent = !on ? '[ Connect ]' : classroom.cutoff_date ? '[ Disconnect ]' : '[ Choose import date ]';
@@ -163,7 +165,11 @@
     note('');
     try {
       if (classroom && classroom.connected && classroom.cutoff_date) {
-        classroom = await api.invoke('classroom:disconnect');
+        await api.invoke('classroom:disconnect');
+        // Disconnect แล้วล้างวัน cutoff ด้วย: Connect ครั้งหน้าจะเด้งป๊อปอัปให้เลือกวันใหม่ (Backend ไม่ล้างให้ ตาม §13.4)
+        // งานที่เคยเห็นแล้วยังอยู่ใน classroom_sync_state จึงไม่ถูกดึงซ้ำ
+        await api.invoke('settings:set', { key: 'classroom_cutoff_date', value: null });
+        classroom = await api.invoke('classroom:get-status');
       } else {
         if (!(classroom && classroom.connected)) classroom = await api.invoke('classroom:connect');
         if (classroom && classroom.connected && !classroom.cutoff_date) askCutoff();
