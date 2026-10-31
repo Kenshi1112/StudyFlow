@@ -716,3 +716,13 @@
 /* แจ้งผล Sync แบบไม่บล็อก (spec §13.5 Manual-trigger feedback) */
 .tb__toast { position: fixed; left: 50%; bottom: calc(var(--u) * 40); transform: translateX(-50%); z-index: 5; margin: 0; padding: calc(var(--u) * 14) calc(var(--u) * 28); border-radius: calc(var(--u) * 14); background: #3b2a1e; color: #fbf4ee; font-size: calc(var(--u) * 24); box-shadow: var(--tb-shadow); }
 .tb__toast[hidden] { display: none; }
+
+/* ประวัติ session ในป๊อปอัปรายละเอียด (พับไว้) */
+.dt-hist { margin-top: calc(var(--u) * 24); border: calc(var(--u) * 2) solid #e4d5bf; border-radius: calc(var(--u) * 20); background: #fffdf7; }
+.dt-hist[hidden] { display: none; }
+.dt-hist__summary { padding: calc(var(--u) * 12) calc(var(--u) * 15); font-size: calc(var(--u) * 25); line-height: calc(var(--u) * 42); color: #b87347; cursor: pointer; }
+.dt-hist__list { list-style: none; margin: 0; padding: 0 calc(var(--u) * 15) calc(var(--u) * 12); max-height: calc(var(--u) * 260); overflow: auto; }
+.dt-hist__item { padding: calc(var(--u) * 10) 0; border-top: calc(var(--u) * 1) solid #eee3cf; }
+.dt-hist__meta { margin: 0; font-size: calc(var(--u) * 20); color: #8a7a65; }
+.dt-hist__note { margin: calc(var(--u) * 4) 0 0; font-size: calc(var(--u) * 23); line-height: 1.3; color: #472e1b; white-space: pre-wrap; overflow-wrap: anywhere; }
+.dt-hist__note--empty { color: #b4a592; }
