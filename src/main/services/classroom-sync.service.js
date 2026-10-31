@@ -98,9 +98,11 @@ async function connect() {
   return getStatus();
 }
 
-// ลบ token อย่างเดียว ไม่ลบ task ที่ import แล้ว (§13.4) ไม่แตะ classroom_sync_state และ cutoff
+// ลบ token กับล้าง cutoff ไม่ลบ task ที่ import แล้ว (§13.4) ไม่แตะ classroom_sync_state
+// ล้าง cutoff เพื่อให้ connect ครั้งหน้าต้องเลือกวันใหม่ (แก้กรณีเลือกวันผิด) งานที่เคย import/ignore แล้วยังไม่กลับมาให้เลือกอีก
 function disconnect() {
   googleAuth.signOut();
+  setSetting('classroom_cutoff_date', null);
   return getStatus();
 }
 

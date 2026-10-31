@@ -194,7 +194,7 @@ await window.api.invoke('classroom:decide', { id: '1111:9001', decision: 'import
 ```
 
 - **cutoff (§13.1):** `connect` ไม่บังคับตั้ง cutoff แต่ `sync-now` จะ reject ("ตั้งวัน cutoff ก่อน") จนกว่าจะตั้ง ส่วน fetch ตอนเปิดแอปจะข้ามเงียบ ๆ
-- **connect / disconnect:** เชื่อมอยู่แล้วเรียก `connect` ซ้ำ = คืน status เดิม ไม่เปิดเบราว์เซอร์ (รองรับบัญชีเดียว) ผู้ใช้กดไม่อนุญาต / ติ๊กสิทธิ์ไม่ครบ / ไม่ login ใน 3 นาที = reject `disconnect` ลบแค่ token ไม่ลบ task ที่ import แล้ว ไม่แตะ cutoff (§13.4)
+- **connect / disconnect:** เชื่อมอยู่แล้วเรียก `connect` ซ้ำ = คืน status เดิม ไม่เปิดเบราว์เซอร์ (รองรับบัญชีเดียว) ผู้ใช้กดไม่อนุญาต / ติ๊กสิทธิ์ไม่ครบ / ไม่ login ใน 3 นาที = reject `disconnect` ลบ token กับล้าง cutoff (`cutoff_date` กลับเป็น `null` ตอน connect ใหม่จึงต้องเลือกวันอีกรอบ) ไม่ลบ task ที่ import แล้ว และไม่ล้างรายการที่เคย import/ignore (§13.4)
 - **`sync-now`:** reject ถ้ายังไม่เชื่อมบัญชี / ยังไม่ตั้ง cutoff / ต่อ Google ไม่ได้ ถ้า token หมดอายุ (`invalid_grant`) จะลบ token และ reject พร้อมข้อความให้ Connect ใหม่ (consent screen ที่ยังเป็น Testing ทำให้ token อายุ 7 วัน) `new_items` = จำนวนที่เพิ่งเจอรอบนี้ `pending` = ที่รอตัดสินใจทั้งหมด ถ้า `new_items` เป็น 0 หน้าจอเป็นคนตัดสินว่าจะแสดง toast (§13.5) เอง
 - **`id`:** รูป `courseId:courseWorkId` เช่น `1111:9001` (§19)
 - **`get-pending`:** อ่านจาก DB (ไม่ยิง Google) ใช้ออฟไลน์ได้ เรียงตาม `due_date` งานไม่มี due ไว้ท้าย ยังไม่เชื่อมบัญชี = `[]`
