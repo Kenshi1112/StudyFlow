@@ -152,7 +152,7 @@
         window.SourceIcon.create(task.source, 26),
         el('span', { class: 'visually-hidden', text: window.SourceIcon.label(task.source) }),
       ),
-      el('span', { class: 'tb-card__title', text: `ชื่องาน : ${task.title}` }),
+      el('span', { class: 'tb-card__title', text: `Task Name : ${task.title}` }),
       el(
         'span',
         { class: 'tb-card__meta' },
