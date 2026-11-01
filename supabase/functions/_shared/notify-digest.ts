@@ -25,7 +25,7 @@ export type Pending = { task_id: string; title: string; state: string; due_date:
 export type SilentWrite = { task_id: string; last_notified_state: string; reminders_sent: string };
 
 // เลือก task ที่ต้องแจ้ง (pending) กับแถว log ที่ต้องเขียนเงียบ ๆ (silent) ตามกฎเดียวกับ desktop
-//   Due Today / Overdue: state ต่างจากที่จดล่าสุด -> แจ้ง (ตัวอย่าง: log จด due_today พอข้ามเที่ยงคืนเป็น overdue -> แจ้งอีก 1 ครั้ง)
+//   Due Today / Overdue: state ต่างจากที่จดล่าสุด -> แจ้ง (ตัวอย่าง: log จด due_today พอเลยเวลา due เป็น overdue -> แจ้งอีก 1 ครั้ง)
 //   Upcoming: decideReminders (§11.4) ด้วย reminderDays ของผู้ใช้คนนี้ ([] = ปิด -> ข้ามทั้งหมด ไม่เขียน log)
 // ตัวอย่าง: ติ๊ก [7,3,1] task due อีก 5 วัน เจอครั้งแรก -> silent 1 แถว (จด '7' state upcoming_within_window) ไม่มี pending
 // เรียงตามกลุ่มก่อน แล้วงานที่ due เก่าสุดก่อน (เกินเพดานจะได้ตัดงานที่ไม่รีบทิ้งท้าย)

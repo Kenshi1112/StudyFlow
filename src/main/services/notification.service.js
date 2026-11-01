@@ -70,7 +70,7 @@ function show(body) {
 }
 
 // วนทุก task ที่ยังไม่ถูกลบ คืนจำนวน task ที่แจ้งรอบนี้ now ส่งเองได้เพื่อใช้ทดสอบ
-//   Due Today / Overdue: แจ้งเมื่อ state ต่างจากที่จดไว้ใน log (§11.3) เช่น แจ้ง due_today แล้วเช็คซ้ำ -> เงียบ ข้ามเที่ยงคืนเป็น overdue -> แจ้งอีก 1 ครั้ง
+//   Due Today / Overdue: แจ้งเมื่อ state ต่างจากที่จดไว้ใน log (§11.3) เช่น แจ้ง due_today แล้วเช็คซ้ำ -> เงียบ เลยเวลา due เป็น overdue -> แจ้งอีก 1 ครั้ง (ช้าสุดไม่เกินรอบเช็ค 15 นาที)
 //   Upcoming: ใช้ decideReminders (§11.4) แล้วจดผลลง log ทุกครั้งที่เปลี่ยน (ไม่เปลี่ยนก็ไม่เขียน)
 //   ปิด "Remind me about upcoming deadlines" = ข้ามส่วน Upcoming ทั้งหมด (ไม่แจ้ง ไม่เขียน log)
 function checkDeadlineStates(now = new Date()) {
