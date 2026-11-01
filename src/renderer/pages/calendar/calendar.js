@@ -35,6 +35,11 @@
     box.hidden = !text;
   }
 
+  // เวลาครบกำหนดแบบ 24 ชั่วโมงเหมือนหน้า Task Board เช่น "23:59"
+  function formatTime(d) {
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+
   // task ที่มีวันครบกำหนดและยังไม่ถูกลบ จัดกลุ่มตามวัน
   function byDay() {
     const map = new Map();
@@ -46,6 +51,8 @@
       if (!map.has(k)) map.set(k, []);
       map.get(k).push(t);
     });
+    // ในวันเดียวกันเรียงตามเวลาครบกำหนด งานที่ครบก่อนอยู่บน
+    map.forEach((list) => list.sort((a, b) => new Date(a.due_date) - new Date(b.due_date)));
     return map;
   }
 
@@ -54,7 +61,8 @@
     a.className = `cl__chip cl__c${slotOf(t.course_name)}`;
     a.href = '#/task-board';
     a.textContent = t.title;
-    a.title = t.course_name ? `${t.title} (${t.course_name})` : t.title;
+    const time = formatTime(new Date(t.due_date));
+    a.title = t.course_name ? `${t.title} (${t.course_name}) · ${time}` : `${t.title} · ${time}`;
     return a;
   }
 
@@ -136,7 +144,7 @@
       const foot = document.createElement('div');
       foot.className = 'cl__up-foot';
       const date = document.createElement('span');
-      date.textContent = `${SHORT[due.getMonth()]} ${due.getDate()}, ${due.getFullYear()}`;
+      date.textContent = `${SHORT[due.getMonth()]} ${due.getDate()}, ${due.getFullYear()} · ${formatTime(due)}`;
       const days = document.createElement('span');
       days.className = `cl__days ${left <= 2 ? 'cl__days--soon' : 'cl__days--later'}`;
       days.textContent = `${left}d`;

@@ -111,6 +111,7 @@
     toggle.classList.toggle('is-paused', paused);
     toggle.setAttribute('aria-label', paused ? 'เริ่มต่อ' : 'หยุดชั่วคราว');
     $('#pm-stop').textContent = finished ? 'Back to Task Board' : 'Stop session';
+    $('#pm-widget').hidden = finished;
     renderStreaks(total, s.session_index);
   }
 
@@ -163,6 +164,15 @@
       if (res && Number.isFinite(res.pomodoro_break_minutes) && res.pomodoro_break_minutes >= 1) breakMin = res.pomodoro_break_minutes;
     } catch (err) {
       // ไม่มี handler: ใช้ค่า default 25/5 เหมือน Backend
+    }
+  }
+
+  // เปิด floating widget กลับมา (Backend: pomodoro:show-widget)
+  async function showWidget() {
+    try {
+      await api.invoke('pomodoro:show-widget');
+    } catch (err) {
+      say(errText(err));
     }
   }
 
@@ -219,6 +229,7 @@
       listen($('#pm-start'), 'click', start);
       listen($('#pm-toggle'), 'click', togglePause);
       listen($('#pm-stop'), 'click', stop);
+      listen($('#pm-widget'), 'click', showWidget);
 
       // subscribe ก่อนขอ state ตั้งต้น (ตามที่ contract แนะนำ) event ที่มาก่อนขอ state ก็ไม่หาย
       if (window.api && typeof window.api.on === 'function') {

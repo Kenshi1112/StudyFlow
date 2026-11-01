@@ -36,6 +36,17 @@ function createFloatingWidget() {
   });
 }
 
+// เปิด widget กลับมา (ปุ่มในหน้า Pomodoro หลังผู้ใช้กดปิด widget ไป) ถ้าเปิดอยู่แล้วแค่ดึงขึ้นมาข้างหน้า
+function showFloatingWidget() {
+  if (widgetWindow && !widgetWindow.isDestroyed()) {
+    if (widgetWindow.isMinimized()) widgetWindow.restore();
+    widgetWindow.show();
+    widgetWindow.focus();
+    return;
+  }
+  createFloatingWidget();
+}
+
 // ปิด widget ตอน batch จบ / หยุด
 function closeFloatingWidget() {
   if (widgetWindow && !widgetWindow.isDestroyed()) widgetWindow.close();
@@ -44,5 +55,6 @@ function closeFloatingWidget() {
 
 module.exports = {
   createFloatingWidget,
+  showFloatingWidget,
   closeFloatingWidget,
 };

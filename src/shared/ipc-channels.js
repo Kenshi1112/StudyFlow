@@ -26,6 +26,7 @@ const IPC = Object.freeze({
     RESUME: 'pomodoro:resume',
     STOP: 'pomodoro:stop',
     GET_STATE: 'pomodoro:get-state',
+    SHOW_WIDGET: 'pomodoro:show-widget', // เปิด floating widget กลับมาหลังผู้ใช้ปิด (2026-11-01)
   }),
   DASHBOARD: Object.freeze({
     GET_METRICS: 'dashboard:get-metrics',

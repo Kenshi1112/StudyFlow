@@ -53,6 +53,12 @@
     return `${MONTHS[d.getMonth()]} ${d.getDate()},${d.getFullYear()}`;
   }
 
+  // เวลาครบกำหนดแบบ 24 ชั่วโมง เช่น "23:59" (งานที่ไม่ได้ใส่เวลาจะเป็น 23:59 ตาม task-form.js)
+  function formatTime(iso) {
+    const d = new Date(iso);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+
   // นับเป็นวันตามปฏิทินของเครื่อง (แบบเดียวกับ Deadline State §9.2) ไม่ใช่ชั่วโมงที่เหลือหาร 24
   // เช่น ตอนนี้ 21:50 งาน due พรุ่งนี้ 23:59 = 1 วัน (แบบเดิมปัดขึ้นเป็น 2)
   function daysLeft(iso) {
@@ -63,10 +69,18 @@
     return Math.round((dueDay - today) / 86400000);
   }
 
+  // งานที่เลยกำหนดแล้วแต่ยังไม่เสร็จ (การ์ดขึ้นป้าย Overdue สีแดง)
+  function isOverdue(task) {
+    return task.status !== 'completed' && task.deadline_state === 'overdue';
+  }
+
+  // งาน Overdue อยู่ในแท็บ Overdue ที่เดียว ไม่ซ้ำในแท็บ Not Started / In Progress (All Tasks ยังเห็นทุกงาน)
+  const PRIORITY_LABEL = { low: 'Low', medium: 'Medium', high: 'High' };
+
   function matchesFilter(task) {
     if (filter === 'all') return true;
-    if (filter === 'overdue') return task.status !== 'completed' && task.deadline_state === 'overdue';
-    return task.status === filter;
+    if (filter === 'overdue') return isOverdue(task);
+    return task.status === filter && !isOverdue(task);
   }
 
   function matchesSource(task) {
@@ -85,7 +99,7 @@
 
   // ป้ายสถานะบนการ์ด: ถ้าเลยกำหนดและยังไม่เสร็จ แสดง Overdue (สีแดง) แทนสถานะ (ตาม Figma)
   function pillOf(task) {
-    if (task.status !== 'completed' && task.deadline_state === 'overdue') return { text: 'Overdue', overdue: true };
+    if (isOverdue(task)) return { text: 'Overdue', overdue: true };
     return { text: STATUS_LABEL[task.status] || task.status, overdue: false };
   }
 
@@ -122,9 +136,14 @@
       },
       el('span', { class: pill.overdue ? 'tb-card__pill tb-card__pill--overdue' : 'tb-card__pill', text: pill.text }),
       leftText ? el('span', { class: urgent ? 'tb-card__left tb-card__left--urgent' : 'tb-card__left', text: leftText }) : null,
-      // ธงเฉพาะ High เท่านั้น เป็นไอคอนเล็กโทนกลาง (UX Review §2) ไม่อยู่ใน Figma
-      task.priority === 'high'
-        ? el('span', { class: 'tb-card__flag' }, el('span', { 'aria-hidden': 'true', text: '⚑' }), el('span', { class: 'visually-hidden', text: 'High priority' }))
+      // จุดสี Priority หลังป้ายสถานะ: เขียว Low / เหลือง Medium / แดง High ไม่ตั้ง Priority = ไม่มีจุด
+      // (เปลี่ยนจากธงเฉพาะ High ตาม UX Review §2 ผู้ใช้ตัดสิน 2026-11-01 ไม่อยู่ใน Figma)
+      PRIORITY_LABEL[task.priority]
+        ? el(
+            'span',
+            { class: `tb-card__prio tb-card__prio--${task.priority}`, title: `Priority: ${PRIORITY_LABEL[task.priority]}` },
+            el('span', { class: 'visually-hidden', text: `${PRIORITY_LABEL[task.priority]} priority` }),
+          )
         : null,
       el('span', { class: 'tb-card__course', text: task.course_name || '' }),
       el(
@@ -137,7 +156,7 @@
       el(
         'span',
         { class: 'tb-card__meta' },
-        el('span', { text: `Deadline: ${task.due_date ? formatDate(task.due_date) : '-'}` }),
+        el('span', { text: `Deadline: ${task.due_date ? `${formatDate(task.due_date)} · ${formatTime(task.due_date)}` : '-'}` }),
         el('br'),
         el('span', { text: `Progress: ${progress}%` }),
       ),
@@ -392,7 +411,7 @@
         'div',
         { class: 'dt__due' },
         el('span', { text: dueSummary(task) }),
-        el('span', { text: task.due_date ? formatLong(task.due_date) : '' }),
+        el('span', { text: task.due_date ? `${formatLong(task.due_date)} · ${formatTime(task.due_date)}` : '' }),
       ),
       el(
         'div',

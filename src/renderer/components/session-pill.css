@@ -1,0 +1,54 @@
+/* Owner: Frontend */
+/* หน้าที่: ป้ายลอย "Back to session" มุมขวาล่าง (components/session-pill.js) ออกแบบเอง ไม่อยู่ใน Figma */
+
+.sp {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px 8px 14px;
+  border: 1px solid #e4d5bf;
+  border-radius: 999px;
+  background: #fffdf9;
+  box-shadow: 0 4px 12px rgba(59, 42, 30, 0.18);
+  color: #3b2a1e;
+  font-family: Inter, var(--font-family), sans-serif;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.sp:hover {
+  border-color: #c97a3e;
+}
+
+.sp__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #c97a3e;
+}
+
+.sp[data-kind='break'] .sp__dot {
+  background: #3a9a4a;
+}
+
+.sp[data-kind='paused'] .sp__dot {
+  background: #b3a58f;
+}
+
+.sp__phase {
+  font-weight: 600;
+}
+
+.sp__time {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.sp__cta {
+  color: #8a7a65;
+  text-decoration: underline;
+}

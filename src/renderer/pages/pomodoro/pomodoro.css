@@ -59,4 +59,5 @@
 .pm__toggle.is-paused .pm__icon--play { display: block; }
 .pm__toggle.is-paused .pm__icon--pause { display: none; }
 .pm__hint { position: absolute; left: 50%; transform: translateX(-50%); width: calc(var(--u) * 730); top: calc(var(--u) * 720); margin: 0; text-align: center; font-size: calc(var(--u) * 32); font-weight: 700; color: #b3a58f; }
+.pm__widget { position: absolute; left: calc(var(--u) * 24); bottom: calc(var(--u) * 14); border: 0; background: none; font-size: calc(var(--u) * 18); color: #8a7a65; text-decoration: underline; cursor: pointer; }
 .pm__stop { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--u) * 14); border: 0; background: none; font-size: calc(var(--u) * 18); color: #8a7a65; text-decoration: underline; }
