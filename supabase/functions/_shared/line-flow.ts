@@ -1,37 +1,41 @@
 // Owner: Backend
 // หน้าที่: logic ล้วนของ line-webhook ไม่แตะ DB/HTTP จึงเทสใน Node ได้ — ตรวจรหัสผูกบัญชี และ state machine สร้างงาน (ข้อ 8.3, 8.4)
-// อ้างอิง: PROJECT_v0.15 section 14.2, 14.3 (ถามทีละขั้น course -> title -> due date ห้ามแกะข้อความอิสระ §14.6)
+// อ้างอิง: PROJECT_v0.19 section 14.2, 14.3 (ถามทีละขั้น course -> title -> description (ข้ามได้) -> due date ห้ามแกะข้อความอิสระ §14.6)
 
 export const FLOW_TIMEOUT_MS = 10 * 60 * 1000; // flow ที่เงียบเกิน 10 นาทีถือว่าค้าง (§14.3)
 export const TRIGGER_PHRASE = 'เพิ่มงาน';
 export const DATE_POSTBACK_DATA = 'due_date'; // data ที่ปุ่ม Datetime Picker ส่งกลับมา ใช้แยกจาก postback อื่น
 export const BANGKOK_OFFSET = '+07:00'; // D5: เวลาที่เลือกใน LINE ไม่มี timezone ตีเป็นเวลาไทยเสมอ
+export const SKIP_PHRASE = 'ข้าม'; // ปุ่มข้ามขั้น description ส่งข้อความนี้ (§14.3 v0.18)
+export const MAX_NOTES = 1000; // description ยาวสุดกี่ตัวอักษร เกินแล้วถามใหม่ ไม่ตัดเงียบ ๆ (§14.3 v0.18)
 
 const MAX_QUICK_REPLIES = 13; // LINE ใส่ปุ่ม Quick Reply ได้ไม่เกิน 13
 const MAX_LABEL_LENGTH = 20; // ป้ายบนปุ่มยาวได้ไม่เกิน 20 ตัวอักษร
 
-export type Step = 'waiting_course' | 'waiting_title' | 'waiting_date';
-export type PartialTask = { course_name?: string; title?: string };
+export type Step = 'waiting_course' | 'waiting_title' | 'waiting_notes' | 'waiting_date';
+export type PartialTask = { course_name?: string; title?: string; notes?: string };
 export type SavedState = { current_step: Step; partial_task_data: PartialTask; updated_at: string };
 export type Input = { text?: string; datetime?: string }; // ข้อความ หรือค่าจาก Datetime Picker ("2026-11-05T14:00")
 export type Message = { type: 'text'; text: string; quickReply?: { items: unknown[] } };
-export type NewTask = { course_name: string; title: string; due_date: string };
+export type NewTask = { course_name: string; title: string; due_date: string; notes?: string }; // notes มีเฉพาะเมื่อผู้ใช้พิมพ์ (ไม่กดข้าม)
 export type Result = {
   state: { current_step: Step; partial_task_data: PartialTask } | null; // null = ไม่มี flow ค้างแล้ว (ลบแถวทิ้ง)
-  task?: NewTask; // มีค่าเมื่อครบ 3 ช่อง ให้ผู้เรียก insert
+  task?: NewTask; // มีค่าเมื่อตอบขั้นสุดท้าย (due date) แล้ว ให้ผู้เรียก insert
   reply: Message[];
 };
 
 // ข้อความตอบกลับ (§26: ถ้อยคำปล่อยให้ตอน implement)
 export const MESSAGES = {
   NOT_LINKED: 'ยังไม่ได้เชื่อมบัญชี StudyFlow\nเปิดแอป > Settings > Connect LINE แล้วส่งรหัส 6 หลักมาที่นี่',
-  LINKED: 'เชื่อมบัญชีเรียบร้อยแล้ว\nพิมพ์ "เพิ่มงาน" เพื่อเพิ่มงานใหม่ หรือ "งานค้าง" เพื่อดูงานที่ยังไม่เสร็จ',
+  LINKED: 'เชื่อมบัญชีเรียบร้อยแล้ว\nพิมพ์ "เพิ่มงาน" เพื่อเพิ่มงานใหม่ "งานค้าง" เพื่อดูงานที่ยังไม่เสร็จ หรือ "แก้งาน" เพื่อเปลี่ยนสถานะ/วันส่ง',
   CODE_INVALID: 'รหัสไม่ถูกต้องหรือหมดอายุแล้ว (ใช้ได้ 10 นาที)\nกด Connect LINE ในแอปเพื่อขอรหัสใหม่',
   LINE_TAKEN: 'LINE นี้ผูกกับบัญชี StudyFlow อื่นอยู่แล้ว\nต้องกด Disconnect ที่บัญชีนั้นก่อน',
-  HELP: 'พิมพ์ "เพิ่มงาน" เพื่อเพิ่มงานใหม่\nพิมพ์ "งานค้าง" เพื่อดูงานที่ยังไม่เสร็จ',
+  HELP: 'พิมพ์ "เพิ่มงาน" เพื่อเพิ่มงานใหม่\nพิมพ์ "งานค้าง" เพื่อดูงานที่ยังไม่เสร็จ\nพิมพ์ "แก้งาน" เพื่อเปลี่ยนสถานะหรือวันส่ง',
   ASK_COURSE: 'วิชาอะไร?\nกดเลือกจากปุ่ม หรือพิมพ์ชื่อวิชาเองก็ได้',
   ASK_COURSE_NO_HISTORY: 'วิชาอะไร?\nพิมพ์ชื่อวิชาได้เลย',
   ASK_TITLE: 'ชื่องานคืออะไร?',
+  ASK_NOTES: 'มีรายละเอียดเพิ่มเติมไหม?\nพิมพ์ได้เลย หรือกด "ข้าม" ถ้าไม่มี',
+  NOTES_TOO_LONG: `รายละเอียดยาวเกิน ${MAX_NOTES} ตัวอักษร\nพิมพ์ให้สั้นลง หรือกด "ข้าม" แล้วไปเขียนต่อในแอปนะ`,
   ASK_DATE: 'กำหนดส่งเมื่อไหร่?\nกดปุ่ม "เลือกวัน-เวลา" ด้านล่าง',
   ASK_DATE_AGAIN: 'กรุณากดปุ่ม "เลือกวัน-เวลา" ด้านล่างเพื่อเลือกกำหนดส่ง',
   ASK_TEXT: 'ตอบเป็นข้อความนะ',
@@ -70,6 +74,11 @@ function courseButtons(courses: string[]): unknown[] {
   });
 }
 
+const skipButton = () => ({
+  type: 'action',
+  action: { type: 'message', label: SKIP_PHRASE, text: SKIP_PHRASE },
+});
+
 const datePickerButton = () => ({
   type: 'action',
   action: { type: 'datetimepicker', label: 'เลือกวัน-เวลา', data: DATE_POSTBACK_DATA, mode: 'datetime' },
@@ -77,7 +86,7 @@ const datePickerButton = () => ({
 
 // Datetime Picker ส่งมาเป็น "2026-11-05T14:00" (ไม่มี timezone) -> "2026-11-05T14:00:00+07:00"
 // ตัวอย่าง: "2026-11-05T00:30" -> 00:30 น. ไทย = 17:30 UTC ของวันที่ 4 (ถ้าไม่ใส่ +07:00 จะเลื่อนผิดวัน)
-function toDueDate(datetime?: string): string | null {
+export function toDueDate(datetime?: string): string | null {
   if (!datetime || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(datetime)) return null;
   const iso = `${datetime}:00${BANGKOK_OFFSET}`;
   return Number.isNaN(new Date(iso).getTime()) ? null : iso;
@@ -123,7 +132,19 @@ export function nextStep(saved: SavedState | null, input: Input, courses: string
   if (state.current_step === 'waiting_title') {
     if (!text) return stay(textMessage(MESSAGES.ASK_TEXT));
     return {
-      state: { current_step: 'waiting_date', partial_task_data: { ...partial, title: text } },
+      state: { current_step: 'waiting_notes', partial_task_data: { ...partial, title: text } },
+      reply: [textMessage(MESSAGES.ASK_NOTES, [skipButton()])],
+    };
+  }
+
+  // waiting_notes (v0.18): ข้อความอะไรก็ได้ = description / "ข้าม" = ไม่ใส่ (จึงใส่ description ที่เป็นคำว่า "ข้าม" คำเดียวจาก LINE ไม่ได้ ยอมรับตาม §14.3)
+  // ตัวอย่าง: "อ่านบท 3-4" -> เก็บ notes / "ข้าม" -> ไม่มี notes / ข้อความ 1,200 ตัวอักษร -> บอกว่ายาวไป อยู่ขั้นเดิม
+  if (state.current_step === 'waiting_notes') {
+    if (!text) return stay(textMessage(MESSAGES.ASK_TEXT, [skipButton()]));
+    const next = text === SKIP_PHRASE ? partial : { ...partial, notes: text };
+    if (Array.from(text).length > MAX_NOTES) return stay(textMessage(MESSAGES.NOTES_TOO_LONG, [skipButton()]));
+    return {
+      state: { current_step: 'waiting_date', partial_task_data: next },
       reply: [textMessage(MESSAGES.ASK_DATE, [datePickerButton()])],
     };
   }
@@ -134,12 +155,16 @@ export function nextStep(saved: SavedState | null, input: Input, courses: string
     const dueDate = toDueDate(input.datetime);
     if (!dueDate) return stay(textMessage(MESSAGES.ASK_DATE_AGAIN, [datePickerButton()]));
 
-    const task = { course_name: partial.course_name, title: partial.title, due_date: dueDate };
+    const task: NewTask = { course_name: partial.course_name, title: partial.title, due_date: dueDate };
+    if (partial.notes) task.notes = partial.notes;
     const shownDue = dueDate.slice(0, 16).replace('T', ' '); // "2026-11-05 14:00"
+    // สรุปรายละเอียดไม่เกิน 100 ตัวอักษร บรรทัดเดียว (ตัวเต็มอยู่ใน task แล้ว)
+    const oneLine = (partial.notes ?? '').replace(/\s+/g, ' ');
+    const notesLine = partial.notes ? `\nรายละเอียด: ${Array.from(oneLine).length > 100 ? Array.from(oneLine).slice(0, 100).join('') + '…' : oneLine}` : '';
     return {
       state: null,
       task,
-      reply: [textMessage(`เพิ่มงานแล้ว\nวิชา: ${task.course_name}\nงาน: ${task.title}\nส่ง: ${shownDue}`)],
+      reply: [textMessage(`เพิ่มงานแล้ว\nวิชา: ${task.course_name}\nงาน: ${task.title}${notesLine}\nส่ง: ${shownDue}`)],
     };
   }
 
