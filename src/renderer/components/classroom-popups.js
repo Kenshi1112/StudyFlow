@@ -126,13 +126,6 @@
   }
 
   // ---------- ป๊อปอัปเลือกวัน cutoff ----------
-  // "Start of semester" spec ไม่ได้กำหนดวัน: ใช้วันเปิดภาคล่าสุดแบบประมาณ (1 มิ.ย. หรือ 1 พ.ย.) แก้ได้ด้วย Custom
-  function semesterStart(now) {
-    const y = now.getFullYear();
-    const candidates = [new Date(y, 10, 1), new Date(y, 5, 1), new Date(y - 1, 10, 1)];
-    return candidates.find((d) => d <= now);
-  }
-
   function toInputValue(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
@@ -141,7 +134,7 @@
   function cutoff({ onConfirm, onCancel }) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const options = { today, semester: semesterStart(today) };
+    const options = { today };
     let mode = 'today';
     let picked = today;
 
@@ -149,7 +142,7 @@
     const input = el('input', { type: 'date', class: 'cr-date__input', max: toInputValue(today), 'aria-label': 'Custom import start date' });
     const buttons = {};
     const optionRow = el('div', { class: 'cr-options', role: 'group', 'aria-label': 'Import start date' },
-      [['today', 'Today'], ['semester', 'Start of semester'], ['custom', 'Custom']].map(([key, label]) => {
+      [['today', 'Today'], ['custom', 'Custom']].map(([key, label]) => {
         buttons[key] = el('button', { type: 'button', class: 'cr-option', text: label, onclick: () => setMode(key) });
         return buttons[key];
       }));
