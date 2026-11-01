@@ -1,6 +1,6 @@
 // Owner: Backend
-// หน้าที่: เช็ค Deadline State เป็นระยะและส่ง OS notification (กันซ้ำด้วย notification_log)
-// อ้างอิง: PROJECT_v0.16 section 11 (11.1 กฎ, 11.2 ตั้งเวลา, 11.3 กันซ้ำ, 11.4 Upcoming reminder) และ 9.2 (Deadline State)
+// หน้าที่: เช็ค Deadline State เป็นระยะและส่ง OS notification (กันซ้ำด้วย notification_log + เตือนซ้ำ Overdue / Due Today ตามเวลา)
+// อ้างอิง: PROJECT_v0.19 section 11 (11.1 กฎ, 11.2 ตั้งเวลา, 11.3 กันซ้ำ, 11.4 Upcoming reminder, 11.5 เตือนซ้ำ Overdue / Due Today) และ 9.2 (Deadline State)
 // ถ้าแก้กฎ Upcoming ที่นี่ ต้องแก้ supabase/functions/_shared/reminders.ts ด้วย (§17.2, §20) แล้วรัน parity test
 
 'use strict';
@@ -14,6 +14,11 @@ const { DEADLINE_STATE } = require('../../shared/constants');
 // เช็คทุก 15 นาที (§11.2)
 const CHECK_INTERVAL_MS = 15 * 60 * 1000;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+// เตือนซ้ำ Overdue / Due Today ห่างกัน 1 ชั่วโมง (§11.5) ตายตัว ไม่มี Settings
+// setInterval เลื่อนได้เล็กน้อย (เช่น 59 นาที 59 วินาที) จึงยอมให้ถึงเกณฑ์ก่อนเวลาไม่เกิน 1 นาที ไม่งั้นรอบนั้นจะข้ามไปรอรอบเช็คถัดไปอีก 15 นาที
+const REPEAT_INTERVAL_MS = 60 * 60 * 1000;
+const REPEAT_SLACK_MS = 60 * 1000;
 
 // state ที่ 6 ที่ใช้เฉพาะแจ้งเตือน (§11.3) ไม่ใช่ deadline state จริง จึงไม่อยู่ใน constants.js
 // v0.16: ความหมายคือ "ส่ง Upcoming reminder (รวมที่จดเงียบ ๆ) ไปแล้วอย่างน้อย 1 ค่า" ไม่ต้องแก้ CHECK constraint
@@ -29,6 +34,9 @@ const MESSAGES = {
 };
 
 let timer = null;
+// เวลาที่แจ้งรอบ Overdue / Due Today ล่าสุด เก็บในหน่วยความจำเท่านั้น (§11.5) ปิดแอป = ลืม ซึ่งถูกต้อง เพราะเปิดแอปครั้งหน้าแจ้งรอบแรกอยู่แล้ว
+// null = ยังไม่เคยแจ้งในการเปิดแอปครั้งนี้
+let lastRoundAt = null;
 
 // เหลืออีกกี่ "วันตามปฏิทิน" จนถึงวันที่ของ due_date (ไม่ดูเวลา) ใช้วันตามนาฬิกาเครื่องเหมือน §9.2
 // ตัวอย่าง: now = 7 พ.ย. 15:00 -> due 10 พ.ย. 23:59 = 3 / due 8 พ.ย. 00:00 = 1 / due 7 พ.ย. 23:00 = 0
@@ -65,15 +73,43 @@ function decideReminders({ daysLeft, ticked, sent, isFirstSight }) {
   };
 }
 
+// ข้อความ notification รอบ Overdue / Due Today อันเดียว (§11.5) urgent = [{ task, state }]
+//   งานเดียว  -> ใช้คำเดิมพร้อมชื่อ "เลยกำหนดแล้ว: ส่งรายงาน"
+//   หลายงาน   -> บอกแค่จำนวน เลยกำหนดก่อน "เลยกำหนด 2 งาน · ครบกำหนดวันนี้ 1 งาน" (ไม่ใส่ชื่อ เพราะ notification ยาวได้จำกัด)
+function buildDigestBody(urgent) {
+  if (urgent.length === 1) return `${MESSAGES[urgent[0].state]}: ${urgent[0].task.title}`;
+  const overdue = urgent.filter((item) => item.state === DEADLINE_STATE.OVERDUE).length;
+  const dueToday = urgent.length - overdue;
+  const parts = [];
+  if (overdue > 0) parts.push(`เลยกำหนด ${overdue} งาน`);
+  if (dueToday > 0) parts.push(`ครบกำหนดวันนี้ ${dueToday} งาน`);
+  return parts.join(' · ');
+}
+
+// มี Start Working (Pomodoro) อยู่ไหม: running / paused ทุก phase (focus, break) = มี (§11.5)
+// require ตอนเรียกเพื่อไม่ให้ service สองตัวผูกกันตั้งแต่โหลด ถ้าโหลดไม่ได้ (เช่นตอนเทส) ถือว่าไม่มี session
+function defaultIsSessionActive() {
+  try {
+    return require('./pomodoro.service').getState().status !== 'idle';
+  } catch {
+    return false;
+  }
+}
+
 function show(body) {
   new Notification({ title: 'StudyFlow', body }).show();
 }
 
-// วนทุก task ที่ยังไม่ถูกลบ คืนจำนวน task ที่แจ้งรอบนี้ now ส่งเองได้เพื่อใช้ทดสอบ
-//   Due Today / Overdue: แจ้งเมื่อ state ต่างจากที่จดไว้ใน log (§11.3) เช่น แจ้ง due_today แล้วเช็คซ้ำ -> เงียบ เลยเวลา due เป็น overdue -> แจ้งอีก 1 ครั้ง (ช้าสุดไม่เกินรอบเช็ค 15 นาที)
-//   Upcoming: ใช้ decideReminders (§11.4) แล้วจดผลลง log ทุกครั้งที่เปลี่ยน (ไม่เปลี่ยนก็ไม่เขียน)
-//   ปิด "Remind me about upcoming deadlines" = ข้ามส่วน Upcoming ทั้งหมด (ไม่แจ้ง ไม่เขียน log)
-function checkDeadlineStates(now = new Date()) {
+// วนทุก task ที่ยังไม่ถูกลบ คืนจำนวน notification ที่เด้งรอบนี้ (รอบ Overdue / Due Today นับเป็น 1 ไม่ว่ากี่งาน) now ส่งเองได้เพื่อใช้ทดสอบ
+//   Due Today / Overdue (§11.1, §11.5): รวมทุกงานที่ยัง Overdue / Due Today เป็น notification เดียว เด้งเมื่อ
+//     1) มีงาน "เพิ่งเข้า" state นี้ (state ต่างจากที่จดใน log §11.3) -> เด้งทันที แม้มี Start Working อยู่
+//     2) ยังไม่เคยเด้งรอบนี้เลยตั้งแต่เปิดแอป -> เด้งตอนเปิดแอป
+//     3) ห่างจากรอบก่อน >= 1 ชม. -> เด้งซ้ำ ยกเว้นมี Start Working อยู่ (ข้ามโดยไม่จดเวลา รอบเช็คแรกหลังจบ session จะได้เด้ง)
+//     ทุกรอบเริ่มนับ 1 ชม. ใหม่ ไม่มีงาน Overdue / Due Today เลย = ไม่เด้ง
+//   Upcoming (§11.4): ใช้ decideReminders แล้วจดผลลง log ทุกครั้งที่เปลี่ยน (ไม่เปลี่ยนก็ไม่เขียน) เด้งครั้งเดียวต่อ reminder ไม่เด้งซ้ำ
+//   ปิด "Remind me about upcoming deadlines" = ข้ามส่วน Upcoming ทั้งหมด (ไม่แจ้ง ไม่เขียน log) ส่วน Overdue / Due Today ยังทำงาน
+//   options.isSessionActive ใส่เองได้เพื่อทดสอบ (ปกติถามจาก pomodoro.service)
+function checkDeadlineStates(now = new Date(), { isSessionActive = defaultIsSessionActive } = {}) {
   if (!Notification.isSupported()) return 0;
 
   const db = getDb();
@@ -91,7 +127,8 @@ function checkDeadlineStates(now = new Date()) {
        reminders_sent = excluded.reminders_sent, notified_at = excluded.notified_at`
   );
 
-  let sent = 0;
+  let hasEntered = false; // มีงานเพิ่งเข้า Due Today / Overdue รอบนี้ไหม
+  const urgent = []; // ทุกงานที่ตอนนี้ Overdue หรือ Due Today { task, state } (ไม่ว่าเคยแจ้งแล้วหรือยัง)
   const upcoming = []; // Upcoming reminder ที่ต้องเด้งรอบนี้ { task, daysLeft } แสดงหลังวนเสร็จ เพราะอาจต้องรวมเป็นอันเดียว
   for (const task of tasks) {
     try {
@@ -99,10 +136,12 @@ function checkDeadlineStates(now = new Date()) {
       const log = logs.get(task.id);
 
       if (MESSAGES[state]) {
-        if (log?.last_notified_state === state) continue; // แจ้ง state นี้ไปแล้ว
-        show(`${MESSAGES[state]}: ${task.title}`);
-        saveLog.run(task.id, state, log?.reminders_sent ?? '', now.toISOString());
-        sent += 1;
+        urgent.push({ task, state });
+        if (log?.last_notified_state !== state) {
+          // เพิ่งเข้า state นี้ จดทันที: รอบนี้ได้เด้งแน่ (ข้อ 1 ด้านบน) ไม่ต้องรอตัดสินใจ
+          saveLog.run(task.id, state, log?.reminders_sent ?? '', now.toISOString());
+          hasEntered = true;
+        }
         continue;
       }
 
@@ -125,18 +164,36 @@ function checkDeadlineStates(now = new Date()) {
     }
   }
 
+  let shown = 0;
+
+  // รอบ Overdue / Due Today (§11.5) เรียงให้ Overdue มาก่อนเสมอในข้อความ (buildDigestBody ทำให้แล้ว)
+  if (urgent.length > 0) {
+    const isLaunchRound = lastRoundAt === null;
+    const repeatDue = lastRoundAt !== null && now.getTime() - lastRoundAt.getTime() >= REPEAT_INTERVAL_MS - REPEAT_SLACK_MS;
+    if (hasEntered || isLaunchRound || (repeatDue && !isSessionActive())) {
+      show(buildDigestBody(urgent));
+      lastRoundAt = now;
+      shown += 1;
+    }
+  }
+
   // เกิน 3 อัน -> รวมเป็น notification เดียว (§11.4) ไม่เกิน -> แยกทีละงาน
   if (upcoming.length > MAX_SEPARATE_UPCOMING) {
     show(`มี ${upcoming.length} งานใกล้ถึงกำหนด`);
+    shown += 1;
   } else {
-    for (const { task, daysLeft } of upcoming) show(`อีก ${daysLeft} วันถึงกำหนด: ${task.title}`);
+    for (const { task, daysLeft } of upcoming) {
+      show(`อีก ${daysLeft} วันถึงกำหนด: ${task.title}`);
+      shown += 1;
+    }
   }
-  return sent + upcoming.length;
+  return shown;
 }
 
-// เช็คทันที 1 ครั้งตอนเปิดแอป แล้วเช็คซ้ำทุก 15 นาที (เรียกซ้ำตอนมีตัวจับเวลาอยู่แล้ว = ไม่ทำอะไร)
+// เช็คทันที 1 ครั้งตอนเปิดแอป (= รอบ Overdue / Due Today ตอนเปิดแอป) แล้วเช็คซ้ำทุก 15 นาที (เรียกซ้ำตอนมีตัวจับเวลาอยู่แล้ว = ไม่ทำอะไร)
 function startScheduler() {
   if (timer) return;
+  lastRoundAt = null;
   checkDeadlineStates();
   timer = setInterval(() => checkDeadlineStates(), CHECK_INTERVAL_MS);
 }
@@ -146,10 +203,18 @@ function stopScheduler() {
   timer = null;
 }
 
+// ล้างเวลารอบล่าสุด = เหมือนเปิดแอปใหม่ (ใช้ในเทส)
+function resetRepeatState() {
+  lastRoundAt = null;
+}
+
 module.exports = {
+  REPEAT_INTERVAL_MS,
   daysUntilDue,
   decideReminders,
+  buildDigestBody,
   checkDeadlineStates,
+  resetRepeatState,
   startScheduler,
   stopScheduler,
 };
