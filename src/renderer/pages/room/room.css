@@ -550,23 +550,59 @@
   transform: translate(-50%, -50%) scale(1);
 }
 
-/* จุดแดงบน Task Board: มีงานที่ยังไม่ Completed และเป็น Due Today / Overdue (UX Review: badge แบบเดียวกันทั้งแอป จุดเดียว ไม่มี animation วนซ้ำ)
-   สีเดียวกับ Overdue ใน Dashboard (#c0393f) ซ่อนไว้จนกว่า room.js จะใส่ class has-alert */
+/* เตือนบน Task Board: มีงานที่ยังไม่ Completed และเป็น Due Today / Overdue (PROJECT §7, UX Review: badge แบบเดียวกันทั้งแอป + "glow if urgent")
+   องค์ประกอบ: (1) วงแดงมีตัวเลขจำนวนงานที่มุมกระดาน (2) ขอบแดงเรืองรอบกระดานตลอดเวลา (3) วงคลื่นแดงเด้งออกจากวง 3 รอบตอนขึ้นแล้วหยุด
+   ไม่ใช้ animation วนไม่รู้จบ (UX Review ห้าม) สีเดียวกับ Overdue ใน Dashboard (#c0393f) ซ่อนไว้จนกว่า room.js จะใส่ class has-alert */
 .room__badge {
   display: none;
   position: absolute;
-  right: -15px;
-  top: -15px;
-  width: 30px;
-  height: 30px;
+  right: -4px;
+  top: -20px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   background: #c0393f;
-  box-shadow: 0 0 0 4px #fff;
+  box-shadow: 0 0 0 4px #fff, 0 4px 14px rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font-family: Inter, var(--font-family), sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 46px;
+  text-align: center;
   pointer-events: none;
+}
+
+.room__badge::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 4px solid #c0393f;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.room__hotspot--board.has-alert {
+  box-shadow: 0 0 0 4px rgba(192, 57, 63, 0.75), 0 0 36px 12px rgba(192, 57, 63, 0.4);
+}
+
+/* เมาส์ชี้/โฟกัส: กลับไปใช้กรอบส้มของไฮไลต์ปกติ (วงแดงยังอยู่) */
+.room__hotspot--board.has-alert:hover,
+.room__hotspot--board.has-alert:focus-visible {
+  box-shadow: 0 0 0 4px #fff, 0 0 0 9px #c4714a, 0 0 32px 12px rgba(196, 113, 74, 0.35);
 }
 
 .room__hotspot--board.has-alert .room__badge {
   display: block;
+}
+
+.room__hotspot--board.has-alert .room__badge::before {
+  animation: room-badge-pulse 1.3s ease-out 3; /* 3 รอบแล้วหยุด */
+}
+
+@keyframes room-badge-pulse {
+  0% { transform: scale(1); opacity: 0.9; }
+  100% { transform: scale(2); opacity: 0; }
 }
 
 /* ปุ่มเฟืองมุมขวาบน: กรอบวงกลมแบบเดียวกัน (ไม่มีป้าย เพราะเป็นไอคอนที่คนรู้จักอยู่แล้ว) */
@@ -583,6 +619,10 @@
   .room__hotspot::after,
   .room__settings {
     transition: none;
+  }
+
+  .room__hotspot--board.has-alert .room__badge::before {
+    animation: none;
   }
 }
 
