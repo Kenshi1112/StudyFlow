@@ -1,6 +1,6 @@
 // Owner: Backend
 // หน้าที่: sync tasks และ pomodoro_sessions กับ Supabase (push/pull, LWW) และจัดการการเชื่อมต่อ LINE ฝั่งแอป
-// อ้างอิง: PROJECT_v0.15 section 14.2, 18, 19.4, 20 — ส่วน LINE ฝั่งแอปคือ 3 ฟังก์ชันท้ายไฟล์ (ข้อ 8.5)
+// อ้างอิง: PROJECT_v0.16 section 14.2, 14.4, 18, 19.4, 20 — ส่วน LINE ฝั่งแอปคือฟังก์ชันท้ายไฟล์ (ข้อ 8.5) + pushReminderDays (v0.16)
 
 'use strict';
 
@@ -10,6 +10,7 @@ const { app } = require('electron');
 const { createClient } = require('@supabase/supabase-js');
 const { getDb } = require('../db/database');
 const googleAuth = require('./google-auth.service');
+const { getSettings } = require('./settings.service');
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000; // sync เต็มรอบ (push + pull) ทุก 5 นาที (§18.2: 5-10 นาที)
 const DIRTY_CHECK_MS = 10 * 1000; // ทุก 10 วิดูว่ามีแถวที่แก้แล้วยังไม่ส่งไหม ถ้ามีส่งเลย = debounce (แก้รัว ๆ ใน 10 วิ ส่งรอบเดียว)
@@ -46,6 +47,8 @@ let isSyncing = false; // กันสองรอบทับกัน
 let lastSyncFailed = false; // รอบล่าสุดพลาดไหม: ถ้าพลาด timer 10 วิ จะไม่ลองซ้ำ รอ timer 5 นาที (§18.2 retry รอบถัดไป)
 let intervalTimer = null;
 let dirtyTimer = null;
+// ค่า reminder_days ที่เขียนไป line_account_links สำเร็จล่าสุด เช่น '[7,3,1]' (null = ยังไม่เคย/ต้องเขียนใหม่) เก็บในหน่วยความจำอย่างเดียว
+let lastPushedReminderDays = null;
 
 // อ่าน/เขียน key-value ใน table settings (เก็บเป็น JSON เหมือน settings.service)
 // เขียนตรงที่นี่เพราะ settings.service รับเฉพาะ key ที่ลงทะเบียนไว้ และเราไม่อยากให้ cursor โผล่ใน settings:get
@@ -95,6 +98,7 @@ async function getClient() {
 
   client = supabase;
   clientEmail = account.account_email;
+  lastPushedReminderDays = null; // login ใหม่ (อาจเป็นบัญชีอื่น) ต้องเขียนค่าให้ LINE ใหม่
   return client;
 }
 
@@ -222,7 +226,8 @@ function startSync() {
     const dirty = getDb().prepare('SELECT 1 FROM sync_dirty LIMIT 1').get();
     if (dirty && !lastSyncFailed) syncOnce();
   }, DIRTY_CHECK_MS);
-  syncOnce();
+  // (c) §14.4: เปิดแอปแล้วเขียน reminder_days ให้ LINE หลัง sync รอบแรก (ใช้ client ที่ login แล้ว จึงไม่ login ซ้อนกัน)
+  syncOnce().finally(() => pushReminderDays());
 }
 
 function stopSync() {
@@ -263,6 +268,7 @@ async function getLineStatus() {
 
   const { data, error } = await supabase.from('line_account_links').select('linked_at').maybeSingle();
   if (error) throw new Error(`เช็คสถานะ LINE ไม่สำเร็จ: ${error.message}`);
+  if (data) pushReminderDays(); // (b) §14.4: ผูกเสร็จแล้ว (แถวใหม่ได้ค่า default {1}) เขียนค่าจริงของผู้ใช้ทับ ไม่รอผล
   return data ? { connected: true, linked_at: new Date(data.linked_at).toISOString() } : { connected: false, linked_at: null };
 }
 
@@ -279,7 +285,46 @@ async function disconnectLine() {
   }
   const { error } = await supabase.from('line_account_links').delete().eq('app_user_id', data.session.user.id);
   if (error) throw new Error(`ยกเลิกการผูก LINE ไม่สำเร็จ: ${error.message}`);
+  lastPushedReminderDays = null; // ผูกใหม่ทีหลังจะได้แถวใหม่ (default {1}) ต้องเขียนค่าอีกรอบ
   return { connected: false, linked_at: null };
+}
+
+// ค่า reminder_days ที่ LINE ควรใช้ (§14.4) = เปิดเตือนล่วงหน้า ? วันที่ติ๊ก : [] (list ว่าง = ปิด)
+// ตัวอย่าง: ติ๊ก [7, 3, 1] เปิดอยู่ -> [7, 3, 1] / ปิด toggle -> [] (ค่าที่ติ๊กยังอยู่ในแอป แต่ LINE เงียบ)
+function getEffectiveReminderDays() {
+  const settings = getSettings();
+  return settings.reminder_upcoming_enabled ? settings.reminder_days : [];
+}
+
+// เขียนค่า reminder_days ไป line_account_links ของตัวเอง ทางเดียว แอปไม่อ่านกลับ (§14.4, §18.2)
+// ไม่ throw (เรียกแบบไม่รอผล) คืน true = Supabase มีค่าล่าสุดแล้ว / false = ยังไม่สำเร็จ (ยังไม่เชื่อม Google, ยังไม่ผูก LINE, ออฟไลน์)
+// เขียนไม่สำเร็จ = LINE ใช้ค่าเดิมต่อ (ข้อจำกัดที่ยอมรับ §20) ครั้งหน้าที่เรียก (เปลี่ยนค่า / เช็คสถานะ LINE / เปิดแอป) ลองใหม่
+// ค่าเดียวกับที่เขียนไปแล้ว = ไม่ยิงซ้ำ (getLineStatus ถูกเรียกถี่ได้)
+async function pushReminderDays() {
+  try {
+    const supabase = await getClient();
+    if (!supabase) return false;
+
+    const days = getEffectiveReminderDays();
+    if (JSON.stringify(days) === lastPushedReminderDays) return true;
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      client = null; // session หายไป ให้รอบหน้า login ใหม่
+      return false;
+    }
+    const { data, error } = await supabase
+      .from('line_account_links').update({ reminder_days: days })
+      .eq('app_user_id', sessionData.session.user.id).select('app_user_id');
+    if (error) throw new Error(error.message);
+    if (data.length === 0) return false; // ยังไม่ได้ผูก LINE ไม่มีแถวให้แก้ (ผูกเสร็จแล้ว getLineStatus จะเรียกใหม่)
+
+    lastPushedReminderDays = JSON.stringify(days);
+    return true;
+  } catch (error) {
+    console.warn(`[cloud-sync] เขียน reminder_days ให้ LINE ไม่สำเร็จ ใช้ค่าเดิมต่อ: ${error.message}`);
+    return false;
+  }
 }
 
 module.exports = {
@@ -291,4 +336,5 @@ module.exports = {
   createLineLinkCode,
   disconnectLine,
   getLineStatus,
+  pushReminderDays,
 };

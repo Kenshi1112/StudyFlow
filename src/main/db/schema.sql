@@ -62,10 +62,12 @@ CREATE TABLE IF NOT EXISTS notification_log (
   last_notified_state TEXT NOT NULL
                         CHECK (last_notified_state IN
                           ('no_deadline', 'upcoming', 'upcoming_within_window', 'due_today', 'overdue', 'completed')),
+  -- (v0.16 §11.4) reminder ล่วงหน้าที่จัดการแล้ว เรียงมากไปน้อย เช่น '7,3' (ว่าง = ยังไม่มี) รวมค่าที่จดเงียบ ๆ ตอนเจอ task ครั้งแรก
+  reminders_sent      TEXT NOT NULL DEFAULT '',
   notified_at         TEXT NOT NULL
 );
 
--- local only ไม่ sync: key-value (เช่น has_seen_first_run_prompt, cutoff date, reminder window)
+-- local only ไม่ sync: key-value (เช่น has_seen_first_run_prompt, cutoff date, reminder_days)
 CREATE TABLE IF NOT EXISTS settings (
   key   TEXT PRIMARY KEY,
   value TEXT

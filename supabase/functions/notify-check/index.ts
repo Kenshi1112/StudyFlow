@@ -1,6 +1,7 @@
 // Owner: Backend
 // หน้าที่: Edge Function ที่ pg_cron เรียกทุก 15 นาที เพื่อ push แจ้งเตือน deadline ไป LINE (ข้อ 8.6)
-// อ้างอิง: PROJECT_v0.15 §14.4 (กฎเดียวกับ §9.2/§11.1), §11.3 (กันซ้ำ), §19.4 (line_notification_log), §20 (secrets)
+// อ้างอิง: PROJECT_v0.16 §14.4 (กฎเดียวกับ §9.2/§11.1), §11.3-11.4 (กันซ้ำ, Upcoming reminder), §19.4 (line_account_links.reminder_days, line_notification_log), §20 (secrets)
+// ต้องรัน migration 20261101120000_reminder_days.sql ก่อน deploy ไฟล์นี้ (ไม่งั้น select reminder_days พัง)
 // deploy ด้วย: supabase functions deploy notify-check --no-verify-jwt
 //   (pg_cron ไม่มี JWT ของ Supabase ความปลอดภัยอยู่ที่ header x-cron-secret เทียบกับ secret CRON_SECRET)
 // secrets: CRON_SECRET, LINE_CHANNEL_ACCESS_TOKEN (supabase secrets set) ส่วน SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY Supabase ใส่ให้เอง
@@ -8,15 +9,12 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { buildDigest, pickPending } from '../_shared/notify-digest.ts';
-import type { TaskRow } from '../_shared/notify-digest.ts';
+import type { LogRow, Pending, TaskRow } from '../_shared/notify-digest.ts';
+import { sanitizeDays } from '../_shared/reminders.ts';
 
 const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? '';
 const ACCESS_TOKEN = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN') ?? '';
 if (!CRON_SECRET || !ACCESS_TOKEN) console.error('ยังไม่ได้ตั้ง CRON_SECRET / LINE_CHANNEL_ACCESS_TOKEN (supabase secrets set)');
-
-// D6: cloud ไม่รู้ค่า reminder_window_days ของแอป (settings ไม่ sync §18.2) จึงใช้ค่า default ของ spec §11.1 ตายตัว
-// ผลที่ตามมา: ถ้าผู้ใช้ปรับในแอปเป็น 3 วัน desktop เตือนก่อน 3 วัน แต่ LINE ยังเตือนก่อน 1 วัน
-const REMINDER_WINDOW_DAYS = 1;
 
 // ใช้ service_role (ข้าม RLS) เพราะต้องอ่าน tasks ของทุกคนที่ผูก LINE key นี้อยู่ฝั่ง Supabase เท่านั้น ไม่เข้าแอป
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
@@ -32,9 +30,10 @@ async function pushToLine(to: string, text: string) {
   if (!response.ok) throw new Error(`LINE push ไม่สำเร็จ (${response.status}): ${await response.text()}`);
 }
 
-// แจ้ง 1 คน คืนจำนวนงานที่แจ้งรอบนี้
+// แจ้ง 1 คน คืนจำนวนงานที่แจ้งรอบนี้ reminder_days คือค่าที่แอปเขียนมา (§14.4) [] = ผู้ใช้ปิดการเตือนล่วงหน้า
 // push สำเร็จแล้วค่อยจด log: push พลาด = ไม่จด รอบหน้าลองใหม่ (ถ้า push ผ่านแต่จด log พลาด รอบหน้าอาจแจ้งซ้ำ 1 ครั้ง ยอมรับได้)
-async function notifyUser(link: { app_user_id: string; line_user_id: string }, now: Date): Promise<number> {
+// แถว log ที่จดเงียบ (เจอ task ครั้งแรก §11.4) เขียนพร้อมกัน ไม่มีข้อความ
+async function notifyUser(link: { app_user_id: string; line_user_id: string; reminder_days: number[] | null }, now: Date): Promise<number> {
   // ดึงทีละคน (PostgREST คืนสูงสุดประมาณ 1000 แถวต่อ request ดึงรวมทุกคนอาจถูกตัดเงียบ ๆ)
   const { data: tasks, error } = await db
     .from('tasks').select('id, title, status, due_date')
@@ -42,21 +41,29 @@ async function notifyUser(link: { app_user_id: string; line_user_id: string }, n
   if (error) throw error;
 
   const { data: logs, error: logError } = await db
-    .from('line_notification_log').select('task_id, last_notified_state').eq('line_user_id', link.line_user_id);
+    .from('line_notification_log').select('task_id, last_notified_state, reminders_sent').eq('line_user_id', link.line_user_id);
   if (logError) throw logError;
 
-  const lastNotified = new Map<string, string>((logs ?? []).map((row) => [row.task_id, row.last_notified_state]));
-  const pending = pickPending((tasks ?? []) as TaskRow[], lastNotified, REMINDER_WINDOW_DAYS, now);
-  if (pending.length === 0) return 0;
+  const log = new Map<string, LogRow>(
+    (logs ?? []).map((row) => [row.task_id, { last_notified_state: row.last_notified_state, reminders_sent: row.reminders_sent ?? '' }]),
+  );
+  const { pending, silent } = pickPending((tasks ?? []) as TaskRow[], log, sanitizeDays(link.reminder_days), now);
 
-  const { text, shown } = buildDigest(pending);
-  await pushToLine(link.line_user_id, text);
+  let shown: Pending[] = [];
+  if (pending.length > 0) {
+    const digest = buildDigest(pending);
+    shown = digest.shown;
+    await pushToLine(link.line_user_id, digest.text);
+  }
 
-  const rows = shown.map((p) => ({
-    task_id: p.task_id, line_user_id: link.line_user_id, last_notified_state: p.state, notified_at: now.toISOString(),
-  }));
-  const { error: saveError } = await db.from('line_notification_log').upsert(rows, { onConflict: 'task_id,line_user_id' });
-  if (saveError) throw saveError;
+  const rows = [
+    ...shown.map((p) => ({ task_id: p.task_id, last_notified_state: p.state, reminders_sent: p.reminders_sent })),
+    ...silent,
+  ].map((row) => ({ ...row, line_user_id: link.line_user_id, notified_at: now.toISOString() }));
+  if (rows.length > 0) {
+    const { error: saveError } = await db.from('line_notification_log').upsert(rows, { onConflict: 'task_id,line_user_id' });
+    if (saveError) throw saveError;
+  }
   return shown.length;
 }
 
@@ -66,7 +73,7 @@ Deno.serve(async (req) => {
     return new Response('unauthorized', { status: 401 });
   }
 
-  const { data: links, error } = await db.from('line_account_links').select('app_user_id, line_user_id');
+  const { data: links, error } = await db.from('line_account_links').select('app_user_id, line_user_id, reminder_days');
   if (error) {
     console.error(`อ่าน line_account_links ไม่สำเร็จ: ${error.message}`);
     return new Response('db error', { status: 500 });
