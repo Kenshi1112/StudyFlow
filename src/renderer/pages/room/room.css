@@ -550,6 +550,25 @@
   transform: translate(-50%, -50%) scale(1);
 }
 
+/* จุดแดงบน Task Board: มีงานที่ยังไม่ Completed และเป็น Due Today / Overdue (UX Review: badge แบบเดียวกันทั้งแอป จุดเดียว ไม่มี animation วนซ้ำ)
+   สีเดียวกับ Overdue ใน Dashboard (#c0393f) ซ่อนไว้จนกว่า room.js จะใส่ class has-alert */
+.room__badge {
+  display: none;
+  position: absolute;
+  right: -15px;
+  top: -15px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #c0393f;
+  box-shadow: 0 0 0 4px #fff;
+  pointer-events: none;
+}
+
+.room__hotspot--board.has-alert .room__badge {
+  display: block;
+}
+
 /* ปุ่มเฟืองมุมขวาบน: กรอบวงกลมแบบเดียวกัน (ไม่มีป้าย เพราะเป็นไอคอนที่คนรู้จักอยู่แล้ว) */
 .room__settings {
   transition: box-shadow 0.15s ease;
