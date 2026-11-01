@@ -39,21 +39,20 @@ function parseDate(value, fieldName) {
 // เช็คตามลำดับ ข้อบนชนะข้อล่าง:
 //   1. ไม่มี due_date       -> no_deadline
 //   2. status = completed   -> completed  (เสร็จแล้วไม่เป็น overdue/due_today เด็ดขาด — ข้อตัดสินของเบล 2026-10-06)
-//   3. due_date ก่อนวันนี้   -> overdue
-//   4. due_date อยู่ในวันนี้ -> due_today
+//   3. due_date เลยเวลาตอนนี้แล้ว -> overdue
+//   4. due_date ยังไม่ถึงเวลา แต่อยู่ในวันนี้ -> due_today
 //   5. นอกนั้น              -> upcoming
-// "วันนี้" = วันตามนาฬิกาเครื่อง เทียบระดับวัน เช่น due 09:00 ตอนนี้ 15:00 ยังเป็น due_today จนกว่าจะข้ามเที่ยงคืน
-// ตัวอย่าง (ตอนนี้ = 6 ต.ค. 15:00): due 5 ต.ค. -> overdue / due 6 ต.ค. 09:00 -> due_today / due 7 ต.ค. -> upcoming
+// Overdue เทียบกับ "เวลาตอนนี้" (นาฬิกาเครื่อง) ไม่ใช่ระดับวัน เช่น due 09:00 ตอนนี้ 15:00 = overdue ตั้งแต่ 09:00 เลย
+// ตัวอย่าง (ตอนนี้ = 6 ต.ค. 15:00): due 5 ต.ค. -> overdue / due 6 ต.ค. 09:00 -> overdue / due 6 ต.ค. 23:59 -> due_today / due 7 ต.ค. -> upcoming
 // now ส่งเองได้เพื่อใช้ทดสอบ
 function computeDeadlineState(task, now = new Date()) {
   if (!task.due_date) return DEADLINE_STATE.NO_DEADLINE;
   if (task.status === TASK_STATUS.COMPLETED) return DEADLINE_STATE.COMPLETED;
 
   const due = parseDate(task.due_date, 'due_date');
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 
-  if (due < startOfToday) return DEADLINE_STATE.OVERDUE;
+  if (due < now) return DEADLINE_STATE.OVERDUE;
   if (due < startOfTomorrow) return DEADLINE_STATE.DUE_TODAY;
   return DEADLINE_STATE.UPCOMING;
 }

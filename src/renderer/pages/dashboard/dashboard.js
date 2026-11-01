@@ -163,11 +163,19 @@
     render(data);
   }
 
+  // โหลดซ้ำเองทุก 20 วินาที (เท่า Task Board/Room) ให้ตัวเลข Overdue ขยับทันทีที่งานเลยเวลา
+  const REFRESH_MS = 20000;
+  let refreshTimer = null;
+
   window.pages['dashboard'] = {
     mount(el) {
       root = el;
       alive = true;
       cleanups = [];
+      refreshTimer = setInterval(load, REFRESH_MS);
+      cleanups.push(() => clearInterval(refreshTimer));
+      window.addEventListener('focus', load);
+      cleanups.push(() => window.removeEventListener('focus', load));
       root.querySelectorAll('.db__range-btn').forEach((btn) => {
         const fn = () => {
           range = btn.dataset.range;

@@ -57,8 +57,8 @@
     if (!t.due_date) return 'no_deadline';
     const due = new Date(t.due_date);
     const now = new Date();
-    if (due.toDateString() === now.toDateString()) return 'due_today';
-    return due > now ? 'upcoming' : 'overdue';
+    if (due < now) return 'overdue';
+    return due.toDateString() === now.toDateString() ? 'due_today' : 'upcoming';
   }
 
   // ค่าจำลอง: มีแค่ส่วน priority (0.2 x factor x 100) เพื่อให้เห็นว่าลำดับขยับตาม priority
