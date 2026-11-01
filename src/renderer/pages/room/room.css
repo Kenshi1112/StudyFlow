@@ -506,9 +506,66 @@
   outline-offset: 4px;
 }
 
-.room__hotspot--board { left: 1266px; top: 95px; width: 626px; height: 425px; }
-.room__hotspot--dashboard { left: 714px; top: 489px; width: 464px; height: 322px; }
-.room__hotspot--calendar { left: 1276px; top: 615px; width: 202px; height: 168px; }
+.room__hotspot--board { left: 1266px; top: 95px; width: 626px; height: 425px; border-radius: 18px; }
+.room__hotspot--dashboard { left: 714px; top: 489px; width: 464px; height: 322px; border-radius: 22px; }
+.room__hotspot--calendar { left: 1276px; top: 615px; width: 202px; height: 168px; border-radius: 14px; }
+
+/* ไฮไลต์ตอนเมาส์ชี้ (หรือโฟกัสด้วยคีย์บอร์ด): กรอบสีส้มมีขอบขาวรองให้เห็นชัดบนทุกพื้นหลัง + ป้ายชื่อ (อ่านจาก aria-label)
+   มีเฉพาะ 3 จุดที่กดได้ (Task Board / Dashboard / Calendar) ของอื่นในห้อง (ชั้นหนังสือ, แก้ว, หน้าต่าง ฯลฯ) ไม่มีจุดคลิก จึงไม่ขึ้นกรอบ
+   ขนาดทั้งหมดเป็น px ของฉาก 1920x1080 ซึ่งย่อตาม --room-scale อยู่แล้ว */
+.room__hotspot {
+  transition: box-shadow 0.15s ease;
+}
+
+.room__hotspot::after {
+  content: attr(aria-label);
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translate(-50%, -50%) scale(0.92);
+  padding: 6px 20px;
+  border-radius: 999px;
+  background: #c4714a;
+  box-shadow: 0 0 0 3px #fff;
+  color: #fff;
+  font-family: Inter, var(--font-family), sans-serif;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 28px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none; /* ป้ายไม่ใช่พื้นที่คลิก พื้นที่คลิกคือในกรอบเท่านั้น */
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.room__hotspot:hover,
+.room__hotspot:focus-visible {
+  box-shadow: 0 0 0 4px #fff, 0 0 0 9px #c4714a, 0 0 32px 12px rgba(196, 113, 74, 0.35);
+}
+
+.room__hotspot:hover::after,
+.room__hotspot:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* ปุ่มเฟืองมุมขวาบน: กรอบวงกลมแบบเดียวกัน (ไม่มีป้าย เพราะเป็นไอคอนที่คนรู้จักอยู่แล้ว) */
+.room__settings {
+  transition: box-shadow 0.15s ease;
+}
+
+.room__settings:hover {
+  box-shadow: 0 0 0 3px #fff, 0 0 0 6px #c4714a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .room__hotspot,
+  .room__hotspot::after,
+  .room__settings {
+    transition: none;
+  }
+}
 
 /* --- Header --- */
 
