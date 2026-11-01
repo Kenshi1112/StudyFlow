@@ -1,5 +1,8 @@
 # PROJECT.md
 
+**Version:** 0.16 (Upcoming-Deadline Reminders Become User-Selectable — 7 / 3 / 2 / 1 Days Before the Due Date — and LINE Follows the Same Choice)
+**Status (v0.16):** One targeted change to notifications (Sections 11, 14.4, 19); no new integration, service or section number. The single "reminder window" (one number of days, default 1) is replaced by a set of reminders that the user ticks in Settings: 7, 3, 2 and/or 1 day before the due date, default 1 day only. A single reminder one day ahead is too short for larger assignments; letting the user tick several gives an early heads-up and a last nudge. Each ticked reminder fires at most once per task and never again on later app launches, because repeating on every launch would be noise and would push users to switch notifications off. When one check finds several reminders reached for the same task (for example after the app was closed for days), only the closest one is shown and the earlier ones are marked as done; when one check produces more than three reminders, the desktop shows a single grouped notification. A task seen for the first time does not fire reminders that were already reached when it appeared. LINE now follows the same choice: the desktop app copies the selection to the user's `line_account_links` row on Supabase, replacing the fixed 1-day LINE window used since v0.12 because settings were local-only. This is the only setting that leaves the device, and the copy is one-way (desktop to Supabase). Accepted limitations: the choice is global, not per task, and a change made while offline reaches LINE only after the next successful write (Section 20).
+
 **Version:** 0.15 (Classroom Review Queue Stores the Details It Displays; Imported Tasks Carry the Assignment's Description and a Link Back to Classroom)
 **Status (v0.15):** One targeted change to the Google Classroom integration (Sections 13.5, 19); no new integration, service, table or section. `classroom_sync_state` gains three columns, `title`, `due_date` and `notes`, so the review popup can list pending items from local data instead of asking Google again each time it opens (which would show nothing offline and after every restart). When the user chooses Create Task, these values are copied into the new task: `notes` holds the assignment's description followed by a link to the assignment in Classroom, so the student can see what is being asked and reach any attachment without searching Classroom first. `classroom_assignment_id` is now stored as `courseId:courseWorkId`, because Classroom only guarantees that a CourseWork id is unique inside its course. Also written down: how Classroom's due date and time (given in UTC) become the ISO 8601 `due_date` used everywhere else, and that a task imported as Completed is stamped with the import time, not the submission time.
 
@@ -20,7 +23,7 @@
 
 **Version:** 0.9 (First-Run Google-Connect Prompt Added; Two Known Limitations Documented — No-Backup-Without-Connection, Single-Account-Per-Device)
 **Status:** Active — This version adds a one-time, dismissible first-run prompt offering to connect Google Classroom (Section 13.1), so users who never open Settings are still made aware of the choice between connecting (Classroom sync + cloud backup) and staying local-only. Declining the prompt does not gate or delay entry into the app in any way — it is offered, never required, consistent with this project's existing low-friction and no-separate-account-system principles (Sections 6, 19). Two accepted limitations that were previously undocumented are now recorded explicitly: (1) a user who never connects Google Classroom has no cloud backup, since Supabase Auth relies exclusively on Google identity (Section 19); (2) switching Google accounts on the same device is not guarded against at the data layer and could mix local data across accounts (Section 19). Neither limitation changes existing behavior — both are pre-existing consequences of decisions already made in v0.5–v0.8 (single Classroom account, Google-only auth) that had not yet been written down. No business logic, data model field beyond one new `settings` key, or Classroom/Pomodoro/Dashboard behavior changes in this version.
-**Supersedes:** PROJECT.md v0.14
+**Supersedes:** PROJECT.md v0.15
 **Purpose:** This document is the Single Source of Truth for this project. It is not a thesis report. It exists so that any developer or AI assistant can understand the project's purpose, scope, and current decisions within a few minutes.
 
 ---
@@ -39,6 +42,7 @@
 - **(v0.13 note)** No section is added, removed, or renumbered in this version; Section 9.3 is reused for the reinstated Priority field (kept at the same number it held before v0.8) and the section numbering from v0.12 is unchanged. Derived documents (UX-UI-Design-Review, Database-Design, DFD) must be brought in line with this version before they are relied on again: Priority selector on the task create/edit form and task card, an optional Course field on the manual task form, and the renamed `course_name` column.
 - **(v0.14 note)** No section is added, removed, or renumbered. One data-model field is added (`tasks.first_started_at`, Section 19) and one Dashboard metric is removed (Section 10.2). Derived documents must be brought in line before they are relied on again: UX-UI-Design-Review (Dashboard: six metrics, Needs Attention strip holds Overdue only), `schema.sql`, the Supabase `tasks` migration, and the Dashboard service and its tests. The SQLite file in `userData` must be deleted after `schema.sql` changes, since the project has no migration system.
 - **(v0.15 note)** No section is added, removed, or renumbered. Three columns are added to `classroom_sync_state` (`title`, `due_date`, `notes`, Section 19) and the format of `classroom_assignment_id` is fixed (Section 19). Derived files to bring in line: `schema.sql`, `tests/schema.test.js`, `docs/ipc-contract.md` and the Classroom services. The SQLite file in `userData` must be deleted after `schema.sql` changes, since the project has no migration system. UX-UI-Design-Review needs no change: the review popup already shows title, course and due date (Section 13.5).
+- **(v0.16 note)** One subsection is added (11.4); no section is renumbered. New fields: `notification_log.reminders_sent`, `line_notification_log.reminders_sent` and `line_account_links.reminder_days` (Section 19), and the settings key `reminder_days`, which replaces `reminder_window_days`. Derived files to bring in line: `schema.sql`, `tests/schema.test.js`, a new Supabase migration, the notification and settings services, the `notify-check` Edge Function with its `_shared` modules, `docs/ipc-contract.md`, the Settings page, and UX-UI-Design-Review (now v0.16). The SQLite file in `userData` must be deleted after `schema.sql` changes, since the project has no migration system.
 
 ---
 
@@ -322,7 +326,7 @@ The dashboard supports filtering its charts and statistics by:
 Default notification rules for the MVP:
 - Notify once when a task's deadline state changes to **Due Today**.
 - Notify once when a task's deadline state changes to **Overdue**.
-- Notify once when a task enters the **Upcoming** state within a configurable reminder window before its due date (default: **1 day**).
+- **(Changed in v0.16)** Notify once per ticked reminder when an **Upcoming** task reaches that many days before its due date. The user ticks any of **7, 3, 2, 1** days in Settings (default: **1 day** only). The exact rule is in Section 11.4.
 
 **(Bug identified and fixed in v0.8 — see Section 11.3):** this rule is a *threshold* check, not a simple state transition.
 
@@ -330,7 +334,7 @@ Default notification rules for the MVP:
 
 Users can customize or disable these rules later; the above is the shipped default.
 
-**(New in v0.12)** These three rules also drive LINE push notifications for users who have connected LINE (Section 14.4), using the identical thresholds — there is no separate LINE-specific notification configuration.
+**(New in v0.12)** These three rules also drive LINE push notifications for users who have connected LINE (Section 14.4), using the identical thresholds, including the reminder days the user selected (Section 14.4) — there is no separate LINE-specific notification configuration.
 
 ### 11.2 Scheduling Mechanism (Revised in v0.11, extended in v0.12)
 
@@ -347,9 +351,29 @@ Each task stores the deadline state it was last notified for (see `notification_
 
 **Fix:** widen the set of values `notification_log.last_notified_state` can hold to include a sixth value — `Upcoming (within window)`. A task's tracked notification state now progresses `Upcoming → Upcoming (within window) → Due Today → [Overdue]`.
 
-**Confirmed as still correct under settings changes:** widening/narrowing the reminder-window stepper works correctly with the same difference-based dedup logic.
+**(Revised in v0.16):** Upcoming reminders are no longer deduplicated by comparing one state. Each task also records which reminders it has already received (`reminders_sent`, Section 19), as described in Section 11.4. `last_notified_state` keeps its role for Due Today and Overdue, and `upcoming_within_window` now simply means "at least one Upcoming reminder has been sent for this task".
 
 **(New in v0.12) Not shared with LINE dedup:** `line_notification_log` (Section 19) tracks the same six-value state independently, since the cloud-side check has no access to the local `notification_log` table (Section 18.2). **Accepted duplication:** a user with the desktop app open and LINE connected may receive both a desktop notification and a LINE push for the same deadline-state change — see Section 14.4 for the rationale for not attempting cross-system dedup.
+
+### 11.4 Upcoming Reminders — Selectable Days Before the Due Date (New in v0.16)
+
+**What the user chooses.** In Settings the user ticks any of **7, 3, 2, 1** days (`settings.reminder_days`, Section 19). Default: **1 day** only. Fixed choices rather than a free number box: there are few of them, they are easy to test, and a multi-value free input would need extra validation for little gain. While "Remind me about upcoming deadlines" is on, at least one box stays ticked. Turning the toggle off keeps the ticked boxes saved but sends no Upcoming reminders.
+
+**When a reminder is reached.** Counted in calendar days on the local clock, like Section 9.2. A reminder of N days is *reached* once today's date is on or after (the date of `due_date` minus N days). The time of day of the due date is not used. Example: due 10 Nov, N = 3 → reached from 7 Nov. A reminder applies only while the task's deadline state is Upcoming and its status is not Completed; once the task is Due Today or Overdue, the Due Today and Overdue rules (Section 11.1) take over.
+
+**Once per reminder.** Each reminder fires at most once per task and is recorded in `reminders_sent`. It is not repeated on later checks or app launches. Checks run as in Section 11.2 (on app start, then about every 15 minutes).
+
+**Several reached at once.** If a check finds more than one unsent reminder reached for the same task (the app was closed for days, or the user ticked an extra box), only the closest one (smallest N) produces a notification, which states the real number of days left. All reached reminders are then marked as sent.
+
+**First time a task is seen.** On a task's first evaluation, reminders that are already reached are recorded as sent without any notification, because the user has just created or imported the task and can see its due date. Reminders not yet reached fire normally. To make "first time" detectable, the log row is created at that first evaluation (with `last_notified_state = upcoming`) even when nothing is shown. Example: due in 5 days, ticked 7, 3 and 1 → the 7-day reminder is recorded silently, the 3-day reminder fires in 2 days, the 1-day reminder fires on the day before the due date.
+
+**Changing the selection or the due date.** Ticking an extra box applies to existing tasks as well: a task already past that point gets its reminder at the next check, under the "closest one only" rule above. If a task's due date is moved later, any reminder that is no longer reached is removed from `reminders_sent`, so it can fire again. Unticking a box deletes nothing.
+
+**Grouping on the desktop.** If one check produces more than three Upcoming reminders, the desktop shows one notification ("N tasks are coming due") instead of one per task. LINE already sends one grouped message per check (Section 14.4), so it is unchanged. Due Today and Overdue notifications are not grouped.
+
+**Why not repeat on every launch or every day.** Reminders at 7, 3, 2 and 1 days already give up to four touches per task, plus Due Today and Overdue. Repeating on each app open would be noise, and users answer noise by switching notifications off, which is worse than a single reminder.
+
+**Traceability:** addresses the limit of the former single 1-day reminder, which was too short for larger assignments.
 
 ---
 
@@ -475,8 +499,9 @@ Both directions below are implemented as Supabase Edge Functions — serverless 
 
 - Runs entirely on Supabase, independently of the local desktop app and independently of the local 15-minute notification interval (Section 11.2) — implemented as a second Supabase Edge Function, triggered on a fixed schedule (target: every 15–30 minutes) via `pg_cron`.
 - On each run, the function: reads `tasks` for every user with an active row in `line_account_links`, computes deadline state using the identical rules defined in Section 9.2, compares the result against `line_notification_log`, and sends a LINE push message via the Messaging API for any task whose deadline state has changed since it was last notified through this channel.
-- Uses the same three default rules as desktop notifications (Section 11.1) — Due Today, Overdue, and the reminder-window threshold — with no separate LINE-specific configuration.
-- `line_notification_log` (Section 19.4) is a separate table from the local-only `notification_log` (Section 19). The cloud function has no access to the local SQLite file, so it maintains its own dedup state rather than sharing the app's.
+- Uses the same three rules as desktop notifications (Section 11.1) — Due Today, Overdue, and Upcoming reminders as defined in Section 11.4 — with no separate LINE-specific configuration. **(Changed in v0.16)** The reminder days come from the user's own selection: the desktop app copies `settings.reminder_days` to `line_account_links.reminder_days` (Section 19.4) and the function reads that column for each user. Through v0.15 the function used a fixed 1-day window because settings were local-only.
+- **(New in v0.16) How the copy is kept up to date.** The desktop app writes the value (a) when the user changes the selection, (b) when LINE linking completes, and (c) at app launch while LINE is connected. The value written is the effective one: an empty list when "Remind me about upcoming deadlines" is switched off. It is a one-way write from the desktop to Supabase through the user's own signed-in session; row-level security lets a user update only their own row. The app never reads the LINE tables back. If the write fails (for example the app is offline), LINE keeps using the previous value until the next successful write (Section 20).
+- `line_notification_log` (Section 19.4) is a separate table from the local-only `notification_log` (Section 19). The cloud function has no access to the local SQLite file, so it maintains its own dedup state rather than sharing the app's. **(v0.16)** That includes its own copy of `reminders_sent` (Section 19.4).
 - **Accepted duplication, not deduplicated:** a user who has the desktop app open at the moment a deadline state changes, and who has also connected LINE, may receive both a desktop notification and a LINE push for the same change. This is treated as an intentional trade-off rather than a defect: LINE is meant as a fallback channel for when the app is not running (Section 11.2), and building cross-system deduplication between a local SQLite process and a stateless cloud function would add meaningful complexity for a low-frequency event (at most a handful of notifications per task's lifetime).
 
 **Traceability:** mitigates the accepted limitation documented in Section 11.2 (no notifications while the app is closed).
@@ -616,6 +641,7 @@ The application follows a **Local-First Architecture**: SQLite is the source of 
 - The manual "Sync now" action calls the same Classroom Sync Service function used by the automatic schedule.
 - **(New in v0.12)** The two Edge Functions operate independently of the Electron main process — they read and write Supabase's copy of `tasks` and their own LINE-specific tables (Section 19.4) directly, and never call into the desktop app's services. Tasks they create reach the local SQLite database only through the existing Supabase → local pull mechanism (Section 18.2), the same path any other Supabase-originated change would take.
 - **(New in v0.12)** Deadline-state computation (Section 9.2) is implemented twice — once in the Electron renderer/main process for local/desktop display, and once inside the `notify-check` Edge Function for LINE notifications — since the two runtimes (Node/Electron vs. Deno) do not currently share a code module. This duplication is a known maintainability risk, flagged in Section 20, rather than an oversight.
+- **(New in v0.16)** The Upcoming-reminder rule (Section 11.4) is implemented in the same two places for the same reason, and must be kept in step with the desktop version.
 
 ---
 
@@ -635,7 +661,7 @@ The application follows a **Local-First Architecture**: SQLite is the source of 
 - **Conflict resolution:** Last-Write-Wins (LWW), compared using **server-assigned** timestamps. `tasks.updated_at` is reserved exclusively for this purpose — it must not be repurposed as an activity or neglect signal (see `last_focus_started_at`, Section 19).
 - **Deletions:** tasks use a soft-delete flag (`deleted_at`).
 - **Retry behavior:** a failed sync attempt is simply retried on the next scheduled interval.
-- **What is synced:** `tasks` and `pomodoro_sessions`. Local-only data — `notification_log`, `classroom_sync_state`, and `settings` — is **not** synced. **(New in v0.12)** The LINE-specific tables (`line_link_codes`, `line_account_links`, `line_conversation_state`, `line_notification_log` — Section 19.4) are Supabase-only and likewise never synced down to local SQLite; they exist solely for the Edge Functions described in Section 14 to read and write, and the desktop app never queries them directly.
+- **What is synced:** `tasks` and `pomodoro_sessions`. Local-only data — `notification_log`, `classroom_sync_state`, and `settings` — is **not** synced. **(New in v0.12)** The LINE-specific tables (`line_link_codes`, `line_account_links`, `line_conversation_state`, `line_notification_log` — Section 19.4) are Supabase-only and likewise never synced down to local SQLite; they exist solely for the Edge Functions described in Section 14 to read and write, and the desktop app never reads them. **(Changed in v0.16)** The one exception is a one-way write: the desktop app updates `line_account_links.reminder_days` (Sections 14.4, 19.4) so that LINE reminders follow the user's selection. `settings` itself is still local-only and not synced; only this single value is copied.
 - **What is never synced:** Google OAuth refresh tokens, stored only via OS-level secure storage. LINE Channel Access Token and Channel Secret (Section 14) are stored as Supabase Edge Function secrets, never in any synced table or in the desktop app.
 
 ---
@@ -698,16 +724,19 @@ This section defines entities and key fields at a specification level. Exact SQL
 | Field | Notes |
 |---|---|
 | task_id | FK to `tasks.id`. |
-| last_notified_state | Tracks the state last notified for (Section 11.3). Matches the five deadline states plus one notification-only value, `upcoming_within_window`. |
+| last_notified_state | Tracks the state last notified for (Section 11.3). Matches the five deadline states plus one notification-only value, `upcoming_within_window`. Used for Due Today and Overdue; `upcoming_within_window` now means at least one Upcoming reminder was sent (Section 11.4). |
+| reminders_sent | **(New in v0.16)** The reminder days (from 7, 3, 2, 1) already handled for this task, including ones recorded silently at first sight (Section 11.4). Text such as `7,3`; empty when none. |
 | notified_at | |
 
 **`settings`** — local only, not synced; simple key-value store for notification preferences and app-level settings, including the Classroom import cutoff date (Section 13.1). Google OAuth tokens are **not** stored here — see Section 20.2.
 
 **(New in v0.9)** `has_seen_first_run_prompt` — Boolean. Set `true` once the user dismisses or completes the first-run Google-connect prompt (Section 13.1); prevents the prompt from reappearing on subsequent launches. Local only, not synced, consistent with the rest of the `settings` table.
 
+**(New in v0.16)** `reminder_days` — the days before the due date at which Upcoming reminders fire (Section 11.4). A list drawn from 7, 3, 2, 1; default `[1]`. Replaces the single-number `reminder_window_days`. Local only; the effective value is copied to `line_account_links.reminder_days` (Section 14.4). Whether Upcoming reminders are switched on stays a separate on/off setting.
+
 ### 19.4 LINE Integration Tables (New in v0.12)
 
-These four tables exist only on Supabase — they are read and written exclusively by the two Edge Functions described in Section 14, never by the desktop app, and are never synced to local SQLite (Section 18.2).
+These four tables exist only on Supabase — they are read and written exclusively by the two Edge Functions described in Section 14, never read by the desktop app (the one exception is the desktop's write to `line_account_links.reminder_days`, Section 14.4), and are never synced to local SQLite (Section 18.2).
 
 **`line_link_codes`** — short-lived codes used during account linking (Section 14.2)
 
@@ -724,6 +753,7 @@ These four tables exist only on Supabase — they are read and written exclusive
 | app_user_id | FK to `auth.users.id`. |
 | line_user_id | Unique. The `userId` value LINE assigns to the linked LINE account. |
 | linked_at | |
+| reminder_days | **(New in v0.16)** Integer list from 7, 3, 2, 1; default `{1}`; empty when the user has switched Upcoming reminders off. Written by the desktop app, read by `notify-check` (Section 14.4). |
 
 **`line_conversation_state`** — tracks progress through the structured task-creation flow (Section 14.3)
 
@@ -741,6 +771,7 @@ These four tables exist only on Supabase — they are read and written exclusive
 | task_id | FK to `tasks.id`. |
 | line_user_id | |
 | last_notified_state | Same six-value range as `notification_log.last_notified_state` (Section 11.3). |
+| reminders_sent | **(New in v0.16)** Same meaning as `notification_log.reminders_sent`, kept per task and LINE user. |
 | notified_at | |
 
 ---
@@ -768,6 +799,10 @@ These four tables exist only on Supabase — they are read and written exclusive
 **(New in v0.12) Known limitation — LINE push volume limits:** LINE Official Account free-tier plans cap the number of push messages sendable per month (per LINE's own Messaging API terms). This is an external platform constraint, not something StudyFlow controls; not expected to be reached at the scale of the planned user evaluation, but documented here rather than left implicit.
 
 **(New in v0.13) Known limitation — Priority can be flattened by the user:** Priority is user-set and optional (Section 9.3). If a user marks every task High, every non-completed task receives the same 20-point increment, so Priority no longer separates tasks and the ordering reduces to what the other three signals produce. This is the same behaviour that led to Priority's removal in v0.8; it is accepted here because Priority is now bounded to one component of the Urgency Score and an unset priority contributes nothing, so the worst case is a loss of information, not a distorted ranking. No mitigation (such as limiting how many tasks can be High) is implemented for MVP scope; it can be revisited after the planned user evaluation (Section 29).
+
+**(New in v0.16) Known limitation — reminder days are global:** the selection in Settings applies to every task alike, so the app cannot give a large assignment a longer lead time than a small one. The longest choice is 7 days. A per-task reminder is listed under Future Features (Section 25), not built.
+
+**(New in v0.16) Known limitation — LINE can lag behind a settings change:** the LINE reminder days are a copy of the desktop selection (Section 14.4). If the desktop app is offline when the user changes the selection, LINE keeps using the previous selection until the app next writes it (at the next launch at the latest). The Upcoming-reminder rule is also implemented in both runtimes (Section 17.2) and carries the same maintenance risk as the deadline-state logic above.
 
 ---
 
@@ -840,7 +875,7 @@ The MVP is the complete set of features required for thesis submission. Every it
 - **(New in v0.13)** Priority (Low / Medium / High, optional, user-set, no default) is reinstated, but only as one weighted component (0.2) of the Urgency Score, which remains the sole signal driving Task Board's default sort order (Sections 9.3, 9.5). It was originally removed in v0.8 as a standalone field.
 - **(New in v0.13)** `tasks.course_name` (renamed from `classroom_course_name`) holds the course for tasks from every source, so manual and LINE-created tasks can be grouped by course (Section 19).
 - Neglect-related signals are driven by `tasks.last_focus_started_at`, not `tasks.updated_at` — the latter is reserved exclusively for LWW sync conflict resolution.
-- The reminder-window notification rule tracks a sixth, notification-only state (`upcoming_within_window`) in `notification_log`, fixing a dedup bug (Section 11.3); LINE notifications track the same state independently in `line_notification_log` (Section 11.3, Section 19.4).
+- The reminder-window notification rule tracks a sixth, notification-only state (`upcoming_within_window`) in `notification_log`, fixing a dedup bug (Section 11.3); LINE notifications track the same state independently in `line_notification_log` (Section 11.3, Section 19.4). **(Changed in v0.16)** The single reminder window is replaced by user-selectable reminders at 7, 3, 2 and/or 1 days before the due date (default 1), each sent once per task and tracked in `reminders_sent`; LINE follows the same selection (Sections 11.4, 14.4).
 - The stale "assignment recommendation" open question is resolved: matched to the existing Urgency Score plus Deadline-State-bucket grouping.
 - The project timeline is stated concretely as ~2–3 months total, ~2 months of implementation after the proposal defense.
 - The Task Board / Room object previously named "Quest Board" is renamed "Task Board" throughout the application.
@@ -874,6 +909,7 @@ The MVP is the complete set of features required for thesis submission. Every it
 - **(New in v0.12)** A workflow-automation tool such as n8n — LINE integration is implemented entirely as Supabase Edge Functions (Section 14.6).
 - **(New in v0.12)** LINE group-chat support — only 1:1 messages from a linked individual are processed (Section 14.6).
 - **(New in v0.12)** Reconciliation of mismatched or misspelled course names entered through the LINE free-text fallback — documented as a known limitation (Section 20) rather than solved in this version.
+- **(New in v0.16)** Per-task reminder settings and free-form reminder values; the selection is global and limited to 7, 3, 2 and 1 days (Section 11.4).
 
 ---
 
@@ -888,6 +924,7 @@ These are optional stretch goals. Their absence should **not** affect thesis com
 - **(New in v0.9)** Detecting a Google account-ID mismatch on reconnect and warning the user before local data could mix across accounts (see Section 20's known limitation)
 - **(New in v0.12)** Reconciling course names entered via the LINE free-text fallback against existing Classroom-sourced course names, to prevent duplicate groupings from typos or alternate spellings (see Section 20's known limitation)
 - **(New in v0.12)** Sharing a single deadline-state computation module between the Electron app and the `notify-check` Edge Function, to remove the duplicated-logic maintainability risk documented in Section 20
+- **(New in v0.16)** A per-task reminder for large assignments, set when the task is created or edited (see the known limitation in Section 20)
 
 **Study Companions were considered during early design exploration but have been formally removed from the project scope due to thesis feasibility.**
 
@@ -927,6 +964,24 @@ This document overrides any conflicting assumptions from previous conversations.
 ## 28. Changelog
 
 *(Section numbers referenced inside each changelog entry below reflect the numbering that was current **at the time that entry was written** — they are a historical record, not live cross-references. See Section 1 for the v0.12 renumbering note.)*
+
+### v0.15 → v0.16
+
+| Section | Change | Reason |
+|---|---|---|
+| Header | Version bumped to 0.16; Supersedes line updated to v0.15 | Team rule: change the spec version before the code |
+| 1 | Added a v0.16 note listing the new fields and the files to update | Keeps derived files and code in sync |
+| 11.1 | The Upcoming rule now means one reminder per ticked day (7 / 3 / 2 / 1, default 1) instead of one configurable window | A single reminder one day ahead is too short for larger assignments |
+| 11.3 | Dedup note rewritten: Upcoming reminders are tracked by `reminders_sent`, `upcoming_within_window` means "at least one reminder sent" | One state value cannot tell which of several reminders was sent |
+| 11.4 | New subsection: choices, calendar-day rule, once per reminder, closest-only catch-up, first-sight rule, selection or due-date changes, desktop grouping, why no repeat per launch | The behaviour of several reminders needs to be written down in one place |
+| 14.4 | LINE uses the user's selected days, copied from the desktop to `line_account_links.reminder_days`; update points and failure behaviour added | Through v0.15 LINE used a fixed 1-day window because settings were local-only |
+| 17.2 | Added a note that the reminder rule exists in both runtimes | Same duplication as the deadline-state logic |
+| 18.2 | Documented the single one-way desktop-to-Supabase write as an exception to "the app never touches LINE tables" | Keeps the sync description accurate |
+| 19 | Added `notification_log.reminders_sent`, `line_notification_log.reminders_sent`, `line_account_links.reminder_days` and the settings key `reminder_days` (replaces `reminder_window_days`) | Data needed by Sections 11.4 and 14.4 |
+| 20 | Added two known limitations: reminder days are global; LINE can lag behind a settings change | Accepted trade-offs, written down rather than left implicit |
+| 23 | Current-decisions bullet extended | Keeps the decision list current |
+| 24, 25 | Per-task reminders added to Out of Scope and Future Features | Boundary of this change |
+| 28 | Added this v0.15 → v0.16 changelog entry | Standard practice for this document |
 
 ### v0.14 → v0.15
 
