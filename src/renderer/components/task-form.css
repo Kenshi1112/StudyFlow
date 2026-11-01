@@ -139,6 +139,38 @@
   color: #b4906f;
 }
 
+/* กรอบของข้อความวันที่ ให้ <input type=date> โปร่งใสทับเฉพาะส่วนวันที่ (ไม่ทับช่องเวลา) */
+.tf-date__pick {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ช่องเวลา 24 ชั่วโมง (เพิ่มเอง ไม่อยู่ใน Figma) หน้าตาเดียวกับข้อความวันที่ */
+.tf-date__time {
+  width: calc(var(--u) * 108);
+  padding: 0 calc(var(--u) * 4);
+  border: 0;
+  border-radius: calc(var(--u) * 6);
+  outline: 0;
+  background: transparent;
+  color: #6d422d;
+  font: inherit;
+  font-size: calc(var(--u) * 32);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.tf-date__time::placeholder {
+  color: #b4906f;
+  font-weight: 500;
+}
+
+.tf-date__time:focus {
+  background: #f6ecdd;
+}
+
 /* <input type=date> จริงโปร่งใสวางทับข้อความ เพื่อให้คลิก/โฟกัส/พิมพ์ได้ตามปกติ */
 .tf-date__input {
   position: absolute;

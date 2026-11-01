@@ -347,10 +347,26 @@
   color: #dd3a1f;
 }
 
-.tb-card__flag {
-  left: calc(var(--u) * 154);
-  top: calc(var(--u) * 12);
-  color: #7d5534;
+/* จุดสี Priority หลังป้ายสถานะ (กึ่งกลางแนวเดียวกับป้าย) */
+.tb-card__prio {
+  left: calc(var(--u) * 156);
+  top: calc(var(--u) * 21.5);
+  width: calc(var(--u) * 16);
+  height: calc(var(--u) * 16);
+  border-radius: 50%;
+  box-shadow: 0 0 0 calc(var(--u) * 2) #fdfdfd;
+}
+
+.tb-card__prio--low {
+  background: #3a9a4a;
+}
+
+.tb-card__prio--medium {
+  background: #e8b923;
+}
+
+.tb-card__prio--high {
+  background: #d93025;
 }
 
 .tb-card__course {

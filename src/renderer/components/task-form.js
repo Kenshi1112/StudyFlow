@@ -27,7 +27,7 @@
 
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-  // Figma มีแค่ช่องวันที่ ถ้าไม่มีเวลาเดิมให้ใช้สิ้นวัน (spec ยังไม่กำหนดค่าเริ่มต้นของเวลา: รอยืนยันกับ Backend)
+  // ช่องเวลาเพิ่มเอง (Figma มีแค่วันที่) ใช้รูปแบบ 24 ชั่วโมง HH:MM ค่าเริ่มต้นเป็นสิ้นวัน
   const DEFAULT_DUE_TIME = '23:59';
 
   let counter = 0;
@@ -49,6 +49,15 @@
   function localToIso(date, time) {
     const d = new Date(`${date}T${time || DEFAULT_DUE_TIME}`);
     return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+
+  // รับ "23:59", "9:05" หรือ "2359" คืน "HH:MM" ถ้าไม่ใช่เวลา 00:00-23:59 คืน null
+  function parseTime(value) {
+    const match = /^(\d{1,2}):?(\d{2})$/.exec(String(value || '').trim());
+    if (!match) return null;
+    const h = Number(match[1]);
+    const m = Number(match[2]);
+    return h <= 23 && m <= 59 ? `${pad(h)}:${pad(m)}` : null;
   }
 
   // 'YYYY-MM-DD' -> 'Jan 31, 2026' (รูปแบบตาม Figma)
@@ -138,6 +147,18 @@
     const dateInput = el('input', { id: id('due'), class: 'tf-date__input', type: 'date', name: 'due_date' });
     const dateText = el('span', { class: 'tf-date__text' });
     const clearDate = el('button', { type: 'button', class: 'tf-date__clear', 'aria-label': 'Clear deadline', text: '✕' });
+    // ช่องเวลา: ช่องข้อความธรรมดาแทน <input type=time> เพราะ type=time แสดง AM/PM ตามภาษาเครื่อง บังคับ 24 ชั่วโมงไม่ได้
+    const timeInput = el('input', {
+      id: id('due-time'),
+      class: 'tf-date__time',
+      type: 'text',
+      name: 'due_time',
+      inputmode: 'numeric',
+      maxlength: '5',
+      placeholder: DEFAULT_DUE_TIME,
+      autocomplete: 'off',
+      'aria-label': 'Deadline time, 24-hour (HH:MM)',
+    });
 
     const priority = priorityControl({ value: original.priority, labelledBy: id('priority-label') });
 
@@ -145,6 +166,7 @@
       dateText.textContent = formatDateValue(dateInput.value) || 'No deadline';
       dateText.classList.toggle('tf-date__text--empty', !dateInput.value);
       clearDate.hidden = !dateInput.value;
+      timeInput.hidden = !dateInput.value; // ไม่มีวันที่ = ไม่มีเวลา
     }
 
     dateInput.addEventListener('change', paintDate);
@@ -157,8 +179,18 @@
         }
       }
     });
+    // พิมพ์ได้แค่ตัวเลขกับ ":" และพอออกจากช่องให้จัดเป็น HH:MM (เช่น 930 -> 09:30)
+    timeInput.addEventListener('input', () => {
+      const cleaned = timeInput.value.replace(/[^\d:]/g, '');
+      if (cleaned !== timeInput.value) timeInput.value = cleaned;
+    });
+    timeInput.addEventListener('blur', () => {
+      const t = parseTime(timeInput.value);
+      if (t) timeInput.value = t;
+    });
     clearDate.addEventListener('click', () => {
       dateInput.value = '';
+      timeInput.value = DEFAULT_DUE_TIME;
       paintDate();
       dateInput.focus();
     });
@@ -168,6 +200,7 @@
     titleInput.value = original.title || '';
     notesInput.value = original.notes || '';
     dateInput.value = originalDue.date;
+    timeInput.value = originalDue.time;
     paintDate();
 
     function field(modifier, labelText, forId, control, extra) {
@@ -193,7 +226,7 @@
       'div',
       { class: 'tf-field tf-field--deadline' },
       el('label', { class: 'tf-field__label', for: id('due'), text: 'Deadline' }),
-      el('div', { class: 'tf-date' }, dateText, dateInput, clearDate),
+      el('div', { class: 'tf-date' }, el('span', { class: 'tf-date__pick' }, dateText, dateInput), timeInput, clearDate),
     );
 
     const priorityRow = el(
@@ -219,9 +252,13 @@
       el('div', { class: 'tf__actions' }, cancelButton, submitButton),
     );
 
-    // ค่าวันที่ -> ISO โดยคงเวลาเดิมของ task ถ้ามี
+    // วันที่ + เวลาในช่อง -> ISO (ช่องเวลาว่าง = 23:59)
+    function readTime() {
+      return timeInput.value.trim() ? parseTime(timeInput.value) : DEFAULT_DUE_TIME;
+    }
+
     function readDue() {
-      return dateInput.value ? localToIso(dateInput.value, originalDue.time) : null;
+      return dateInput.value ? localToIso(dateInput.value, readTime()) : null;
     }
 
     function collect() {
@@ -246,7 +283,7 @@
       if (notes !== (original.notes || '')) changes.notes = notes || null;
       if (level !== (original.priority || null)) changes.priority = level;
       if (statusSelect.value !== original.status) changes.status = statusSelect.value;
-      if (dateInput.value !== originalDue.date) changes.due_date = due;
+      if (dateInput.value !== originalDue.date || (dateInput.value && readTime() !== originalDue.time)) changes.due_date = due;
       return changes;
     }
 
@@ -256,6 +293,11 @@
       if (!titleInput.value.trim()) {
         showError('Task Name is required.');
         titleInput.focus();
+        return;
+      }
+      if (dateInput.value && !readTime()) {
+        showError('Enter the time as 24-hour HH:MM, e.g. 23:59.');
+        timeInput.focus();
         return;
       }
       const data = collect();
