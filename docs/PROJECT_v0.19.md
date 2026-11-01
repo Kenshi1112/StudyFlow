@@ -1,5 +1,11 @@
 # PROJECT.md
 
+**Version:** 0.19 (Overdue and Due Today Reminders Repeat — the Desktop App Repeats Every Hour and at Every Launch; LINE Sends One Daily Digest at 08:00 Thai Time)
+**Status (v0.19):** One targeted change to notifications (Sections 11.1 to 11.5, 14.4, 19.4); no new integration, service, table or column. Through v0.18 every notification was sent once: a task that became Due Today or Overdue produced one desktop notification and one LINE push, and nothing after that. A user who dismissed it, or who left the app open all day, was never reminded again, although these are exactly the tasks that cannot wait. v0.19 reverses the v0.16 reasoning for these two states only (Section 11.4, "Why not repeat"). **Desktop:** Overdue and Due Today tasks are announced when they enter the state, again at every app launch, and again every hour while the app stays open, as one grouped notification per round instead of one per task; the hourly repeat is held back while a Start Working (Pomodoro) session is running (Section 11.5). Upcoming reminders (7 / 3 / 2 / 1 days) are unchanged and still fire once each. **LINE:** the 15-minute cloud check is replaced by one run per day at 08:00 Thai time that sends one digest message per linked user listing Overdue, Due Today and any Upcoming reminders reached; Overdue and Due Today tasks are listed again every day until they are completed or their due date moves (Section 14.4). A chat message cannot be dismissed the way a desktop popup can, so one message per day is enough, and a fixed morning time replaces pushes that used to arrive just after midnight. No schema change: the desktop repeat timer lives in memory, and the LINE change is one cron schedule. Accepted: a user with both channels may see the same task on the desktop and in LINE (Section 14.4), and LINE learns of a task that becomes Overdue during the day only at the next 08:00 (Section 20).
+
+**Version:** 0.18 (LINE Task Creation Gains an Optional Description Step; LINE Can Now Mark a Task Completed / In Progress or Move Its Due Date — Send "แก้งาน")
+**Status (v0.18):** Two related changes to the LINE integration (Sections 14.3, 14.6, 14.8); no new integration, service or table, and no new column on `tasks`. (1) The "เพิ่มงาน" flow asks for an optional description after the title, with a "ข้าม" (skip) button; the text is stored in the existing `tasks.notes` field, the same field the desktop form calls Description. Until v0.17 a task created from LINE could only get its description by opening the desktop app afterwards. (2) A linked user can send the exact phrase "แก้งาน", pick one of their unfinished tasks from buttons, and then set it to Completed, set it to In Progress, or move its due date with the Datetime Picker; after a status change a one-tap "ย้อนกลับ" (undo) button restores the previous status. The reason is the same as for LINE itself (Section 14.1): the two most common changes after a task exists, "it is done" and "the teacher moved the deadline", should not require opening the laptop. Everything else about an existing task (title, course, description, priority, progress, deletion) stays desktop-only, so v0.17's blanket ban in Section 14.6 is narrowed, not removed. Every input is still a button, a picker or one captured message, never parsed free text (Section 14.6). The only schema change is widening the allowed values of `line_conversation_state.current_step` by one (`waiting_notes`, Section 19.4). Accepted limitation: a change made from LINE and a change made in the desktop app to the same task can overwrite each other under Last-Write-Wins (Section 20).
+
 **Version:** 0.17 (LINE Gains a Read-Only "Open Tasks" Command — Send "งานค้าง" to See Unfinished Tasks)
 **Status (v0.17):** One small addition to the LINE integration (Section 14.7); no new integration, service, table, column or section number. Until v0.16 the LINE chat could do only three things: link an account, create a task through the "เพิ่มงาน" flow, and receive deadline pushes. A student who wanted to check what was still open had to open the desktop app, which defeats the reason LINE exists (reaching the system without the app, Section 14.1). A linked user can now send the exact phrase "งานค้าง" and get one text message listing their unfinished tasks, grouped by deadline state (Overdue, Due Today, Upcoming, No Deadline) using the same rules as Section 9.2. The command is read-only: it writes nothing, does not touch a task-creation flow in progress, and matches the phrase exactly like "เพิ่มงาน" does, so the no-natural-language-parsing rule of Section 14.6 is unchanged. At most 15 tasks are listed per message. Completing, editing and deleting tasks through LINE stay out of scope. Accepted limitation: the list is read from the Supabase copy of `tasks`, so it is only as fresh as the last successful sync (Section 20).
 
@@ -26,7 +32,7 @@
 
 **Version:** 0.9 (First-Run Google-Connect Prompt Added; Two Known Limitations Documented — No-Backup-Without-Connection, Single-Account-Per-Device)
 **Status:** Active — This version adds a one-time, dismissible first-run prompt offering to connect Google Classroom (Section 13.1), so users who never open Settings are still made aware of the choice between connecting (Classroom sync + cloud backup) and staying local-only. Declining the prompt does not gate or delay entry into the app in any way — it is offered, never required, consistent with this project's existing low-friction and no-separate-account-system principles (Sections 6, 19). Two accepted limitations that were previously undocumented are now recorded explicitly: (1) a user who never connects Google Classroom has no cloud backup, since Supabase Auth relies exclusively on Google identity (Section 19); (2) switching Google accounts on the same device is not guarded against at the data layer and could mix local data across accounts (Section 19). Neither limitation changes existing behavior — both are pre-existing consequences of decisions already made in v0.5–v0.8 (single Classroom account, Google-only auth) that had not yet been written down. No business logic, data model field beyond one new `settings` key, or Classroom/Pomodoro/Dashboard behavior changes in this version.
-**Supersedes:** PROJECT.md v0.16
+**Supersedes:** PROJECT.md v0.18
 **Purpose:** This document is the Single Source of Truth for this project. It is not a thesis report. It exists so that any developer or AI assistant can understand the project's purpose, scope, and current decisions within a few minutes.
 
 ---
@@ -45,6 +51,8 @@
 - **(v0.13 note)** No section is added, removed, or renumbered in this version; Section 9.3 is reused for the reinstated Priority field (kept at the same number it held before v0.8) and the section numbering from v0.12 is unchanged. Derived documents (UX-UI-Design-Review, Database-Design, DFD) must be brought in line with this version before they are relied on again: Priority selector on the task create/edit form and task card, an optional Course field on the manual task form, and the renamed `course_name` column.
 - **(v0.14 note)** No section is added, removed, or renumbered. One data-model field is added (`tasks.first_started_at`, Section 19) and one Dashboard metric is removed (Section 10.2). Derived documents must be brought in line before they are relied on again: UX-UI-Design-Review (Dashboard: six metrics, Needs Attention strip holds Overdue only), `schema.sql`, the Supabase `tasks` migration, and the Dashboard service and its tests. The SQLite file in `userData` must be deleted after `schema.sql` changes, since the project has no migration system.
 - **(v0.15 note)** No section is added, removed, or renumbered. Three columns are added to `classroom_sync_state` (`title`, `due_date`, `notes`, Section 19) and the format of `classroom_assignment_id` is fixed (Section 19). Derived files to bring in line: `schema.sql`, `tests/schema.test.js`, `docs/ipc-contract.md` and the Classroom services. The SQLite file in `userData` must be deleted after `schema.sql` changes, since the project has no migration system. UX-UI-Design-Review needs no change: the review popup already shows title, course and due date (Section 13.5).
+- **(v0.19 note)** One subsection is added (11.5); no section is renumbered. No change to `schema.sql`, to the local `notification_log` or to any Supabase table: the desktop repeat timer is kept in memory (Section 11.5) and `line_notification_log` simply stops being written for Due Today and Overdue (Section 19.4). One Supabase migration changes the `notify-check` schedule from every 15 minutes to once a day (Section 14.4). Derived files to bring in line: `src/main/services/notification.service.js` (one grouped digest, launch and hourly repeat, held back during a Pomodoro session), `supabase/functions/_shared/notify-digest.ts` and `notify-check/index.ts` (no dedupe for Due Today / Overdue, one daily digest, a higher per-message cap), the new cron migration, and `tests/`. No change to the renderer, no Row Level Security change, no change to `line-webhook`, and UX-UI-Design-Review needs no change (no screen or Settings control is added). The cron migration must be run before relying on the new behaviour, and `notify-check` redeployed.
+- **(v0.18 note)** One subsection is added (14.8); no section is renumbered. `tasks` gets no new column (the LINE description goes into the existing `notes`). One Supabase migration widens the CHECK on `line_conversation_state.current_step` (Section 19.4). Derived files to bring in line: `_shared/line-flow.ts` (a fourth step), a new `_shared/task-edit.ts` (the "แก้งาน" command), `line-webhook/index.ts` (new trigger and `edit:` postbacks, `notes` on insert), the help and link-confirmation texts, and `tests/`. No change to the desktop app or its renderer, no Row Level Security change, no change to `notify-check`, and UX-UI-Design-Review needs no change (LINE is not part of the app's screens). `line-webhook` must be redeployed after the migration has been run.
 - **(v0.17 note)** One subsection is added (14.7); no section is renumbered and no data-model field changes. Derived files to bring in line: the `line-webhook` Edge Function and its `_shared` modules (a new open-task list builder; the help and link-confirmation texts mention the new command). No Supabase migration, no Row Level Security change, no change to the desktop app or its renderer, and no change to `notify-check`. UX-UI-Design-Review needs no change (LINE is not part of the app's screens). `line-webhook` must be redeployed.
 - **(v0.16 note)** One subsection is added (11.4); no section is renumbered. New fields: `notification_log.reminders_sent`, `line_notification_log.reminders_sent` and `line_account_links.reminder_days` (Section 19), and the settings key `reminder_days`, which replaces `reminder_window_days`. Derived files to bring in line: `schema.sql`, `tests/schema.test.js`, a new Supabase migration, the notification and settings services, the `notify-check` Edge Function with its `_shared` modules, `docs/ipc-contract.md`, the Settings page, and UX-UI-Design-Review (now v0.16). The SQLite file in `userData` must be deleted after `schema.sql` changes, since the project has no migration system.
 
@@ -156,13 +164,13 @@ If urgent assignments exist, the room may visually indicate this (e.g., an excla
 ## 8. Core Features (Confirmed)
 
 - Google Classroom synchronization — automatic fetch each time the app is launched, plus an on-demand manual "Sync now" trigger, with newly-found assignments surfaced to the user for review before import (see Section 13, 13.5)
-- Manual task creation (for assignments from sources other than Classroom), including task creation via a structured LINE chat flow — **(New in v0.12)** see Section 14.3; **(New in v0.17)** the same chat can list unfinished tasks, see Section 14.7
+- Manual task creation (for assignments from sources other than Classroom), including task creation via a structured LINE chat flow — **(New in v0.12)** see Section 14.3; **(New in v0.17)** the same chat can list unfinished tasks, see Section 14.7; **(New in v0.18)** task creation has an optional description step and the chat can set a task Completed / In Progress or move its due date, see Sections 14.3 and 14.8
 - Task management, including a computed Urgency Score (see Section 9.5) that takes an optional, user-set Priority as one of its inputs (see Section 9.3)
 - Assignment progress tracking
 - Progress percentage (manually entered)
 - Notes per task
 - Dashboard / Insights
-- Notification system, including deadline reminders delivered via LINE independently of whether the desktop app is running — **(New in v0.12)** see Section 14.4
+- Notification system, including deadline reminders delivered via LINE independently of whether the desktop app is running — **(New in v0.12)** see Section 14.4. **(New in v0.19)** Overdue and Due Today tasks are reminded repeatedly (desktop: at launch and every hour; LINE: a daily digest), see Sections 11.5 and 14.4
 - Pomodoro / Focus timer, including multi-session batches (see Section 15.3)
 - Background data synchronization to a cloud backup (see Section 18)
 
@@ -328,8 +336,8 @@ The dashboard supports filtering its charts and statistics by:
 ### 11.1 Default Behavior (Finalized, Revised in v0.6)
 
 Default notification rules for the MVP:
-- Notify once when a task's deadline state changes to **Due Today**.
-- Notify once when a task's deadline state changes to **Overdue**.
+- Notify when a task's deadline state changes to **Due Today**. **(Changed in v0.19)** Then keep reminding while the task is still Due Today (Section 11.5).
+- Notify when a task's deadline state changes to **Overdue**. **(Changed in v0.19)** Then keep reminding while the task is still Overdue (Section 11.5).
 - **(Changed in v0.16)** Notify once per ticked reminder when an **Upcoming** task reaches that many days before its due date. The user ticks any of **7, 3, 2, 1** days in Settings (default: **1 day** only). The exact rule is in Section 11.4.
 
 **(Bug identified and fixed in v0.8 — see Section 11.3):** this rule is a *threshold* check, not a simple state transition.
@@ -338,18 +346,18 @@ Default notification rules for the MVP:
 
 Users can customize or disable these rules later; the above is the shipped default.
 
-**(New in v0.12)** These three rules also drive LINE push notifications for users who have connected LINE (Section 14.4), using the identical thresholds, including the reminder days the user selected (Section 14.4) — there is no separate LINE-specific notification configuration.
+**(New in v0.12)** These three rules also drive LINE push notifications for users who have connected LINE (Section 14.4), using the identical thresholds, including the reminder days the user selected (Section 14.4) — there is no separate LINE-specific notification configuration. **(Changed in v0.19)** The *thresholds* are shared; how often a Due Today or Overdue task is repeated is not: the desktop repeats hourly and the LINE digest daily (Sections 11.5 and 14.4).
 
 ### 11.2 Scheduling Mechanism (Revised in v0.11, extended in v0.12)
 
-- Deadline states are re-evaluated on app startup and on a periodic interval while the app is running (e.g., every 15 minutes).
+- Deadline states are re-evaluated on app startup and on a periodic interval while the app is running (e.g., every 15 minutes). **(New in v0.19)** The same check also decides whether the hourly Overdue / Due Today repeat is due (Section 11.5), so a repeat can be at most one check interval (15 minutes) late.
 - **(Changed in v0.11)** This interval drives deadline-state/notification checks only. Google Classroom fetching is no longer tied to it — see Section 13.5 for its own launch-triggered-plus-manual model. The two were merged through v0.10 because they shared one timer; they're decoupled now so that a long-running session doesn't silently re-fetch Classroom in the background.
 - No OS-level background service or scheduled task runs *on the user's machine*.
-- **Known, accepted limitation (Revised in v0.12):** if the app is not running at the moment a task becomes Due Today or Overdue, the **desktop** notification will not fire until the app is next opened (at which point a Classroom fetch also runs automatically — Section 13.5). **(New in v0.12)** For users who have connected LINE, this limitation is now mitigated — not eliminated — by the cloud-scheduled LINE notification check (Section 14.4), which runs on Supabase independently of whether the desktop app is open. A user who has not connected LINE still experiences this limitation exactly as in prior versions.
+- **Known, accepted limitation (Revised in v0.12):** if the app is not running at the moment a task becomes Due Today or Overdue, the **desktop** notification will not fire until the app is next opened (at which point a Classroom fetch also runs automatically — Section 13.5). **(New in v0.12)** For users who have connected LINE, this limitation is now mitigated — not eliminated — by the cloud-scheduled LINE notification check (Section 14.4), which runs on Supabase independently of whether the desktop app is open. A user who has not connected LINE still experiences this limitation exactly as in prior versions. **(Changed in v0.19)** The mitigation is a daily digest at 08:00 Thai time rather than a push at the moment of the change (Section 14.4); a task that becomes Overdue after 08:00 is reported by LINE the next morning, while the desktop app, if open, reports it at the next check.
 
 ### 11.3 Duplicate Prevention (Revised in v0.6, bug fixed in v0.8)
 
-Each task stores the deadline state it was last notified for (see `notification_log` in Section 19). A notification only fires when the computed state differs from the last-notified state.
+Each task stores the deadline state it was last notified for (see `notification_log` in Section 19). A notification only fires when the computed state differs from the last-notified state. **(Revised in v0.19)** This comparison now answers one question only: *has this task just entered Due Today or Overdue?* An entry notifies immediately; the repeats that follow are driven by the timer in Section 11.5 and are not recorded in `notification_log`. Upcoming reminders are unaffected and still fire once each (Section 11.4).
 
 **Bug (present through v0.7), diagnosed in v0.8:** the reminder-window rule doesn't correspond to any single one of the five `deadline_state` values — a task that stayed `Upcoming` the whole time could silently skip its reminder entirely.
 
@@ -357,7 +365,7 @@ Each task stores the deadline state it was last notified for (see `notification_
 
 **(Revised in v0.16):** Upcoming reminders are no longer deduplicated by comparing one state. Each task also records which reminders it has already received (`reminders_sent`, Section 19), as described in Section 11.4. `last_notified_state` keeps its role for Due Today and Overdue, and `upcoming_within_window` now simply means "at least one Upcoming reminder has been sent for this task".
 
-**(New in v0.12) Not shared with LINE dedup:** `line_notification_log` (Section 19) tracks the same six-value state independently, since the cloud-side check has no access to the local `notification_log` table (Section 18.2). **Accepted duplication:** a user with the desktop app open and LINE connected may receive both a desktop notification and a LINE push for the same deadline-state change — see Section 14.4 for the rationale for not attempting cross-system dedup.
+**(New in v0.12) Not shared with LINE dedup:** `line_notification_log` (Section 19) tracks the same six-value state independently, since the cloud-side check has no access to the local `notification_log` table (Section 18.2). **Accepted duplication:** a user with the desktop app open and LINE connected may receive both a desktop notification and a LINE push for the same deadline-state change — see Section 14.4 for the rationale for not attempting cross-system dedup. **(Changed in v0.19)** LINE no longer compares against `line_notification_log` for Due Today and Overdue (it lists them every day, Section 14.4); the table still dedupes Upcoming reminders.
 
 ### 11.4 Upcoming Reminders — Selectable Days Before the Due Date (New in v0.16)
 
@@ -365,7 +373,7 @@ Each task stores the deadline state it was last notified for (see `notification_
 
 **When a reminder is reached.** Counted in calendar days on the local clock, like Section 9.2. A reminder of N days is *reached* once today's date is on or after (the date of `due_date` minus N days). The time of day of the due date is not used. Example: due 10 Nov, N = 3 → reached from 7 Nov. A reminder applies only while the task's deadline state is Upcoming and its status is not Completed; once the task is Due Today or Overdue, the Due Today and Overdue rules (Section 11.1) take over.
 
-**Once per reminder.** Each reminder fires at most once per task and is recorded in `reminders_sent`. It is not repeated on later checks or app launches. Checks run as in Section 11.2 (on app start, then about every 15 minutes).
+**Once per reminder.** Each reminder fires at most once per task and is recorded in `reminders_sent`. It is not repeated on later checks or app launches. **(Clarified in v0.19)** This is about Upcoming reminders only; Overdue and Due Today are repeated, Section 11.5. Checks run as in Section 11.2 (on app start, then about every 15 minutes).
 
 **Several reached at once.** If a check finds more than one unsent reminder reached for the same task (the app was closed for days, or the user ticked an extra box), only the closest one (smallest N) produces a notification, which states the real number of days left. All reached reminders are then marked as sent.
 
@@ -375,9 +383,35 @@ Each task stores the deadline state it was last notified for (see `notification_
 
 **Grouping on the desktop.** If one check produces more than three Upcoming reminders, the desktop shows one notification ("N tasks are coming due") instead of one per task. LINE already sends one grouped message per check (Section 14.4), so it is unchanged. Due Today and Overdue notifications are not grouped.
 
-**Why not repeat on every launch or every day.** Reminders at 7, 3, 2 and 1 days already give up to four touches per task, plus Due Today and Overdue. Repeating on each app open would be noise, and users answer noise by switching notifications off, which is worse than a single reminder.
+**Why not repeat on every launch or every day (Reversed in v0.19 for Due Today and Overdue; still true for Upcoming).** v0.16 argued that reminders at 7, 3, 2 and 1 days already give up to four touches per task, plus Due Today and Overdue, and that repeating on each app open would be noise that pushes users to switch notifications off. That holds for Upcoming reminders, which are advance notice and stay once each. It does not hold for Due Today and Overdue. These are the tasks that are urgent *now*: a single notification that the user dismisses, or never sees because the app was already open all day, is the last the user hears of it, and a forgotten overdue assignment costs far more than a repeated notification annoys. Repeating is therefore the default for these two states, in a controlled form: one grouped notification per round, a fixed one-hour spacing, and no repeat while the user is in a focus session (Section 11.5). The risk the v0.16 argument named, users switching notifications off, is the thing to watch in the planned user evaluation (Section 29).
 
 **Traceability:** addresses the limit of the former single 1-day reminder, which was too short for larger assignments.
+
+### 11.5 Repeated Reminders for Overdue and Due Today Tasks (New in v0.19)
+
+**Scope.** Only tasks whose deadline state is **Overdue** or **Due Today** and whose status is not Completed. Upcoming reminders (Section 11.4) are not repeated. This section describes the desktop app; LINE has its own schedule (Section 14.4).
+
+**When the desktop app notifies.** A *round* is one notification covering every task that is currently Overdue or Due Today. A round happens:
+
+1. **When a task enters the state.** A task that becomes Due Today or Overdue (the comparison in Section 11.3) triggers a round at the next check, without waiting for the hour.
+2. **At every app launch**, if at least one task is Overdue or Due Today. This is the first check after start-up (Section 11.2); it does not wait for the hour.
+3. **Every hour while the app stays open**: one hour after the previous round, if at least one task is still Overdue or Due Today. The spacing is fixed at one hour; there is no Settings control for it. The check runs every 15 minutes (Section 11.2), so a repeat appears within 15 minutes of the hour mark, not at an exact second.
+
+Every round restarts the one-hour count, so a task that enters the state at 10:40 produces a round at 10:40 and the next repeat at about 11:40, not a second one at 11:00.
+
+**One grouped notification per round, never one per task.** If a single task is Overdue or Due Today, the notification names it with the same wording as before ("เลยกำหนดแล้ว: <title>" or "ถึงกำหนดวันนี้: <title>"). If several are, it gives the counts only, for example "เลยกำหนด 2 งาน · ครบกำหนดวันนี้ 1 งาน", Overdue first. A user with five late tasks gets one notification per hour, not five.
+
+**No repeat during a focus session.** While a Start Working (Pomodoro) session exists in any phase (focus, break or paused, Section 15), the hourly repeat is skipped and nothing is marked as sent. The first check after the session ends shows the round that was held back. Two things still notify during a session, because they are news and not repetition: a task entering Due Today or Overdue (rule 1 above), and Upcoming reminders (Section 11.4).
+
+**The repeat stops when the cause stops.** Completing a task, deleting it, or moving its due date out of Overdue / Due Today removes it from the next round. When no task is Overdue or Due Today there are no rounds.
+
+**State is kept in memory.** The time of the last round is held in the main process only. Closing the app forgets it, which is correct because the launch round (rule 2) takes its place. Nothing is added to `notification_log` or any other table, so no schema change and no migration. `notification_log.last_notified_state` keeps one job: detecting that a task has just entered Due Today or Overdue (Section 11.3).
+
+**What is not controlled.** Whether the operating system actually shows the notification (for example Windows Focus Assist or Do Not Disturb) is outside the app. Notification clicks and a snooze action are not part of this version.
+
+**Accepted duplication with LINE.** A user who has the app open and LINE linked can see the same task in an hourly desktop notification and in the morning LINE digest. Nothing is deduplicated across the two channels, for the reason given in Section 14.4.
+
+**Traceability:** addresses the limit of one-shot notifications for the most urgent tasks (Section 11.4 reasoning, reversed).
 
 ---
 
@@ -490,10 +524,11 @@ Both directions below are implemented as Supabase Edge Functions — serverless 
 - Task details are collected through a short, structured, multi-step exchange — not a single freeform message:
   1. **Course** — presented as LINE Quick Reply buttons, populated from the linked user's existing `course_name` values (pulled from their synced `tasks`), plus a free-text fallback option for a course with no prior history.
   2. **Title** — free-text message.
-  3. **Due date** — LINE's native Datetime Picker action, not free-text.
-- **(New in v0.13)** The flow does not ask for Priority. A LINE-created task has `priority` unset until the user sets it in the desktop app, which keeps the flow at three steps (Section 14.6).
+  3. **Description (New in v0.18)** — optional. A free-text message, asked with a single Quick Reply button "ข้าม" (skip). It is captured exactly like the title, as the answer to an explicit prompt, and is not parsed. The text is stored in `tasks.notes`. At most 1000 characters; a longer message is not cut silently, the user is told it is too long and asked again. The skip button sends the exact text "ข้าม", so a description that is only that one word cannot be entered from LINE (accepted; it can be written in the desktop app).
+  4. **Due date** — LINE's native Datetime Picker action, not free-text.
+- **(New in v0.13)** The flow does not ask for Priority. A LINE-created task has `priority` unset until the user sets it in the desktop app, which keeps the flow short (Section 14.6).
 - **No natural-language or freeform parsing of task details is used anywhere in this flow.** Every field is captured through a discrete, explicit prompt-and-response step using LINE's built-in structured input components. This is a deliberate scope boundary — see Section 14.6 for the rationale.
-- Once all three fields are collected, a row is inserted directly into `tasks` (`source = 'line'`, `status = not_started` per Section 9.1) using the same task-creation logic already used for manual entry (Section 17.2) — it does **not** pass through the Classroom Review Popup (Section 13.5). That review step exists specifically for passively-fetched Classroom data; a LINE-created task is the direct, explicit result of the user completing the flow, so no additional review step is needed.
+- Once the last step (the due date) is answered, a row is inserted directly into `tasks` (`source = 'line'`, `status = not_started` per Section 9.1, `notes` set when a description was given) using the same task-creation logic already used for manual entry (Section 17.2) — it does **not** pass through the Classroom Review Popup (Section 13.5). That review step exists specifically for passively-fetched Classroom data; a LINE-created task is the direct, explicit result of the user completing the flow, so no additional review step is needed.
 - In-progress conversation state is tracked in `line_conversation_state`, keyed by `line_user_id` (Section 19.4). A flow that receives no further input for 10 minutes is cleared automatically; the next message the user sends starts a fresh flow rather than resuming a stale, possibly-forgotten one.
 - Tasks created via this flow sync down into the local SQLite database through the existing pull mechanism (Section 18.2) — no new sync path is introduced for this data; it is simply a new way of getting a row into the same `tasks` table that Classroom import and manual entry already write to.
 
@@ -501,12 +536,15 @@ Both directions below are implemented as Supabase Edge Functions — serverless 
 
 ### 14.4 Deadline Notifications via LINE (Confirmed)
 
-- Runs entirely on Supabase, independently of the local desktop app and independently of the local 15-minute notification interval (Section 11.2) — implemented as a second Supabase Edge Function, triggered on a fixed schedule (target: every 15–30 minutes) via `pg_cron`.
-- On each run, the function: reads `tasks` for every user with an active row in `line_account_links`, computes deadline state using the identical rules defined in Section 9.2, compares the result against `line_notification_log`, and sends a LINE push message via the Messaging API for any task whose deadline state has changed since it was last notified through this channel.
-- Uses the same three rules as desktop notifications (Section 11.1) — Due Today, Overdue, and Upcoming reminders as defined in Section 11.4 — with no separate LINE-specific configuration. **(Changed in v0.16)** The reminder days come from the user's own selection: the desktop app copies `settings.reminder_days` to `line_account_links.reminder_days` (Section 19.4) and the function reads that column for each user. Through v0.15 the function used a fixed 1-day window because settings were local-only.
+- Runs entirely on Supabase, independently of the local desktop app and independently of the local notification check (Section 11.2) — implemented as a second Supabase Edge Function, triggered by `pg_cron`. **(Changed in v0.19)** The schedule is **once a day at 08:00 Thai time** (`0 1 * * *`, because `pg_cron` runs on UTC). In v0.12 to v0.18 it ran every 15 minutes and pushed whenever a task's state changed, which meant a task that became Due Today at midnight was pushed a few minutes after midnight.
+- **(Changed in v0.19) One digest per user per run.** On each run the function reads `tasks` for every user with an active row in `line_account_links`, computes deadline state using the identical rules of Section 9.2, and sends **one** LINE push message per user that lists, in this order: **Overdue**, **Due Today**, and **Upcoming** tasks whose reminder has been reached (Section 11.4). A user with nothing to report gets no message. Through v0.18 the function pushed any task whose state had changed since `line_notification_log` last saw it.
+- **(New in v0.19) Repeat rules.** Overdue and Due Today tasks are listed **every day until they are completed, deleted, or their due date moves out of those states**; they are no longer compared against `line_notification_log`. Upcoming reminders are unchanged: each reminder is included once and recorded in `line_notification_log.reminders_sent`, including the silent first-sight rule of Section 11.4. A user stops the daily reminder for a task by completing it, in the app or by sending "แก้งาน" (Section 14.8).
+- **(New in v0.19) Size of the message.** At most 30 tasks are listed (LINE text messages are limited to 5,000 characters and titles are cut at 100). If there are more, the message ends with a line saying how many are not shown and suggesting "งานค้าง" (Section 14.7). The message lists Overdue first, then Due Today, then Upcoming reminders, and anything over the limit is cut from the end, so Upcoming reminders are cut first; a cut reminder is not recorded as sent and is offered again the next day.
+- Uses the same three rules as desktop notifications (Section 11.1) — Due Today, Overdue, and Upcoming reminders as defined in Section 11.4 — with no separate LINE-specific configuration. **(Changed in v0.19)** The rules decide *what* is reported; how often is set above and differs from the desktop (Section 11.5). **(Changed in v0.16)** The reminder days come from the user's own selection: the desktop app copies `settings.reminder_days` to `line_account_links.reminder_days` (Section 19.4) and the function reads that column for each user. Through v0.15 the function used a fixed 1-day window because settings were local-only.
 - **(New in v0.16) How the copy is kept up to date.** The desktop app writes the value (a) when the user changes the selection, (b) when LINE linking completes, and (c) at app launch while LINE is connected. The value written is the effective one: an empty list when "Remind me about upcoming deadlines" is switched off. It is a one-way write from the desktop to Supabase through the user's own signed-in session; row-level security lets a user update only their own row. The app never reads the LINE tables back. If the write fails (for example the app is offline), LINE keeps using the previous value until the next successful write (Section 20).
-- `line_notification_log` (Section 19.4) is a separate table from the local-only `notification_log` (Section 19). The cloud function has no access to the local SQLite file, so it maintains its own dedup state rather than sharing the app's. **(v0.16)** That includes its own copy of `reminders_sent` (Section 19.4).
-- **Accepted duplication, not deduplicated:** a user who has the desktop app open at the moment a deadline state changes, and who has also connected LINE, may receive both a desktop notification and a LINE push for the same change. This is treated as an intentional trade-off rather than a defect: LINE is meant as a fallback channel for when the app is not running (Section 11.2), and building cross-system deduplication between a local SQLite process and a stateless cloud function would add meaningful complexity for a low-frequency event (at most a handful of notifications per task's lifetime).
+- `line_notification_log` (Section 19.4) is a separate table from the local-only `notification_log` (Section 19). **(Changed in v0.19)** It is now written only for Upcoming reminders (and the silent first-sight rows); Due Today and Overdue are not recorded in it. The cloud function has no access to the local SQLite file, so it maintains its own dedup state rather than sharing the app's. **(v0.16)** That includes its own copy of `reminders_sent` (Section 19.4).
+- **Accepted duplication, not deduplicated:** a user who has the desktop app open at the moment a deadline state changes, and who has also connected LINE, may receive both a desktop notification and a LINE push for the same change. This is treated as an intentional trade-off rather than a defect: LINE is meant as a fallback channel for when the app is not running (Section 11.2), and building cross-system deduplication between a local SQLite process and a stateless cloud function would add meaningful complexity for a low-frequency event (at most a handful of notifications per task's lifetime). **(Changed in v0.19)** The cost of this trade-off is higher now, because Overdue and Due Today tasks repeat on both channels (hourly on the desktop, daily on LINE), and it is accepted for the same reason: the cost of a missed urgent task is larger than the cost of seeing it twice.
+- **(New in v0.19) Why a daily digest on LINE and not hourly.** A LINE message stays in the chat and can be read at any time; unlike a desktop popup it cannot be dismissed and forgotten, so one message a day is enough to keep a task in view. A fixed 08:00 also replaces pushes that arrived just after midnight, when nobody reads them. It lowers the number of push messages a user receives, which matters under LINE's monthly push limits (Section 20). The cost is that LINE can be up to a day behind for a task that becomes Overdue during the day; the desktop app, when open, covers that gap (Section 11.5), and a task that is Due Today at 08:00 is already in that morning's digest because Due Today starts at midnight Thai time (Section 9.2). There is no retry within the day: a failed push is attempted again at the next 08:00.
 
 **Traceability:** mitigates the accepted limitation documented in Section 11.2 (no notifications while the app is closed).
 
@@ -524,7 +562,7 @@ Both directions below are implemented as Supabase Edge Functions — serverless 
 - **No workflow-automation tool (e.g. n8n).** Both directions are implemented as plain Supabase Edge Functions with `pg_cron` for scheduling, to avoid introducing a third external managed service beyond Supabase and the Google/LINE APIs already in the stack (Section 16, Section 21).
 - **No support for LINE group chats.** The Official Account only processes direct 1:1 messages from a linked individual user; group-chat messages are not parsed or acted upon.
 - **No integration with Microsoft Teams, Discord, or Facebook directly** — this remains out of scope (Section 24), unchanged from prior versions. LINE addresses the *general* need for a low-friction, always-reachable capture channel, not platform-specific integrations with each source named in Section 3.
-- **(New in v0.17) No completing, editing or deleting of tasks through LINE.** The only thing LINE can do to existing tasks is read them (Section 14.7); every change to a task is made in the desktop app.
+- **(New in v0.17, narrowed in v0.18) Changing an existing task through LINE is limited to its status and its due date** (Section 14.8). LINE can read tasks (Section 14.7), set a task to Completed or In Progress (or undo that), and move its due date. It cannot change a task's title, course, description, priority or progress, and it cannot delete a task; those are made in the desktop app. Through v0.17 this bullet ruled out every change.
 
 ### 14.7 Viewing Open Tasks via LINE (New in v0.17)
 
@@ -541,6 +579,30 @@ Both directions below are implemented as Supabase Edge Functions — serverless 
 **Data freshness.** The list is read from the Supabase copy of `tasks`, not from the desktop SQLite file (which LINE cannot reach). It therefore shows the state as of the last successful sync (Section 18.2): a task just completed in the app can still appear for a few minutes. Accepted limitation (Section 20).
 
 **Not changed by this subsection.** No new table or column, no new Edge Function (the command is handled by `line-webhook`), no change to deadline notifications (Section 14.4).
+
+### 14.8 Changing a Task's Status or Due Date via LINE (New in v0.18)
+
+**Purpose.** After a task exists, the two most common changes are "it is done" and "the deadline moved". Both used to need the desktop app, so a student away from the laptop kept seeing reminders for work already finished. This command lets the student make those two changes from the chat. It maps to *"Students forget assignments"* and *"Users cannot easily see or understand their current academic workload"* (Section 3): a stale open task in the list and in the reminders is itself a source of confusion.
+
+**Trigger.** A linked user sends the exact text "แก้งาน" (leading and trailing spaces ignored), matched exactly like "เพิ่มงาน" and "งานค้าง" (Section 14.6). An unlinked LINE user receives the same "connect first" reply (Section 14.2). Like Section 14.7, the command does not continue or clear a task-creation flow in progress (Section 14.3).
+
+**Step 1: pick a task.** One reply lists the user's tasks that are not Completed and not soft-deleted, numbered, in the order of Section 14.7 (Overdue, Due Today, Upcoming, No Deadline; earliest due date first inside a group), each line showing the title, the course name when there is one, and the due date and time in Thai local time. The same tasks are offered as Quick Reply buttons labelled with the number and the start of the title. LINE allows at most 13 Quick Reply buttons, so at most **13** tasks are offered, the most urgent first; when there are more, the reply ends with a line saying how many were left out and that they are changed in the app. With no unfinished task the reply says so.
+
+**Step 2: pick what to change.** Tapping a task shows its title and up to three buttons: "เสร็จแล้ว" (set Completed), "กำลังทำ" (set In Progress; hidden when the task is already In Progress) and "เลื่อนวันส่ง" (opens the Datetime Picker).
+
+**Step 3: the change.**
+- **Status.** `status` is set. `completed_at` is set to the current time when the task moves to Completed (kept if it already was Completed) and cleared when it moves to any other status, exactly as the desktop app does (Sections 9.1, 19). `progress_percentage` is not touched. `first_started_at` is **not** set: it records the first "Start Working" press only (Sections 10.3, 19), so In Progress from LINE does not affect Time-to-Start Lag. The confirmation message carries an "ย้อนกลับ" button that sets the task back to the status it had before this change, with the same rules; it is a normal status change, not a special undo store.
+- **Due date.** The Datetime Picker value is read as Thai local time (+07:00), exactly as in Section 14.3, and replaces `due_date`. The confirmation shows the new date and time.
+
+**Input rules.** Every input is a button tap or a picker value; nothing is read from typed text (Section 14.6). Each button carries the task id, and the Edge Function checks again, on every tap, that the task belongs to the linked user and is not deleted. A tap on an old button after the task was deleted or does not exist replies that the task was not found and changes nothing. Tapping the same button twice is harmless: setting the same status again changes nothing visible.
+
+**No conversation state.** The command keeps no state between messages (the buttons carry everything), so it does not use `line_conversation_state`, and a task-creation flow in progress is not disturbed.
+
+**Sync.** The change is written to the Supabase copy of `tasks`; `updated_at` is set by the server (Section 18.2) and the change reaches the local SQLite file through the normal pull, on the next sync (every 5 to 10 minutes while the app is running). If the app has an unsynced change to the same task at that moment, Last-Write-Wins decides and the later write to the server wins (accepted limitation, Section 20).
+
+**Notifications.** Nothing special is added. A Completed task is never Overdue or Due Today (Section 9.2), so its reminders stop on both channels once the change has synced. Moving a due date changes the task's deadline state and is handled by the existing notification rules (Section 11.3), the same as editing the due date in the desktop app.
+
+**Not changed by this subsection.** No new table, no new column, no new Edge Function (the command is handled by `line-webhook`). The title, course, description, priority, progress and deletion of a task remain desktop-only (Section 14.6).
 
 ---
 
@@ -591,7 +653,7 @@ Pomodoro session data remains a **separate, display-only record**. It is never a
 | External API | Google Classroom API | Scheduled automatic fetch with review (Section 13.5). |
 | External API | **(New in v0.12)** LINE Messaging API | Task creation via structured chat flow and deadline push notifications (Section 14). |
 | Serverless Compute | **(New in v0.12)** Supabase Edge Functions | Hosts the LINE webhook handler and the scheduled deadline-check function (Section 14, Section 17). |
-| Scheduling | **(New in v0.12)** Supabase `pg_cron` | Triggers the LINE deadline-check Edge Function on a fixed interval (Section 14.4). |
+| Scheduling | **(New in v0.12)** Supabase `pg_cron` | Triggers the LINE deadline-check Edge Function on a fixed schedule — **(Changed in v0.19)** once a day at 08:00 Thai time (Section 14.4). |
 | Target Platform | Windows Desktop | See Section 5. |
 
 ---
@@ -781,8 +843,8 @@ These four tables exist only on Supabase — they are read and written exclusive
 | Field | Notes |
 |---|---|
 | line_user_id | Primary key. |
-| current_step | e.g. `waiting_course` / `waiting_title` / `waiting_date`. |
-| partial_task_data | JSON. Holds fields collected so far in the current flow. |
+| current_step | `waiting_course` / `waiting_title` / `waiting_notes` / `waiting_date`. **(New in v0.18)** `waiting_notes` is the optional description step (Section 14.3); the CHECK constraint is widened by a migration. |
+| partial_task_data | JSON. Holds fields collected so far in the current flow (`course_name`, `title`, and, from v0.18, `notes` when a description was given). |
 | updated_at | Used to detect and clear a stale, abandoned flow after 10 minutes of inactivity (Section 14.3). |
 
 **`line_notification_log`** — deduplication state for LINE push notifications (Section 14.4), structurally parallel to `notification_log` but maintained separately since the cloud function has no access to the local table
@@ -791,7 +853,7 @@ These four tables exist only on Supabase — they are read and written exclusive
 |---|---|
 | task_id | FK to `tasks.id`. |
 | line_user_id | |
-| last_notified_state | Same six-value range as `notification_log.last_notified_state` (Section 11.3). |
+| last_notified_state | Same six-value range as `notification_log.last_notified_state` (Section 11.3). **(Changed in v0.19)** Only the Upcoming values (`upcoming`, `upcoming_within_window`) are written from now on, because Due Today and Overdue are listed daily without dedup (Section 14.4). Old rows holding `due_today` / `overdue` are harmless and are not cleaned up. |
 | reminders_sent | **(New in v0.16)** Same meaning as `notification_log.reminders_sent`, kept per task and LINE user. |
 | notified_at | |
 
@@ -825,6 +887,12 @@ These four tables exist only on Supabase — they are read and written exclusive
 
 **(New in v0.17) Known limitation — the LINE open-task list can be a few minutes behind the app:** the "งานค้าง" command (Section 14.7) reads the Supabase copy of `tasks`. A change made in the desktop app (a task completed, a due date moved, a task deleted) shows in LINE only after the next successful sync (Section 18.2), and not at all while the app is offline. A user who has never connected Google Classroom has no cloud copy (see the no-backup limitation above) and therefore cannot link LINE in the first place (Section 14.2). The list is a convenience for a quick look; the desktop app remains the authoritative view.
 
+**(New in v0.18) Known limitation: a change made from LINE and a change made in the desktop app to the same task can overwrite each other.** A status or due-date change made through LINE (Section 14.8) is written straight to Supabase and reaches the app on the next sync. If the same task was changed in the app and not yet pushed, Last-Write-Wins (Section 18.2) keeps whichever write reached the server last, and the other change is lost. The window is a few minutes and a single user rarely edits the same task in both places at once, so no merge logic is added.
+
+**(New in v0.19) Known limitation: the LINE digest can lag the real state by up to a day.** The digest is built once a day at 08:00 Thai time (Section 14.4). A task that becomes Overdue after 08:00 appears in LINE the next morning, and a task completed after 08:00 may still appear in that morning's message, which was built earlier. A run that fails (for example the user has blocked the bot) is not retried until the next day. The desktop app, when open, reports the same changes at its next check (Section 11.5). Accepted: moving to a cloud schedule that reacts within minutes would bring back pushes in the middle of the night, which is the behaviour this version removes.
+
+**(New in v0.19) Known limitation: repeated reminders may feel like noise.** Overdue and Due Today tasks produce one desktop notification an hour while the app is open, and one LINE message a day. The spacing is fixed and cannot be changed or switched off separately from the other deadline notifications; a user who finds it too much can only turn off deadline notifications as a whole. This is the main risk of the change, and the planned user evaluation (Section 29) should ask about it. A setting for the interval is listed under Future Features (Section 25), not built.
+
 **(New in v0.16) Known limitation — LINE can lag behind a settings change:** the LINE reminder days are a copy of the desktop selection (Section 14.4). If the desktop app is offline when the user changes the selection, LINE keeps using the previous selection until the app next writes it (at the next launch at the latest). The Upcoming-reminder rule is also implemented in both runtimes (Section 17.2) and carries the same maintenance risk as the deadline-state logic above.
 
 ---
@@ -853,11 +921,11 @@ The MVP is the complete set of features required for thesis submission. Every it
 - Manual task creation and management, including computed Urgency Score (Section 9.5) and an optional user-set Priority that feeds it (Section 9.3)
 - Google Classroom fetch — automatic on every app launch, plus manual on-demand sync — with user review before import (Section 13, 13.5)
 - **(New in v0.9)** A one-time first-run prompt offering to connect Google Classroom, with the option to defer (Section 13.1)
-- **(New in v0.12)** LINE integration: task creation via a structured chat flow, and deadline-state push notifications independent of whether the desktop app is running (Section 14). **(New in v0.17)** Includes a read-only "งานค้าง" command that lists unfinished tasks (Section 14.7)
+- **(New in v0.12)** LINE integration: task creation via a structured chat flow, and deadline-state push notifications independent of whether the desktop app is running (Section 14). **(New in v0.17)** Includes a read-only "งานค้าง" command that lists unfinished tasks (Section 14.7). **(New in v0.18)** Task creation has an optional description step (Section 14.3), and a "แก้งาน" command sets a task Completed / In Progress or moves its due date (Section 14.8)
 - Computed deadline state: Upcoming / Due Today / Overdue / No Deadline / Completed (Section 9.2)
 - Manual progress percentage and free-form notes (Section 12)
 - Dashboard with the six finalized metrics and This Week / This Month / All Time filtering (Section 10)
-- Desktop notifications with default deadline-state-based rules (Section 11)
+- Desktop notifications with default deadline-state-based rules (Section 11). **(New in v0.19)** Overdue and Due Today tasks are repeated: at every launch and every hour while the app is open, as one grouped notification (Section 11.5)
 - Pomodoro: task-linked sessions only, multi-session batches with phase-transition notifications and a persistent floating widget, partial-session recording (Section 15)
 - Background Supabase sync with LWW conflict resolution (Section 18)
 - Google OAuth 2.0 connection for Classroom access (Section 16)
@@ -888,7 +956,9 @@ The MVP is the complete set of features required for thesis submission. Every it
 - Google Classroom fetch runs automatically once on every app launch, and can also be triggered manually at any time via "Sync now" on Task Board. Fetched assignments enter a review queue and are presented to the user (Create Task / Ignore) rather than being imported directly, unless a Pomodoro session is currently running, in which case the review is held behind a quiet indicator until the session ends. Both Create Task and Ignore are unconditionally permanent — never reopened by a later sync, regardless of any subsequent edit to the assignment on Google's side.
 - Disconnecting a Google Classroom account does not delete already-imported tasks.
 - **(New in v0.12)** LINE connection is managed in Settings, independently of Google Classroom connection, via a short numeric code exchanged between the app and a message sent to the LINE Official Account (Section 14.2). Disconnecting LINE does not delete already-created tasks.
-- **(New in v0.17)** A linked LINE user can send the exact phrase "งานค้าง" to get one read-only message listing unfinished tasks grouped by deadline state (max 15; Section 14.7). It writes nothing and does not disturb a task-creation flow in progress. Completing, editing and deleting tasks through LINE remain out of scope.
+- **(New in v0.17)** A linked LINE user can send the exact phrase "งานค้าง" to get one read-only message listing unfinished tasks grouped by deadline state (max 15; Section 14.7). It writes nothing and does not disturb a task-creation flow in progress. *(Changed in v0.18: setting a task Completed / In Progress and moving its due date are now allowed, Section 14.8; changing anything else and deleting remain out of scope.)*
+- **(New in v0.18)** The "เพิ่มงาน" flow asks for an optional description (button "ข้าม" to skip), stored in `tasks.notes` (Section 14.3). A linked user can send the exact phrase "แก้งาน", pick one of up to 13 unfinished tasks from buttons, and set it Completed, set it In Progress, or move its due date; a status change has a one-tap undo (Section 14.8). Status and due date are the only things LINE can change; no free text is parsed (Section 14.6).
+- **(New in v0.19)** Overdue and Due Today tasks are reminded repeatedly, reversing the v0.16 "do not repeat" decision for these two states (Sections 11.4, 11.5). **Desktop:** one grouped notification when a task enters the state, at every app launch, and every 1 hour while the app stays open (fixed, no setting); the hourly repeat is held back during a Start Working session; the timer is in memory, with no schema change. **LINE:** one digest per user per day at 08:00 Thai time (`0 1 * * *` UTC) listing Overdue, Due Today and Upcoming reminders reached; Overdue and Due Today repeat daily until completed, Upcoming reminders stay once each (Section 14.4). Upcoming reminders (7 / 3 / 2 / 1 days) are not repeated. Duplication between desktop and LINE is accepted.
 - **(New in v0.12)** Task creation via LINE uses a structured, button-and-picker chat flow — never freeform natural-language parsing — and creates tasks directly, without passing through the Classroom review popup (Section 14.3).
 - **(New in v0.12)** Deadline notifications are pushed to LINE on a fixed cloud-side schedule, independent of whether the desktop app is running, mitigating (not eliminating) the accepted limitation that desktop notifications require the app to be open (Section 11.2, Section 14.4).
 - **(New in v0.12)** No AI/LLM component and no workflow-automation tool (e.g. n8n) are used anywhere in the LINE integration (Section 14.6).
@@ -934,7 +1004,8 @@ The MVP is the complete set of features required for thesis submission. Every it
 - **(New in v0.12)** LINE group-chat support — only 1:1 messages from a linked individual are processed (Section 14.6).
 - **(New in v0.12)** Reconciliation of mismatched or misspelled course names entered through the LINE free-text fallback — documented as a known limitation (Section 20) rather than solved in this version.
 - **(New in v0.16)** Per-task reminder settings and free-form reminder values; the selection is global and limited to 7, 3, 2 and 1 days (Section 11.4).
-- **(New in v0.17)** Completing, editing or deleting tasks through LINE, and any LINE command other than "เพิ่มงาน" and "งานค้าง" (Sections 14.6, 14.7).
+- **(New in v0.19)** A Settings control for the repeat interval, a snooze or per-task mute for Overdue / Due Today reminders, clickable notifications that open the task, a second LINE run during the day, and any repeat of Upcoming reminders (Section 11.5, Section 14.4).
+- **(New in v0.17, narrowed in v0.18)** Changing anything about a task through LINE other than its status and due date (title, course, description, priority, progress), deleting a task through LINE, and any LINE command other than "เพิ่มงาน", "งานค้าง" and "แก้งาน" (Sections 14.6 to 14.8).
 
 ---
 
@@ -950,6 +1021,7 @@ These are optional stretch goals. Their absence should **not** affect thesis com
 - **(New in v0.12)** Reconciling course names entered via the LINE free-text fallback against existing Classroom-sourced course names, to prevent duplicate groupings from typos or alternate spellings (see Section 20's known limitation)
 - **(New in v0.12)** Sharing a single deadline-state computation module between the Electron app and the `notify-check` Edge Function, to remove the duplicated-logic maintainability risk documented in Section 20
 - **(New in v0.16)** A per-task reminder for large assignments, set when the task is created or edited (see the known limitation in Section 20)
+- **(New in v0.19)** A Settings control for how often Overdue / Due Today tasks are repeated on the desktop, and a snooze or mute for a single task (see the known limitation in Section 20)
 
 **Study Companions were considered during early design exploration but have been formally removed from the project scope due to thesis feasibility.**
 
@@ -964,7 +1036,7 @@ They are not part of the MVP or future implementation.
 The following remains genuinely deferred:
 
 1. **Assignment-level UX details deferred to implementation**: exact clock time for daily notification checks, exact wording/iconography for Room indicators, exact visual layout of the Classroom review popup, the Pomodoro floating widget, the first-run prompt (Section 13.1), and **(New in v0.12)** the exact wording of the LINE structured chat flow's prompts and buttons (Section 14.3). Precise Electron IPC message shapes, and precise LINE Edge Function payload shapes. These are intentionally left to implementation.
-2. **(New in v0.12)** The exact polling interval for the LINE deadline-check (`pg_cron` schedule, Section 14.4) is stated as a 15–30 minute target range, not a single confirmed value — the final figure is an implementation-time trade-off between notification freshness and LINE API/Supabase invocation volume, deferred to implementation.
+2. **(New in v0.12, resolved in v0.19)** The polling interval of the LINE deadline-check is decided: once a day at 08:00 Thai time (Section 14.4). The 15–30 minute range stated in v0.12 is withdrawn.
 
 All other items previously listed as `TBD` are now confirmed decisions — see Sections 9–23 and the Changelog below.
 
@@ -989,6 +1061,40 @@ This document overrides any conflicting assumptions from previous conversations.
 ## 28. Changelog
 
 *(Section numbers referenced inside each changelog entry below reflect the numbering that was current **at the time that entry was written** — they are a historical record, not live cross-references. See Section 1 for the v0.12 renumbering note.)*
+
+### v0.18 → v0.19
+
+| Section | Change | Reason |
+|---|---|---|
+| Header | Version bumped to 0.19; Supersedes line updated to v0.18 | Team rule: change the spec version before the code |
+| 1 | Added a v0.19 note: one subsection added, no schema change, one cron migration, files to update | Keeps derived files and code in sync |
+| 8 | Core Features entry for notifications mentions the repeated reminders | Keeps the feature list in sync with Sections 11.5 and 14.4 |
+| 11.1 | Due Today and Overdue are no longer "notify once"; they notify on entering the state and keep reminding (Section 11.5); the shared-thresholds sentence notes that repeat frequency differs between desktop and LINE | v0.16 rule reversed for the two urgent states |
+| 11.2 | The 15-minute check also decides the hourly repeat; the LINE mitigation is described as a daily digest | Matches Sections 11.5 and 14.4 |
+| 11.3 | The last-notified comparison now only detects entry into Due Today / Overdue; repeats are not recorded; LINE no longer dedupes those two states | Dedup state is no longer the reason a notification is skipped |
+| 11.4 | "Once per reminder" clarified as Upcoming only; the paragraph "Why not repeat on every launch or every day" is reversed for Due Today and Overdue, with the reasons (urgent, one dismissal means forgotten, cost of forgetting above annoyance) and the risk to watch | A single dismissal left urgent tasks forgotten; the earlier argument fits advance notice, not urgent tasks |
+| 11.5 | New subsection: scope, three kinds of round (entering the state, launch, hourly), one grouped notification, hold back during a focus session, stop conditions, in-memory timer, not controlled by the app, duplication with LINE | The behaviour of the repeated desktop reminders |
+| 14.4 | Schedule changed from every 15 minutes to once a day at 08:00 Thai time; one digest per user; Overdue and Due Today repeat daily, Upcoming once; 30-task cap; reasoning for daily over hourly | A chat message cannot be dismissed, and midnight pushes were useless; urgent tasks must keep reappearing |
+| 16 | Scheduling row describes the daily schedule | Keeps the stack table in sync with Section 14.4 |
+| 19.4 | `line_notification_log.last_notified_state` is written only for Upcoming states | Due Today / Overdue are no longer deduplicated |
+| 20 | Added two known limitations: LINE digest can lag by up to a day; repeated reminders may feel like noise | Written down rather than left implicit |
+| 22, 23, 24, 25, 26 | MVP list, decision summary, Out of Scope, Future Features and the polling-interval open question updated | Keeps them in sync with Sections 11.5 and 14.4 |
+| 28 | Added this v0.18 → v0.19 changelog entry | Standard practice for this document |
+
+### v0.17 → v0.18
+
+| Section | Change | Reason |
+|---|---|---|
+| Header | Version bumped to 0.18; Supersedes line updated to v0.17 | Team rule: change the spec version before the code |
+| 1 | Added a v0.18 note: one subsection added, no new `tasks` column, one migration (widen the `current_step` CHECK), files to update, `line-webhook` to be redeployed after the migration | Keeps derived files and code in sync |
+| 8 | Core Features entry for LINE mentions the description step and the change command | Keeps the feature list in sync with Sections 14.3 and 14.8 |
+| 14.3 | Task creation flow gains an optional Description step (button "ข้าม" to skip) between Title and Due date, stored in `tasks.notes`, max 1000 characters; flow description and insert rule updated | A task made from LINE could get a description only by opening the desktop app afterwards |
+| 14.6 | The v0.17 ban on completing, editing or deleting through LINE is narrowed: status and due date may be changed (Section 14.8), everything else stays desktop-only | The most common after-the-fact changes ("done", "deadline moved") should not need the laptop |
+| 14.8 | New subsection: "แก้งาน" command, pick a task from up to 13 buttons, set Completed / In Progress or move the due date, one-tap undo for status, stateless, re-checked ownership, sync and notification behaviour | The LINE chat could create and read tasks but not change them |
+| 19.4 | `line_conversation_state.current_step` gains `waiting_notes`; `partial_task_data` may hold `notes` | Data model for the new description step |
+| 20 | Added a known limitation: a LINE change and an app change to the same task can overwrite each other (Last-Write-Wins) | Written down rather than left implicit |
+| 22, 23, 24 | MVP list, decision summary and Out of Scope updated | Keeps them in sync with Sections 14.3, 14.6 and 14.8 |
+| 28 | Added this v0.17 → v0.18 changelog entry | Standard practice for this document |
 
 ### v0.16 → v0.17
 

@@ -1,6 +1,7 @@
 // Owner: Backend
 // หน้าที่: logic ล้วนของคำสั่ง "งานค้าง" ใน LINE ไม่แตะ DB/HTTP จึงเทสใน Node ได้ — จัดกลุ่มงานที่ยังไม่เสร็จแล้วประกอบเป็นข้อความเดียว
-// อ้างอิง: PROJECT_v0.17 §14.7 (อ่านอย่างเดียว, ตรงตัวเหมือน "เพิ่มงาน", สูงสุด 15 งาน), §9.2 (Deadline State)
+// อ้างอิง: PROJECT_v0.19 §14.7 (อ่านอย่างเดียว, ตรงตัวเหมือน "เพิ่มงาน", สูงสุด 15 งาน), §9.2 (Deadline State)
+// v0.18: groupOpenTasks / formatDue / cut ถูกแยกออกมา export เพื่อให้คำสั่ง "แก้งาน" (task-edit.ts, §14.8) เรียงงานลำดับเดียวกับ "งานค้าง"
 
 import { computeDeadlineState } from './deadline-state.ts';
 import type { Task } from './deadline-state.ts';
@@ -33,38 +34,47 @@ export function isOpenTasksTrigger(text?: string): boolean {
 
 // แสดงวัน-เวลาตามเวลาไทย (+07:00) เสมอ เพราะ Edge Function รันเป็น UTC
 // ตัวอย่าง: due = 2026-11-05T07:00:00Z (= 14:00 ไทย) -> "5 พ.ย. 14:00" / 2026-10-29T16:59:00Z (= 23:59 ไทย) -> "29 ต.ค. 23:59"
-function formatDue(dueDate: string): string {
+export function formatDue(dueDate: string): string {
   const thai = new Date(new Date(dueDate).getTime() + 7 * 60 * 60 * 1000); // เลื่อน +7 ชม. แล้วอ่านด้วย getUTC* = เวลาไทย
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${thai.getUTCDate()} ${MONTHS[thai.getUTCMonth()]} ${pad(thai.getUTCHours())}:${pad(thai.getUTCMinutes())}`;
 }
 
-const cut = (text: string, max: number) => {
+export const cut = (text: string, max: number) => {
   const oneLine = text.replace(/\s+/g, ' ').trim(); // ขึ้นบรรทัดใหม่ในชื่อ -> ให้เป็นบรรทัดเดียว
   return oneLine.length > max ? oneLine.slice(0, max) + '…' : oneLine;
 };
 
-// tasks = งานที่ยังไม่ถูกลบของผู้ใช้ (completed หลุดมาก็ข้าม) / now ส่งเองได้เพื่อทดสอบ
-// เรียงในกลุ่มตาม due เร็วสุดก่อน, no_deadline คงลำดับที่รับมา (ผู้เรียกส่งล่าสุดก่อน), ถ้าเกิน 15 ตัดจากท้ายสุด = งานเร่งด่วนไม่หาย
-export function buildOpenTaskList(tasks: OpenTask[], now: Date = new Date()): Message {
-  const groups = GROUPS.map((group) => ({ ...group, items: [] as OpenTask[] }));
+// แบ่งงานเป็น 4 กลุ่มตามลำดับ GROUPS (เร่งด่วนสุดก่อน) และเรียงในกลุ่มตาม due เร็วสุดก่อน
+// no_deadline คงลำดับที่รับมา (ผู้เรียกส่งล่าสุดก่อน) / 'completed' ไม่มีกลุ่ม = ข้าม / งานที่ข้อมูลเพี้ยนข้ามเฉพาะงานนั้น
+// ใช้ร่วมกันระหว่าง "งานค้าง" (§14.7) กับ "แก้งาน" (§14.8) จึงเรียงเหมือนกันเสมอ
+export function groupOpenTasks<T extends OpenTask>(tasks: T[], now: Date = new Date()) {
+  const groups = GROUPS.map((group) => ({ ...group, items: [] as T[] }));
   for (const task of tasks) {
     try {
       const state = computeDeadlineState(task, now);
-      groups.find((group) => group.state === state)?.items.push(task); // 'completed' ไม่มีกลุ่ม = ข้าม
+      groups.find((group) => group.state === state)?.items.push(task);
     } catch (error) {
       // งานเดียวที่ข้อมูลเพี้ยนต้องไม่ทำให้ทั้งรายการล่ม (เหมือน notify-digest)
       console.error(`task-list: ข้ามงาน "${task.title}": ${(error as Error).message}`);
     }
   }
+  for (const group of groups) {
+    if (group.state !== 'no_deadline') group.items.sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
+  }
+  return groups;
+}
 
+// tasks = งานที่ยังไม่ถูกลบของผู้ใช้ (completed หลุดมาก็ข้าม) / now ส่งเองได้เพื่อทดสอบ
+// ถ้าเกิน 15 ตัดจากท้ายสุด = งานเร่งด่วนไม่หาย
+export function buildOpenTaskList(tasks: OpenTask[], now: Date = new Date()): Message {
+  const groups = groupOpenTasks(tasks, now);
   const total = groups.reduce((sum, group) => sum + group.items.length, 0);
   if (total === 0) return textMessage(NO_OPEN_TASKS);
 
   let room = MAX_LISTED; // ที่ว่างเหลือในข้อความ
   const blocks = [`งานที่ยังไม่เสร็จ (${total})`];
   for (const group of groups) {
-    if (group.state !== 'no_deadline') group.items.sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
     const shown = group.items.slice(0, room);
     room -= shown.length;
     if (shown.length === 0) continue;

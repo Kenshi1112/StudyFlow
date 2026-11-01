@@ -1,6 +1,8 @@
 // Owner: Backend
-// หน้าที่: Edge Function รับ webhook จาก LINE: ผูกบัญชีด้วยรหัส, flow สร้าง task แบบ structured (ข้อ 8.3, 8.4) และคำสั่ง "งานค้าง" (ดูรายการ อ่านอย่างเดียว)
-// อ้างอิง: PROJECT_v0.17 section 14.2, 14.3, 14.7 (ห้ามใช้ NLP/AI §14.6), 18.2 และ 20 (secrets อยู่ที่ Supabase เท่านั้น)
+// หน้าที่: Edge Function รับ webhook จาก LINE: ผูกบัญชีด้วยรหัส, flow สร้าง task แบบ structured (ข้อ 8.3, 8.4), คำสั่ง "งานค้าง" (ดูรายการ อ่านอย่างเดียว)
+//   และคำสั่ง "แก้งาน" (เปลี่ยนสถานะ / เลื่อนวันส่ง ผ่านปุ่ม §14.8)
+// อ้างอิง: PROJECT_v0.19 section 14.2, 14.3, 14.7, 14.8 (ห้ามใช้ NLP/AI §14.6), 18.2 และ 20 (secrets อยู่ที่ Supabase เท่านั้น)
+// ต้องรัน migration 20261101190000_line_notes_step.sql ก่อน deploy ไฟล์นี้ (ไม่งั้นการ upsert state ขั้น waiting_notes ชน CHECK)
 // deploy ด้วย: supabase functions deploy line-webhook --no-verify-jwt
 //   (LINE ไม่ส่ง JWT ของ Supabase มาให้ ความปลอดภัยจึงอยู่ที่การตรวจ x-line-signature ด้วย Channel Secret)
 // secrets: LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN (supabase secrets set) ส่วน SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY Supabase ใส่ให้เอง
@@ -9,10 +11,14 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { verifySignature } from '../_shared/line-signature.ts';
 import {
-  DATE_POSTBACK_DATA, LINK_REPLIES, MESSAGES, isTrigger, nextStep, parseLinkCode, textMessage,
+  DATE_POSTBACK_DATA, LINK_REPLIES, MESSAGES, isTrigger, nextStep, parseLinkCode, textMessage, toDueDate,
 } from '../_shared/line-flow.ts';
 import type { Input, Message } from '../_shared/line-flow.ts';
 import { buildOpenTaskList, isOpenTasksTrigger } from '../_shared/task-list.ts';
+import {
+  EDIT_MESSAGES, buildActionMenu, buildDueDone, buildPickList, buildStatusDone, isEditTrigger, parseEditPostback, statusPatch,
+} from '../_shared/task-edit.ts';
+import type { EditAction } from '../_shared/task-edit.ts';
 
 const CHANNEL_SECRET = Deno.env.get('LINE_CHANNEL_SECRET') ?? '';
 const ACCESS_TOKEN = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN') ?? '';
@@ -32,6 +38,34 @@ async function replyToLine(replyToken: string, messages: Message[]) {
   if (!response.ok) console.error(`LINE reply ไม่สำเร็จ (${response.status}): ${await response.text()}`);
 }
 
+// ทำตามปุ่มของคำสั่ง "แก้งาน" (§14.8): ตรวจทุกครั้งว่างานเป็นของผู้ใช้คนนี้และยังไม่ถูกลบ แล้วค่อยแก้ (ปุ่มเก่าที่งานหายไปแล้ว = ตอบว่าไม่พบ ไม่แก้อะไร)
+// datetime = ค่าจาก Datetime Picker (ใช้เฉพาะ action 'due') คืนข้อความที่จะตอบ
+async function runEdit(action: EditAction, userId: string, datetime?: string): Promise<Message[]> {
+  const { data: task, error } = await db
+    .from('tasks').select('id, title, course_name, status, due_date')
+    .eq('id', action.id).eq('user_id', userId).is('deleted_at', null).maybeSingle();
+  if (error) throw error;
+  if (!task) return [textMessage(EDIT_MESSAGES.NOT_FOUND)];
+
+  if (action.kind === 'pick') return [buildActionMenu(task)];
+
+  // updated_at ไม่ต้องส่ง: trigger ฝั่ง server ตั้งให้ (LWW §18.2) / .eq ซ้ำ user_id กันแก้ข้ามบัญชีแม้ id ถูกเดา
+  let patch: Record<string, unknown>;
+  let reply: Message;
+  if (action.kind === 'status') {
+    patch = statusPatch(task.status, action.status);
+    reply = buildStatusDone(task, action.status);
+  } else {
+    const due = toDueDate(datetime);
+    if (!due) return [textMessage(EDIT_MESSAGES.DUE_INVALID)];
+    patch = { due_date: due };
+    reply = buildDueDone(task, due);
+  }
+  const { error: updateError } = await db.from('tasks').update(patch).eq('id', task.id).eq('user_id', userId).is('deleted_at', null);
+  if (updateError) throw updateError;
+  return [reply];
+}
+
 // deno-lint-ignore no-explicit-any
 async function handleEvent(event: any) {
   // รับเฉพาะแชท 1:1 (§14.6) กลุ่ม/ห้องแชทข้ามไป
@@ -39,13 +73,17 @@ async function handleEvent(event: any) {
   const lineUserId: string = event.source.userId;
 
   // แปลง event ของ LINE เป็น input ที่ nextStep เข้าใจ: ข้อความ / ค่าจาก Datetime Picker / อย่างอื่น (สติกเกอร์ ฯลฯ) = input ว่าง
+  // postback ของ "แก้งาน" (data ขึ้นต้น edit:) แยกออกมา ไม่ผ่าน nextStep เพราะไม่เกี่ยวกับ flow เพิ่มงาน (ไม่แตะ line_conversation_state)
   let input: Input;
+  let editAction: EditAction | null = null;
   if (event.type === 'message') {
     input = event.message?.type === 'text' ? { text: event.message.text } : {};
   } else if (event.type === 'postback' && event.postback?.data === DATE_POSTBACK_DATA) {
     input = { datetime: event.postback.params?.datetime };
+  } else if (event.type === 'postback' && (editAction = parseEditPostback(event.postback?.data))) {
+    input = {};
   } else {
-    return; // follow, unfollow ฯลฯ ไม่ต้องทำอะไร
+    return; // follow, unfollow, postback แปลก ๆ ฯลฯ ไม่ต้องทำอะไร
   }
   const reply = (messages: Message[]) => (event.replyToken ? replyToLine(event.replyToken, messages) : Promise.resolve());
 
@@ -73,6 +111,17 @@ async function handleEvent(event: any) {
     return reply([buildOpenTaskList(openTasks ?? [])]);
   }
 
+  // "แก้งาน" (§14.8): ปุ่มที่กดต่อจากรายการ -> ทำตามปุ่ม / พิมพ์ "แก้งาน" -> ส่งรายการงานค้างให้เลือก
+  //   ไม่แตะ line_conversation_state เหมือน "งานค้าง" flow เพิ่มงานที่ค้างอยู่ทำต่อได้
+  if (editAction) return reply(await runEdit(editAction, link.app_user_id, event.postback.params?.datetime));
+  if (isEditTrigger(input.text)) {
+    const { data: openTasks, error } = await db
+      .from('tasks').select('id, title, course_name, due_date, status').eq('user_id', link.app_user_id)
+      .is('deleted_at', null).neq('status', 'completed').order('updated_at', { ascending: false }).limit(500);
+    if (error) throw error;
+    return reply([buildPickList(openTasks ?? [])]);
+  }
+
   // ผูกแล้ว: เดินต่อใน flow สร้างงาน
   const { data: saved, error: stateError } = await db
     .from('line_conversation_state').select('current_step, partial_task_data, updated_at').eq('line_user_id', lineUserId).maybeSingle();
@@ -91,7 +140,7 @@ async function handleEvent(event: any) {
   const now = new Date();
   const result = nextStep(saved, input, courses, now);
 
-  // ครบ 3 ช่อง: insert ลง tasks (status/progress/id เป็น default ของ DB, priority/notes ว่าง)
+  // ตอบขั้นสุดท้าย (due date) แล้ว: insert ลง tasks (status/progress/id เป็น default ของ DB, priority ว่าง, notes มีเมื่อผู้ใช้พิมพ์ description)
   // ถ้า insert พลาด ไม่แตะ state ผู้ใช้กดเลือกวัน-เวลาซ้ำได้
   if (result.task) {
     const { error } = await db.from('tasks').insert({ user_id: link.app_user_id, ...result.task, source: 'line' });
