@@ -123,6 +123,7 @@ await window.api.invoke('settings:set', { key: 'reminder_window_days', value: 3 
 | `pomodoro:resume` | ไม่มี | `State` |
 | `pomodoro:stop` | ไม่มี | `State` (idle) |
 | `pomodoro:get-state` | ไม่มี | `State` |
+| `pomodoro:show-widget` | ไม่มี | `State` |
 | event `pomodoro:state-changed` | - | `State` |
 
 ```js
@@ -142,6 +143,7 @@ await window.api.invoke('settings:set', { key: 'reminder_window_days', value: 3 
 - **`stop`:** ไม่มี batch ก็ไม่ reject (คืน idle) ถ้าอยู่ใน focus จะบันทึกเวลาที่ผ่านไปเป็น `completed = 0` (ผ่านไป 0 วินาทีไม่บันทึก) อยู่ใน break ไม่บันทึกอะไรเพิ่ม
 - **event `pomodoro:state-changed`:** ส่งทุก 1 วินาทีระหว่าง `running` และทุกครั้งที่เปลี่ยน (start/pause/resume/เปลี่ยน phase/จบ) ให้ทุกหน้าต่าง ตอนจบ/หยุดส่ง state `idle` widget ที่เพิ่งเปิดให้เรียก `pomodoro:get-state` ตอนโหลดก่อน แล้วค่อย subscribe event
 - **ปิดแอปกลาง Pomodoro:** บันทึกเหมือน `stop` (§15.1) ปิดหน้าต่างหลัก = ปิดทั้งแอป
+- **`show-widget` (เพิ่ม 2026-11-01, Frontend ทำทั้งสองฝั่ง เบลตรวจตอน PR):** เปิด floating widget กลับมาหลังผู้ใช้กดปิด ถ้า widget เปิดอยู่แล้วแค่ดึงขึ้นมาข้างหน้า reject เมื่อไม่มี batch วิ่งอยู่ (state `idle`) ไม่กระทบ timer
 - **OS notification:** ส่งตอนเปลี่ยน phase และตอนจบ batch ("ถึงเวลาพักแล้ว", "ถึงเวลาทำงานแล้ว", "ครบทุกรอบแล้ว") ไม่ส่งตอนกด Start
 
 ## `dashboard:*` (ข้อ 4, เบลตัดสิน 2026-10-16)
