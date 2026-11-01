@@ -184,11 +184,28 @@
 
 /* Notifications */
 .st__label--notifications { margin-top: calc(var(--u) * 22); }
-.st__card--notif { height: calc(var(--u) * 153); }
+/* สูง = แถวสวิตช์ 73 + แถวติ๊กวัน 54 + แถว Session 73 (การ์ดเดิมสูง 153 ก่อนเพิ่มแถวติ๊กวัน) */
+.st__card--notif { height: calc(var(--u) * 202); }
 .st__notif { position: absolute; left: 0; right: 0; height: calc(var(--u) * 72); padding: 0 calc(var(--u) * 30) 0 calc(var(--u) * 20); display: flex; align-items: center; justify-content: space-between; }
 .st__notif:first-child { top: 0; }
 .st__card--notif .st__rule--thin { position: absolute; left: 0; right: 0; top: calc(var(--u) * 73); }
-.st__card--notif .st__notif:last-child { top: calc(var(--u) * 74); }
+.st__card--notif .st__rule--late { top: calc(var(--u) * 127); }
+.st__card--notif .st__notif--session { top: calc(var(--u) * 128); }
+
+/* แถวติ๊กวัน 7 / 3 / 2 / 1 (spec §11.4) สวิตช์ปิด = จางลงและติ๊กไม่ได้ แต่ค่าที่ติ๊กไว้ยังอยู่ */
+.st__days {
+  position: absolute; left: 0; right: 0; top: calc(var(--u) * 74); height: calc(var(--u) * 53);
+  padding: 0 calc(var(--u) * 30) 0 calc(var(--u) * 20); display: flex; align-items: center; gap: calc(var(--u) * 32);
+  transition: opacity 0.15s;
+}
+.st__day { display: inline-flex; align-items: center; gap: calc(var(--u) * 10); cursor: pointer; }
+.st__day input {
+  width: calc(var(--u) * 20); height: calc(var(--u) * 20); margin: 0; accent-color: #3b3028; cursor: pointer;
+}
+.st__day input:disabled { cursor: default; }
+.st__days.is-off .st__day, .st__days.is-off .st__day input { cursor: default; }
+.st__days.is-off .st__day { opacity: 0.45; }
+.st__days-line { margin-left: auto; color: #7d7060; }
 .st__notif-title { margin: 0; font-weight: 500; }
 .st__notif-desc { margin: calc(var(--u) * 4) 0 0; color: #7d7060; }
 

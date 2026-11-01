@@ -1,10 +1,11 @@
 // Owner: Frontend
 // หน้าที่: logic ฝั่ง UI ของหน้า Settings (Figma node 403:64)
 // เรียก backend ผ่าน window.apiClient.invoke เท่านั้น
-// ส่วนที่ Backend มีจริง: settings:get / settings:set (reminder_window_days, pomodoro_focus_minutes, pomodoro_break_minutes, classroom_cutoff_date)
+// ส่วนที่ Backend มีจริง: settings:get / settings:set (reminder_days, reminder_upcoming_enabled, pomodoro_focus_minutes, pomodoro_break_minutes, classroom_cutoff_date)
 // ปุ่ม Save Change ของ Pomodoro บันทึก Focus/Break ผ่าน settings:set ทีละ key (ใช้ตอนกด Start Working ของ batch ถัดไป)
 // LINE (§14.2) ใช้ line:get-status / line:generate-code / line:disconnect ตาม docs/ipc-contract.md
-// ส่วนที่ยังไม่มี Backend (toggle แจ้งเตือน) เป็น UI อย่างเดียว ยังไม่บันทึก
+// แจ้งเตือนล่วงหน้า (spec §11.4): สวิตช์ + checkbox 7/3/2/1 วัน บันทึกผ่าน settings:set (reminder_upcoming_enabled / reminder_days) LINE ตามค่าเดียวกันที่ฝั่ง Backend เอง
+// สวิตช์ "Session complete alert" ยังเป็น UI อย่างเดียว ยังไม่บันทึก
 
 'use strict';
 
@@ -31,10 +32,7 @@
       // settings:get คืน object ของทุก key (ตาม settings.service ของ Backend) ถ้ารูปแบบต่างไปจะข้าม ไม่พัง
       const res = await api.invoke('settings:get');
       if (!root || !res || typeof res !== 'object') return;
-      const days = res.reminder_window_days;
-      if (Number.isFinite(days) && days >= 1) {
-        $('#st-reminder-desc').textContent = `Notify ${days * 24} hours before due dates`;
-      }
+      applyReminderSettings(res);
       if (Number.isInteger(res.pomodoro_focus_minutes) && res.pomodoro_focus_minutes >= 1) $('#st-focus').value = res.pomodoro_focus_minutes;
       if (Number.isInteger(res.pomodoro_break_minutes) && res.pomodoro_break_minutes >= 1) $('#st-break').value = res.pomodoro_break_minutes;
     } catch (err) {
@@ -96,8 +94,87 @@
     });
   }
 
+  // ---------- แจ้งเตือนล่วงหน้า (spec §11.4) ----------
+  // reminder_days = array ของ 7/3/2/1 (ไม่ว่าง) / reminder_upcoming_enabled = สวิตช์ ส่งทีละ key ผ่าน settings:set
+  // ตัวอย่าง: ติ๊ก 7 เพิ่มเมื่อมี [1] อยู่ -> ส่ง value [7, 1] / ปิดสวิตช์ส่งแค่ enabled: false (ไม่ล้าง reminder_days)
+  const REMINDER_CHOICES = [7, 3, 2, 1];
+  let reminder = { enabled: true, days: [1] };
+  let reminderSaving = false; // ระหว่างบันทึก ล็อกทุกช่อง กันกดรัวแล้วส่งซ้อนกัน
+
+  // รับ object จาก settings:get / settings:set (ทุก key) เอาเฉพาะค่าที่รูปแบบถูก ไม่งั้นคงของเดิม
+  function applyReminderSettings(res) {
+    if (typeof res.reminder_upcoming_enabled === 'boolean') reminder.enabled = res.reminder_upcoming_enabled;
+    const days = res.reminder_days;
+    if (Array.isArray(days) && days.length > 0 && days.every((n) => REMINDER_CHOICES.includes(n))) reminder.days = days.slice();
+    renderReminder();
+  }
+
+  function renderReminder() {
+    if (!root) return;
+    const sw = $('#st-reminder-switch');
+    sw.classList.toggle('is-on', reminder.enabled);
+    sw.setAttribute('aria-checked', String(reminder.enabled));
+    sw.disabled = reminderSaving;
+    $('#st-reminder-days').classList.toggle('is-off', !reminder.enabled);
+    root.querySelectorAll('#st-reminder-days input').forEach((box) => {
+      const n = Number(box.value);
+      const ticked = reminder.days.includes(n);
+      box.checked = ticked;
+      // ปิดสวิตช์ = แก้ไม่ได้ / ช่องสุดท้ายที่ติ๊กอยู่ห้ามเอาออก (ส่ง [] ไม่ได้)
+      box.disabled = reminderSaving || !reminder.enabled || (ticked && reminder.days.length === 1);
+    });
+    renderReminderLine();
+  }
+
+  // "Also sent to LINE" โชว์เมื่อผูก LINE แล้ว (UX Review §5)
+  function renderReminderLine() {
+    const el = root && $('#st-reminder-line');
+    if (el) el.hidden = !(line && line.connected);
+  }
+
+  // เปลี่ยนค่าแล้วบันทึก 1 key: โชว์ค่าใหม่ทันที ถ้า backend ปฏิเสธ/ล้มเหลวให้คืนค่าเดิมและขึ้นข้อความ
+  async function saveReminder(key, value, next) {
+    const prev = { enabled: reminder.enabled, days: reminder.days.slice() };
+    reminder = next;
+    reminderSaving = true;
+    note('');
+    renderReminder();
+    try {
+      const res = await api.invoke('settings:set', { key, value });
+      if (res && typeof res === 'object') applyReminderSettings(res);
+    } catch (err) {
+      reminder = prev;
+      note(`บันทึกการแจ้งเตือนไม่สำเร็จ: ${errText(err)}`);
+    } finally {
+      reminderSaving = false;
+      renderReminder();
+    }
+  }
+
+  function onReminderSwitch() {
+    if (reminderSaving) return;
+    const enabled = !reminder.enabled;
+    saveReminder('reminder_upcoming_enabled', enabled, { enabled, days: reminder.days });
+  }
+
+  function onReminderBox(box) {
+    if (reminderSaving) return;
+    const n = Number(box.value);
+    const days = box.checked ? [...reminder.days, n] : reminder.days.filter((d) => d !== n);
+    days.sort((a, b) => b - a); // มากไปน้อย เหมือนที่ main เก็บ
+    if (days.length === 0) return renderReminder(); // กันไว้อีกชั้น ช่องสุดท้ายถูก disable อยู่แล้ว
+    saveReminder('reminder_days', days, { enabled: reminder.enabled, days });
+  }
+
+  function bindReminder() {
+    listen($('#st-reminder-switch'), 'click', onReminderSwitch);
+    root.querySelectorAll('#st-reminder-days input').forEach((box) => listen(box, 'change', () => onReminderBox(box)));
+    renderReminder();
+  }
+
   function bindSwitches() {
-    root.querySelectorAll('.st__switch').forEach((sw) => {
+    // สวิตช์แจ้งเตือนล่วงหน้ามี logic ของตัวเอง (bindReminder) ที่เหลือยังเป็น UI อย่างเดียว
+    root.querySelectorAll('.st__switch:not(#st-reminder-switch)').forEach((sw) => {
       listen(sw, 'click', () => {
         const on = !sw.classList.contains('is-on');
         sw.classList.toggle('is-on', on);
@@ -241,6 +318,7 @@
       btn.textContent = '[ Connect LINE ]';
       btn.disabled = !googleOn;
     }
+    renderReminderLine();
     // ป๊อปอัปโค้ด: อัปเดตโค้ด/เวลา ปิดเองเมื่อผูกสำเร็จหรือโค้ดหมดอายุ
     const dlg = $('#st-line-dlg');
     if (linePending) {
@@ -333,6 +411,7 @@
       bindNav();
       bindSteppers();
       bindSwitches();
+      bindReminder();
       bindPending();
       listen($('#st-cls-btn'), 'click', toggleClassroom);
       listen($('#st-cls-banner-close'), 'click', () => {

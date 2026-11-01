@@ -1,5 +1,5 @@
 // Owner: Backend
-// หน้าที่: เทสข้อ 1.2 — เช็คว่า src/main/db/schema.sql ตรง PROJECT_v0.15 section 19
+// หน้าที่: เทสข้อ 1.2 — เช็คว่า src/main/db/schema.sql ตรง PROJECT_v0.16 section 19
 // รัน: node --test tests/schema.test.js   (ต้อง Node 22+ และ npm install แล้ว)
 'use strict';
 
@@ -26,7 +26,7 @@ const EXPECTED_COLUMNS = {
     'id', 'task_id', 'started_at', 'planned_duration_seconds', 'actual_duration_seconds',
     'completed', 'batch_id', 'session_index', 'session_total', 'created_at', 'updated_at',
   ],
-  notification_log: ['task_id', 'last_notified_state', 'notified_at'],
+  notification_log: ['task_id', 'last_notified_state', 'reminders_sent', 'notified_at'], // (v0.16) + reminders_sent
 };
 
 function freshDb() {
@@ -217,4 +217,15 @@ test('settings: เป็น key-value (key ซ้ำไม่ได้ ใช�
 test('รัน schema.sql ซ้ำได้ไม่ error (IF NOT EXISTS) — เตรียมไว้ให้ข้อ 1.3', () => {
   const db = freshDb();
   assert.doesNotThrow(() => db.exec(fs.readFileSync(SCHEMA_PATH, 'utf8')));
+});
+
+test('notification_log.reminders_sent: ข้อความ NOT NULL default ว่าง (v0.16 §19)', () => {
+  const db = freshDb();
+  const col = columns(db, 'notification_log').find((c) => c.name === 'reminders_sent');
+  assert.equal(col.type, 'TEXT');
+  assert.equal(col.notnull, 1);
+  assert.equal(col.dflt_value, "''");
+  insertTask(db);
+  db.prepare("INSERT INTO notification_log (task_id, last_notified_state, notified_at) VALUES ('task-1', 'upcoming', '2026-11-01T00:00:00.000Z')").run();
+  assert.equal(db.prepare('SELECT reminders_sent FROM notification_log').get().reminders_sent, '');
 });
