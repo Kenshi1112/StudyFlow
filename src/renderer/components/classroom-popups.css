@@ -62,7 +62,7 @@
 .cr-cutoff__desc { margin-top: calc(var(--cu) * 16) !important; padding-left: calc(var(--cu) * 20); font-size: calc(var(--cu) * 32); font-weight: 600; color: #b3a58f; }
 
 .cr-options { display: flex; gap: calc(var(--cu) * 15); margin-top: calc(var(--cu) * 35); padding-left: calc(var(--cu) * 4); }
-.cr-option { width: calc(var(--cu) * 290); height: calc(var(--cu) * 103); border: calc(var(--cu) * 2) solid #e4d5bf; border-radius: calc(var(--cu) * 20); background: #fff; color: #6b5842; font-size: calc(var(--cu) * 32); font-weight: 500; }
+.cr-option { flex: 1 1 0; height: calc(var(--cu) * 103); border: calc(var(--cu) * 2) solid #e4d5bf; border-radius: calc(var(--cu) * 20); background: #fff; color: #6b5842; font-size: calc(var(--cu) * 32); font-weight: 500; }
 .cr-option.is-on { background: #c97a3e; border-color: #8a5226; color: #fff; }
 
 .cr-date { position: relative; display: flex; align-items: center; gap: calc(var(--cu) * 16); width: calc(var(--cu) * 896); height: calc(var(--cu) * 77); margin-top: calc(var(--cu) * 24); padding-left: calc(var(--cu) * 22); box-sizing: border-box; border: calc(var(--cu) * 2) solid #e4d5bf; border-radius: calc(var(--cu) * 20); background: #fff; cursor: pointer; }
