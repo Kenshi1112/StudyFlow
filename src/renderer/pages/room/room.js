@@ -1,6 +1,6 @@
 // Owner: Frontend
 // หน้าที่: logic ฝั่ง UI ของหน้า Room: ย่อฉาก 1920x1080 ให้พอดีหน้าต่าง, เลือกภาพช่วงเวลา (เช้า/กลางวัน/เย็น/ค่ำ) ตามเวลาเครื่อง
-// และขึ้นจุดแดงบน Task Board เมื่อมีงานที่ยังไม่ Completed และเป็น Due Today / Overdue (PROJECT §7, UX Review หัวข้อ Room)
+// และขึ้นวงแดงบอกจำนวนบน Task Board เมื่อมีงานที่ยังไม่ Completed และเป็น Due Today / Overdue (PROJECT §7, UX Review หัวข้อ Room)
 // ห้ามใช้ DOMContentLoaded ลงทะเบียน mount/unmount ที่ window.pages ตามสัญญากับ router.js
 
 'use strict';
@@ -78,8 +78,11 @@
     if (!root || seq !== alertSeq || !Array.isArray(tasks)) return;
     const count = countAttention(tasks);
     const board = root.querySelector('.room__hotspot--board');
-    board.classList.toggle('has-alert', count.dueToday + count.overdue > 0);
+    const total = count.dueToday + count.overdue;
+    board.classList.toggle('has-alert', total > 0);
     board.setAttribute('aria-label', boardLabel(count));
+    // ตัวเลขในวงแดง: จำนวนงานที่ต้องสนใจ เกิน 9 แสดง 9+ (วงเล็ก)
+    board.querySelector('.room__badge').textContent = total > 9 ? '9+' : String(total);
   }
 
   function refreshAlertQuietly() {

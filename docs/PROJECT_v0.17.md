@@ -1,5 +1,8 @@
 # PROJECT.md
 
+**Version:** 0.17 (LINE Gains a Read-Only "Open Tasks" Command — Send "งานค้าง" to See Unfinished Tasks)
+**Status (v0.17):** One small addition to the LINE integration (Section 14.7); no new integration, service, table, column or section number. Until v0.16 the LINE chat could do only three things: link an account, create a task through the "เพิ่มงาน" flow, and receive deadline pushes. A student who wanted to check what was still open had to open the desktop app, which defeats the reason LINE exists (reaching the system without the app, Section 14.1). A linked user can now send the exact phrase "งานค้าง" and get one text message listing their unfinished tasks, grouped by deadline state (Overdue, Due Today, Upcoming, No Deadline) using the same rules as Section 9.2. The command is read-only: it writes nothing, does not touch a task-creation flow in progress, and matches the phrase exactly like "เพิ่มงาน" does, so the no-natural-language-parsing rule of Section 14.6 is unchanged. At most 15 tasks are listed per message. Completing, editing and deleting tasks through LINE stay out of scope. Accepted limitation: the list is read from the Supabase copy of `tasks`, so it is only as fresh as the last successful sync (Section 20).
+
 **Version:** 0.16 (Upcoming-Deadline Reminders Become User-Selectable — 7 / 3 / 2 / 1 Days Before the Due Date — and LINE Follows the Same Choice)
 **Status (v0.16):** One targeted change to notifications (Sections 11, 14.4, 19); no new integration, service or section number. The single "reminder window" (one number of days, default 1) is replaced by a set of reminders that the user ticks in Settings: 7, 3, 2 and/or 1 day before the due date, default 1 day only. A single reminder one day ahead is too short for larger assignments; letting the user tick several gives an early heads-up and a last nudge. Each ticked reminder fires at most once per task and never again on later app launches, because repeating on every launch would be noise and would push users to switch notifications off. When one check finds several reminders reached for the same task (for example after the app was closed for days), only the closest one is shown and the earlier ones are marked as done; when one check produces more than three reminders, the desktop shows a single grouped notification. A task seen for the first time does not fire reminders that were already reached when it appeared. LINE now follows the same choice: the desktop app copies the selection to the user's `line_account_links` row on Supabase, replacing the fixed 1-day LINE window used since v0.12 because settings were local-only. This is the only setting that leaves the device, and the copy is one-way (desktop to Supabase). Accepted limitations: the choice is global, not per task, and a change made while offline reaches LINE only after the next successful write (Section 20).
 
@@ -23,7 +26,7 @@
 
 **Version:** 0.9 (First-Run Google-Connect Prompt Added; Two Known Limitations Documented — No-Backup-Without-Connection, Single-Account-Per-Device)
 **Status:** Active — This version adds a one-time, dismissible first-run prompt offering to connect Google Classroom (Section 13.1), so users who never open Settings are still made aware of the choice between connecting (Classroom sync + cloud backup) and staying local-only. Declining the prompt does not gate or delay entry into the app in any way — it is offered, never required, consistent with this project's existing low-friction and no-separate-account-system principles (Sections 6, 19). Two accepted limitations that were previously undocumented are now recorded explicitly: (1) a user who never connects Google Classroom has no cloud backup, since Supabase Auth relies exclusively on Google identity (Section 19); (2) switching Google accounts on the same device is not guarded against at the data layer and could mix local data across accounts (Section 19). Neither limitation changes existing behavior — both are pre-existing consequences of decisions already made in v0.5–v0.8 (single Classroom account, Google-only auth) that had not yet been written down. No business logic, data model field beyond one new `settings` key, or Classroom/Pomodoro/Dashboard behavior changes in this version.
-**Supersedes:** PROJECT.md v0.15
+**Supersedes:** PROJECT.md v0.16
 **Purpose:** This document is the Single Source of Truth for this project. It is not a thesis report. It exists so that any developer or AI assistant can understand the project's purpose, scope, and current decisions within a few minutes.
 
 ---
@@ -42,6 +45,7 @@
 - **(v0.13 note)** No section is added, removed, or renumbered in this version; Section 9.3 is reused for the reinstated Priority field (kept at the same number it held before v0.8) and the section numbering from v0.12 is unchanged. Derived documents (UX-UI-Design-Review, Database-Design, DFD) must be brought in line with this version before they are relied on again: Priority selector on the task create/edit form and task card, an optional Course field on the manual task form, and the renamed `course_name` column.
 - **(v0.14 note)** No section is added, removed, or renumbered. One data-model field is added (`tasks.first_started_at`, Section 19) and one Dashboard metric is removed (Section 10.2). Derived documents must be brought in line before they are relied on again: UX-UI-Design-Review (Dashboard: six metrics, Needs Attention strip holds Overdue only), `schema.sql`, the Supabase `tasks` migration, and the Dashboard service and its tests. The SQLite file in `userData` must be deleted after `schema.sql` changes, since the project has no migration system.
 - **(v0.15 note)** No section is added, removed, or renumbered. Three columns are added to `classroom_sync_state` (`title`, `due_date`, `notes`, Section 19) and the format of `classroom_assignment_id` is fixed (Section 19). Derived files to bring in line: `schema.sql`, `tests/schema.test.js`, `docs/ipc-contract.md` and the Classroom services. The SQLite file in `userData` must be deleted after `schema.sql` changes, since the project has no migration system. UX-UI-Design-Review needs no change: the review popup already shows title, course and due date (Section 13.5).
+- **(v0.17 note)** One subsection is added (14.7); no section is renumbered and no data-model field changes. Derived files to bring in line: the `line-webhook` Edge Function and its `_shared` modules (a new open-task list builder; the help and link-confirmation texts mention the new command). No Supabase migration, no Row Level Security change, no change to the desktop app or its renderer, and no change to `notify-check`. UX-UI-Design-Review needs no change (LINE is not part of the app's screens). `line-webhook` must be redeployed.
 - **(v0.16 note)** One subsection is added (11.4); no section is renumbered. New fields: `notification_log.reminders_sent`, `line_notification_log.reminders_sent` and `line_account_links.reminder_days` (Section 19), and the settings key `reminder_days`, which replaces `reminder_window_days`. Derived files to bring in line: `schema.sql`, `tests/schema.test.js`, a new Supabase migration, the notification and settings services, the `notify-check` Edge Function with its `_shared` modules, `docs/ipc-contract.md`, the Settings page, and UX-UI-Design-Review (now v0.16). The SQLite file in `userData` must be deleted after `schema.sql` changes, since the project has no migration system.
 
 ---
@@ -152,7 +156,7 @@ If urgent assignments exist, the room may visually indicate this (e.g., an excla
 ## 8. Core Features (Confirmed)
 
 - Google Classroom synchronization — automatic fetch each time the app is launched, plus an on-demand manual "Sync now" trigger, with newly-found assignments surfaced to the user for review before import (see Section 13, 13.5)
-- Manual task creation (for assignments from sources other than Classroom), including task creation via a structured LINE chat flow — **(New in v0.12)** see Section 14.3
+- Manual task creation (for assignments from sources other than Classroom), including task creation via a structured LINE chat flow — **(New in v0.12)** see Section 14.3; **(New in v0.17)** the same chat can list unfinished tasks, see Section 14.7
 - Task management, including a computed Urgency Score (see Section 9.5) that takes an optional, user-set Priority as one of its inputs (see Section 9.3)
 - Assignment progress tracking
 - Progress percentage (manually entered)
@@ -520,6 +524,23 @@ Both directions below are implemented as Supabase Edge Functions — serverless 
 - **No workflow-automation tool (e.g. n8n).** Both directions are implemented as plain Supabase Edge Functions with `pg_cron` for scheduling, to avoid introducing a third external managed service beyond Supabase and the Google/LINE APIs already in the stack (Section 16, Section 21).
 - **No support for LINE group chats.** The Official Account only processes direct 1:1 messages from a linked individual user; group-chat messages are not parsed or acted upon.
 - **No integration with Microsoft Teams, Discord, or Facebook directly** — this remains out of scope (Section 24), unchanged from prior versions. LINE addresses the *general* need for a low-friction, always-reachable capture channel, not platform-specific integrations with each source named in Section 3.
+- **(New in v0.17) No completing, editing or deleting of tasks through LINE.** The only thing LINE can do to existing tasks is read them (Section 14.7); every change to a task is made in the desktop app.
+
+### 14.7 Viewing Open Tasks via LINE (New in v0.17)
+
+**Purpose.** The LINE chat exists so that the student can reach the system without opening the desktop app (Section 14.1). Until v0.16 it could add a task and push deadline reminders but could not answer the simplest question, "what is still open?". This command answers it in one message. It maps to *"Users cannot easily see or understand their current academic workload"* and *"Students forget assignments"* (Section 3).
+
+**Trigger.** A linked user sends the exact text "งานค้าง" (leading and trailing spaces ignored), the same way the "เพิ่มงาน" trigger works (Section 14.3). The phrase is matched exactly; nothing is inferred from other wording (Section 14.6). An unlinked LINE user who sends it receives the same "connect first" reply as for "เพิ่มงาน" (Section 14.2).
+
+**What is listed.** The user's tasks on Supabase whose status is not Completed and which are not soft-deleted (Section 18.2). Deadline state is computed with the Section 9.2 rules, evaluated on Thai local time like the rest of the LINE integration, by the same shared module that `notify-check` uses, so there is no third copy of the logic (Section 17.2).
+
+**How it is shown.** One text message. Tasks are grouped in this order: Overdue, Due Today, Upcoming, No Deadline. Inside a group they are sorted by due date, earliest first; No Deadline tasks keep the order they were last updated in. Each line shows the title, the course name when the task has one, and the due date and time in Thai local time (a No Deadline task has no date). At most **15** tasks are listed; if there are more, the message ends with a line giving how many were left out and telling the user to open the app. Tasks are cut from the end of the order above, so the most urgent ones are always shown. If the user has no unfinished tasks, a short message says so.
+
+**Read-only.** The command writes nothing. A task-creation flow in progress (Section 14.3) is neither continued nor cleared by it: the user can ask "งานค้าง" in the middle of "เพิ่มงาน" and then carry on from the same step, within the usual 10-minute limit.
+
+**Data freshness.** The list is read from the Supabase copy of `tasks`, not from the desktop SQLite file (which LINE cannot reach). It therefore shows the state as of the last successful sync (Section 18.2): a task just completed in the app can still appear for a few minutes. Accepted limitation (Section 20).
+
+**Not changed by this subsection.** No new table or column, no new Edge Function (the command is handled by `line-webhook`), no change to deadline notifications (Section 14.4).
 
 ---
 
@@ -802,6 +823,8 @@ These four tables exist only on Supabase — they are read and written exclusive
 
 **(New in v0.16) Known limitation — reminder days are global:** the selection in Settings applies to every task alike, so the app cannot give a large assignment a longer lead time than a small one. The longest choice is 7 days. A per-task reminder is listed under Future Features (Section 25), not built.
 
+**(New in v0.17) Known limitation — the LINE open-task list can be a few minutes behind the app:** the "งานค้าง" command (Section 14.7) reads the Supabase copy of `tasks`. A change made in the desktop app (a task completed, a due date moved, a task deleted) shows in LINE only after the next successful sync (Section 18.2), and not at all while the app is offline. A user who has never connected Google Classroom has no cloud copy (see the no-backup limitation above) and therefore cannot link LINE in the first place (Section 14.2). The list is a convenience for a quick look; the desktop app remains the authoritative view.
+
 **(New in v0.16) Known limitation — LINE can lag behind a settings change:** the LINE reminder days are a copy of the desktop selection (Section 14.4). If the desktop app is offline when the user changes the selection, LINE keeps using the previous selection until the app next writes it (at the next launch at the latest). The Upcoming-reminder rule is also implemented in both runtimes (Section 17.2) and carries the same maintenance risk as the deadline-state logic above.
 
 ---
@@ -830,7 +853,7 @@ The MVP is the complete set of features required for thesis submission. Every it
 - Manual task creation and management, including computed Urgency Score (Section 9.5) and an optional user-set Priority that feeds it (Section 9.3)
 - Google Classroom fetch — automatic on every app launch, plus manual on-demand sync — with user review before import (Section 13, 13.5)
 - **(New in v0.9)** A one-time first-run prompt offering to connect Google Classroom, with the option to defer (Section 13.1)
-- **(New in v0.12)** LINE integration: task creation via a structured chat flow, and deadline-state push notifications independent of whether the desktop app is running (Section 14)
+- **(New in v0.12)** LINE integration: task creation via a structured chat flow, and deadline-state push notifications independent of whether the desktop app is running (Section 14). **(New in v0.17)** Includes a read-only "งานค้าง" command that lists unfinished tasks (Section 14.7)
 - Computed deadline state: Upcoming / Due Today / Overdue / No Deadline / Completed (Section 9.2)
 - Manual progress percentage and free-form notes (Section 12)
 - Dashboard with the six finalized metrics and This Week / This Month / All Time filtering (Section 10)
@@ -865,6 +888,7 @@ The MVP is the complete set of features required for thesis submission. Every it
 - Google Classroom fetch runs automatically once on every app launch, and can also be triggered manually at any time via "Sync now" on Task Board. Fetched assignments enter a review queue and are presented to the user (Create Task / Ignore) rather than being imported directly, unless a Pomodoro session is currently running, in which case the review is held behind a quiet indicator until the session ends. Both Create Task and Ignore are unconditionally permanent — never reopened by a later sync, regardless of any subsequent edit to the assignment on Google's side.
 - Disconnecting a Google Classroom account does not delete already-imported tasks.
 - **(New in v0.12)** LINE connection is managed in Settings, independently of Google Classroom connection, via a short numeric code exchanged between the app and a message sent to the LINE Official Account (Section 14.2). Disconnecting LINE does not delete already-created tasks.
+- **(New in v0.17)** A linked LINE user can send the exact phrase "งานค้าง" to get one read-only message listing unfinished tasks grouped by deadline state (max 15; Section 14.7). It writes nothing and does not disturb a task-creation flow in progress. Completing, editing and deleting tasks through LINE remain out of scope.
 - **(New in v0.12)** Task creation via LINE uses a structured, button-and-picker chat flow — never freeform natural-language parsing — and creates tasks directly, without passing through the Classroom review popup (Section 14.3).
 - **(New in v0.12)** Deadline notifications are pushed to LINE on a fixed cloud-side schedule, independent of whether the desktop app is running, mitigating (not eliminating) the accepted limitation that desktop notifications require the app to be open (Section 11.2, Section 14.4).
 - **(New in v0.12)** No AI/LLM component and no workflow-automation tool (e.g. n8n) are used anywhere in the LINE integration (Section 14.6).
@@ -910,6 +934,7 @@ The MVP is the complete set of features required for thesis submission. Every it
 - **(New in v0.12)** LINE group-chat support — only 1:1 messages from a linked individual are processed (Section 14.6).
 - **(New in v0.12)** Reconciliation of mismatched or misspelled course names entered through the LINE free-text fallback — documented as a known limitation (Section 20) rather than solved in this version.
 - **(New in v0.16)** Per-task reminder settings and free-form reminder values; the selection is global and limited to 7, 3, 2 and 1 days (Section 11.4).
+- **(New in v0.17)** Completing, editing or deleting tasks through LINE, and any LINE command other than "เพิ่มงาน" and "งานค้าง" (Sections 14.6, 14.7).
 
 ---
 
@@ -964,6 +989,20 @@ This document overrides any conflicting assumptions from previous conversations.
 ## 28. Changelog
 
 *(Section numbers referenced inside each changelog entry below reflect the numbering that was current **at the time that entry was written** — they are a historical record, not live cross-references. See Section 1 for the v0.12 renumbering note.)*
+
+### v0.16 → v0.17
+
+| Section | Change | Reason |
+|---|---|---|
+| Header | Version bumped to 0.17; Supersedes line updated to v0.16 | Team rule: change the spec version before the code |
+| 1 | Added a v0.17 note: one subsection added, no data-model change, files to update, `line-webhook` to be redeployed | Keeps derived files and code in sync |
+| 8 | Core Features entry for LINE mentions the open-task list | Keeps the feature list in sync with Section 14.7 |
+| 14.6 | Added: no completing, editing or deleting of tasks through LINE | States the boundary of the new read-only command |
+| 14.7 | New subsection: "งานค้าง" command, exact-match trigger, what is listed, grouping and order, 15-task cap, read-only and flow-safe, data freshness | The LINE chat could create tasks and push reminders but could not show what was still open |
+| 20 | Added a known limitation: the list can be a few minutes behind the app | Reads the Supabase copy of `tasks`; written down rather than left implicit |
+| 22, 23 | MVP list and decision summary mention the command | Keeps the MVP list and decisions in sync |
+| 24 | Added an Out of Scope entry for other LINE commands and for changing tasks through LINE | Boundary of this change |
+| 28 | Added this v0.16 → v0.17 changelog entry | Standard practice for this document |
 
 ### v0.15 → v0.16
 

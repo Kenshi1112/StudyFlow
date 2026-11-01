@@ -1,6 +1,6 @@
 // Owner: Backend
-// หน้าที่: Edge Function รับ webhook จาก LINE: ผูกบัญชีด้วยรหัส และ flow สร้าง task แบบ structured (ข้อ 8.3, 8.4)
-// อ้างอิง: PROJECT_v0.15 section 14.2, 14.3 (ห้ามใช้ NLP/AI §14.6), 18.2 และ 20 (secrets อยู่ที่ Supabase เท่านั้น)
+// หน้าที่: Edge Function รับ webhook จาก LINE: ผูกบัญชีด้วยรหัส, flow สร้าง task แบบ structured (ข้อ 8.3, 8.4) และคำสั่ง "งานค้าง" (ดูรายการ อ่านอย่างเดียว)
+// อ้างอิง: PROJECT_v0.17 section 14.2, 14.3, 14.7 (ห้ามใช้ NLP/AI §14.6), 18.2 และ 20 (secrets อยู่ที่ Supabase เท่านั้น)
 // deploy ด้วย: supabase functions deploy line-webhook --no-verify-jwt
 //   (LINE ไม่ส่ง JWT ของ Supabase มาให้ ความปลอดภัยจึงอยู่ที่การตรวจ x-line-signature ด้วย Channel Secret)
 // secrets: LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN (supabase secrets set) ส่วน SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY Supabase ใส่ให้เอง
@@ -12,6 +12,7 @@ import {
   DATE_POSTBACK_DATA, LINK_REPLIES, MESSAGES, isTrigger, nextStep, parseLinkCode, textMessage,
 } from '../_shared/line-flow.ts';
 import type { Input, Message } from '../_shared/line-flow.ts';
+import { buildOpenTaskList, isOpenTasksTrigger } from '../_shared/task-list.ts';
 
 const CHANNEL_SECRET = Deno.env.get('LINE_CHANNEL_SECRET') ?? '';
 const ACCESS_TOKEN = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN') ?? '';
@@ -59,6 +60,17 @@ async function handleEvent(event: any) {
     const { data: result, error } = await db.rpc('line_link_account', { p_code: code, p_line_user_id: lineUserId });
     if (error) throw error;
     return reply([textMessage(LINK_REPLIES[result] ?? MESSAGES.CODE_INVALID)]);
+  }
+
+  // "งานค้าง" (§14.7): อ่านอย่างเดียว ตอบรายการแล้วจบ ไม่แตะ line_conversation_state
+  //   flow เพิ่มงานที่ค้างอยู่จึงทำต่อได้ (ตัวจับเวลา 10 นาทีเดิมยังเดินต่อ ไม่ถูกต่อเวลา)
+  //   limit 500 กัน query ใหญ่เกินจำเป็น (ข้อความแสดงจริงแค่ 15 งาน แต่หัวข้อบอกจำนวนทั้งหมด)
+  if (isOpenTasksTrigger(input.text)) {
+    const { data: openTasks, error } = await db
+      .from('tasks').select('title, course_name, due_date, status').eq('user_id', link.app_user_id)
+      .is('deleted_at', null).neq('status', 'completed').order('updated_at', { ascending: false }).limit(500);
+    if (error) throw error;
+    return reply([buildOpenTaskList(openTasks ?? [])]);
   }
 
   // ผูกแล้ว: เดินต่อใน flow สร้างงาน
