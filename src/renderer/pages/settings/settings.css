@@ -64,7 +64,6 @@
 .st__nav svg.st__ico--thin { stroke-width: 1.6; } /* Figma: Wifi/Clock/Bell เส้น 1.6 ที่เหลือ 2 (ค่ากลางของ .st svg คือ 1.8) */
 .st__nav svg:not(.st__ico--thin) { stroke-width: 2; }
 .st__nav.is-active { background: #f9ede3; color: var(--st-accent); }
-.st__nav:disabled { cursor: default; opacity: 0.6; }
 
 .st__main { flex: none; width: calc(var(--u) * 730); margin-left: calc(var(--u) * 45); padding-bottom: calc(var(--u) * 44); }
 

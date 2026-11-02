@@ -28,10 +28,6 @@
         <svg viewBox="0 0 17 17" class="st__ico--thin" aria-hidden="true"><path d="M9.72542 14.0318C9.60088 14.2343 9.42214 14.4024 9.20708 14.5192C8.99202 14.6361 8.74819 14.6976 8.5 14.6976C8.25181 14.6976 8.00798 14.6361 7.79292 14.5192C7.57786 14.4024 7.39912 14.2343 7.27458 14.0318M12.75 5.34548C12.75 4.28221 12.3022 3.26249 11.5052 2.51065C10.7082 1.75881 9.62717 1.33643 8.5 1.33643C7.37283 1.33643 6.29183 1.75881 5.4948 2.51065C4.69777 3.26249 4.25 4.28221 4.25 5.34548C4.25 10.0227 2.125 11.3591 2.125 11.3591H14.875C14.875 11.3591 12.75 10.0227 12.75 5.34548Z"/></svg>
         <span>Notifications</span>
       </button>
-      <button type="button" class="st__nav" disabled>
-        <svg viewBox="0 0 17 17" aria-hidden="true"><path d="M8.50002 10.6909V8.01818M8.50002 5.34548H8.5071M15.5834 8.01818C15.5834 11.7084 12.412 14.6999 8.50002 14.6999C4.588 14.6999 1.41669 11.7084 1.41669 8.01818C1.41669 4.32795 4.588 1.33643 8.50002 1.33643C12.412 1.33643 15.5834 4.32795 15.5834 8.01818Z"/></svg>
-        <span>About</span>
-      </button>
     </nav>
 
     <main class="st__main">
@@ -131,17 +127,17 @@
         <div class="st__notif">
           <div>
             <p class="st__notif-title">Remind me about upcoming deadlines</p>
-            <p class="st__notif-desc">You get one reminder for each box you tick.</p>
+            <p class="st__notif-desc">You get a reminder every day, starting this many days before the deadline.</p>
           </div>
           <button type="button" class="st__switch is-on" id="st-reminder-switch" role="switch" aria-checked="true" aria-label="Remind me about upcoming deadlines"></button>
         </div>
         <hr class="st__rule st__rule--thin">
-        <!-- เลือกวันที่ให้เตือนก่อน due (spec §11.4): ติ๊กได้หลายช่อง ต้องเหลืออย่างน้อย 1 ช่องตอนสวิตช์เปิด -->
+        <!-- เลือกจำนวนวันที่เริ่มเตือนก่อน due (spec §11.4 v0.20): radio เลือกได้อันเดียว default 1 วัน -->
         <div class="st__days" id="st-reminder-days" role="group" aria-label="Days before the due date">
-          <label class="st__day"><input type="checkbox" value="7"><span>7 days</span></label>
-          <label class="st__day"><input type="checkbox" value="3"><span>3 days</span></label>
-          <label class="st__day"><input type="checkbox" value="2"><span>2 days</span></label>
-          <label class="st__day"><input type="checkbox" value="1"><span>1 day</span></label>
+          <label class="st__day"><input type="radio" name="reminder-days" value="7"><span>7 days</span></label>
+          <label class="st__day"><input type="radio" name="reminder-days" value="3"><span>3 days</span></label>
+          <label class="st__day"><input type="radio" name="reminder-days" value="2"><span>2 days</span></label>
+          <label class="st__day"><input type="radio" name="reminder-days" value="1"><span>1 day</span></label>
           <span class="st__days-line" id="st-reminder-line" hidden>Also sent to LINE</span>
         </div>
         <hr class="st__rule st__rule--thin st__rule--late">

@@ -1,6 +1,6 @@
 // Owner: Backend
 // หน้าที่: sync tasks และ pomodoro_sessions กับ Supabase (push/pull, LWW) และจัดการการเชื่อมต่อ LINE ฝั่งแอป
-// อ้างอิง: PROJECT_v0.16 section 14.2, 14.4, 18, 19.4, 20 — ส่วน LINE ฝั่งแอปคือฟังก์ชันท้ายไฟล์ (ข้อ 8.5) + pushReminderDays (v0.16)
+// อ้างอิง: PROJECT_v0.20 section 14.2, 14.4, 18, 19.4, 20 — ส่วน LINE ฝั่งแอปคือฟังก์ชันท้ายไฟล์ (ข้อ 8.5) + pushReminderDays (v0.16)
 
 'use strict';
 
@@ -47,7 +47,7 @@ let isSyncing = false; // กันสองรอบทับกัน
 let lastSyncFailed = false; // รอบล่าสุดพลาดไหม: ถ้าพลาด timer 10 วิ จะไม่ลองซ้ำ รอ timer 5 นาที (§18.2 retry รอบถัดไป)
 let intervalTimer = null;
 let dirtyTimer = null;
-// ค่า reminder_days ที่เขียนไป line_account_links สำเร็จล่าสุด เช่น '[7,3,1]' (null = ยังไม่เคย/ต้องเขียนใหม่) เก็บในหน่วยความจำอย่างเดียว
+// ค่า reminder_days ที่เขียนไป line_account_links สำเร็จล่าสุด เป็นข้อความ เช่น '7' หรือ 'null' (ปิด) (JS null = ยังไม่เคย/ต้องเขียนใหม่) เก็บในหน่วยความจำอย่างเดียว
 let lastPushedReminderDays = null;
 
 // อ่าน/เขียน key-value ใน table settings (เก็บเป็น JSON เหมือน settings.service)
@@ -285,15 +285,15 @@ async function disconnectLine() {
   }
   const { error } = await supabase.from('line_account_links').delete().eq('app_user_id', data.session.user.id);
   if (error) throw new Error(`ยกเลิกการผูก LINE ไม่สำเร็จ: ${error.message}`);
-  lastPushedReminderDays = null; // ผูกใหม่ทีหลังจะได้แถวใหม่ (default {1}) ต้องเขียนค่าอีกรอบ
+  lastPushedReminderDays = null; // ผูกใหม่ทีหลังจะได้แถวใหม่ (default 1) ต้องเขียนค่าอีกรอบ
   return { connected: false, linked_at: null };
 }
 
-// ค่า reminder_days ที่ LINE ควรใช้ (§14.4) = เปิดเตือนล่วงหน้า ? วันที่ติ๊ก : [] (list ว่าง = ปิด)
-// ตัวอย่าง: ติ๊ก [7, 3, 1] เปิดอยู่ -> [7, 3, 1] / ปิด toggle -> [] (ค่าที่ติ๊กยังอยู่ในแอป แต่ LINE เงียบ)
+// ค่า reminder_days ที่ LINE ควรใช้ (§14.4 v0.20) = เปิดเตือนล่วงหน้า ? เลขที่เลือก (7/3/2/1) : null (null = ปิด)
+// ตัวอย่าง: เลือก 3 เปิดอยู่ -> 3 / ปิด toggle -> null (ค่าที่เลือกยังอยู่ในแอป แต่ LINE เงียบ)
 function getEffectiveReminderDays() {
   const settings = getSettings();
-  return settings.reminder_upcoming_enabled ? settings.reminder_days : [];
+  return settings.reminder_upcoming_enabled ? settings.reminder_days : null;
 }
 
 // เขียนค่า reminder_days ไป line_account_links ของตัวเอง ทางเดียว แอปไม่อ่านกลับ (§14.4, §18.2)
