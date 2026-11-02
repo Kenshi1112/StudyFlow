@@ -15,6 +15,7 @@ function registerClassroomIpc(ipcMain) {
   ipcMain.handle(IPC.CLASSROOM.SYNC_NOW, () => classroomSync.syncNow());
   ipcMain.handle(IPC.CLASSROOM.GET_PENDING, () => classroomSync.getPendingItems());
   ipcMain.handle(IPC.CLASSROOM.DECIDE, (_event, payload) => classroomSync.decideItem(payload));
+  ipcMain.handle(IPC.CLASSROOM.TAKE_UPDATES, () => classroomSync.takeUpdates());
 }
 
 module.exports = {

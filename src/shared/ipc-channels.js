@@ -19,6 +19,7 @@ const IPC = Object.freeze({
     SYNC_NOW: 'classroom:sync-now',
     GET_PENDING: 'classroom:get-pending',
     DECIDE: 'classroom:decide',
+    TAKE_UPDATES: 'classroom:take-updates', // งานที่ fetch อัปเดตตาม Classroom (spec v0.21 §13.5) อ่านแล้วล้าง
   }),
   POMODORO: Object.freeze({
     START_BATCH: 'pomodoro:start-batch',
@@ -45,6 +46,7 @@ const IPC = Object.freeze({
 // main -> renderer (ใช้ webContents.send / ipcRenderer.on)
 const EVENTS = Object.freeze({
   CLASSROOM_PENDING_CHANGED: 'classroom:pending-changed',
+  CLASSROOM_TASKS_UPDATED: 'classroom:tasks-updated',
   POMODORO_STATE_CHANGED: 'pomodoro:state-changed',
 });
 

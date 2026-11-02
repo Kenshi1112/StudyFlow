@@ -1,6 +1,7 @@
 // Owner: Backend
 // หน้าที่: เชื่อมต่อ Google Classroom, fetch ตอนเปิดแอป + Sync now, คิว review (pending/imported/ignored) (ข้อ 6.3-6.7)
-// อ้างอิง: PROJECT_v0.15 section 9.1, 13, 19 และ docs/ipc-contract.md — login/token อยู่ใน google-auth.service.js
+//   และ (v0.21) อัปเดตงานที่รู้จักแล้วให้ตรงกับที่อาจารย์แก้ใน Classroom
+// อ้างอิง: PROJECT_v0.21 section 9.1, 13, 19 และ docs/ipc-contract.md — login/token อยู่ใน google-auth.service.js
 
 'use strict';
 
@@ -76,6 +77,83 @@ function toNotes(work) {
 }
 
 // ---------------------------------------------------------------------------
+// อัปเดตงานที่รู้จักแล้วตาม Classroom (spec v0.21 §13.3-13.5)
+// ---------------------------------------------------------------------------
+
+const WATCHED_FIELDS = ['title', 'due_date', 'notes']; // 3 อย่างที่เทียบ (ชื่อตรงกับคอลัมน์ทั้ง classroom_sync_state และ tasks)
+
+// งานที่ fetch อัปเดตแล้วแต่หน้าจอยังไม่ได้บอกผู้ใช้ (อยู่ในหน่วยความจำ) หน้าจอมาเอาด้วย takeUpdates() แล้วล้างทิ้ง
+// เก็บไว้เพราะ fetch ตอนเปิดแอปเสร็จก่อนที่ผู้ใช้จะเข้า Task Board (event อย่างเดียวจะหลุด)
+let unseenUpdates = [];
+
+function sendTasksUpdated() {
+  const data = { count: unseenUpdates.length };
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) win.webContents.send(EVENTS.CLASSROOM_TASKS_UPDATED, data);
+  }
+}
+
+// ให้หน้าจออ่านรายการที่อัปเดตแล้วล้าง เช่น [{ task_id, title: 'Lab 3', changed: ['due_date'], due_date: { from, to } }]
+function takeUpdates() {
+  const list = unseenUpdates;
+  unseenUpdates = [];
+  return list;
+}
+
+// ฟิลด์ที่ค่าจาก Classroom (fresh) ต่างจาก snapshot (row) เช่น snapshot due 5 พ.ย. กับ Classroom 7 พ.ย. -> ['due_date']
+// เทียบกับ snapshot ไม่ใช่กับ task: ถ้าเทียบกับ task ค่าที่ผู้ใช้แก้เอง (เช่น ย้ายวันผ่าน LINE) จะถูกทับกลับทุกครั้งที่ fetch (§13.3)
+function changedFields(row, fresh) {
+  return WATCHED_FIELDS.filter((field) => (row[field] ?? null) !== (fresh[field] ?? null));
+}
+
+// งานที่มีแถวใน classroom_sync_state แล้ว: เทียบ 3 ฟิลด์กับ snapshot แล้วทำตาม state (§13.5 "Updating imported tasks")
+// คืนข้อมูลที่ให้หน้าจอบอกผู้ใช้ ถ้าไม่มีอะไรให้บอกคืน null (pending / ignored / ข้าม / ไม่เปลี่ยน)
+function updateKnownAssignment(db, row, fresh) {
+  const changed = changedFields(row, fresh);
+  if (changed.length === 0) return null; // Classroom ไม่เปลี่ยน: ไม่แตะ task เลย ค่าที่ผู้ใช้แก้เองอยู่ต่อ
+
+  const snapshot = db.prepare(
+    `UPDATE classroom_sync_state
+     SET title = @title, due_date = @due_date, notes = @notes, last_seen_updated = @last_seen_updated
+     WHERE classroom_assignment_id = @id`
+  );
+  const snapshotValues = {
+    id: row.classroom_assignment_id,
+    title: fresh.title,
+    due_date: fresh.due_date,
+    notes: fresh.notes,
+    last_seen_updated: fresh.last_seen_updated,
+  };
+
+  // ยังรอตัดสินใจ: แค่รีเฟรช snapshot ให้ popup / Create Task ใช้ค่าล่าสุด
+  if (row.state === 'pending') {
+    snapshot.run(snapshotValues);
+    return null;
+  }
+  if (row.state !== 'imported') return null; // ignored / excluded ไม่ทำอะไร
+
+  const task = db.prepare('SELECT id, status, due_date FROM tasks WHERE id = ? AND deleted_at IS NULL').get(row.linked_task_id);
+  // Completed หรือถูกลบ: ข้ามและไม่เขียน snapshot -> ถ้าย้อนงานกลับเป็น Not Started/In Progress รอบ fetch ถัดไปจะตามทัน
+  if (!task || task.status === TASK_STATUS.COMPLETED) return null;
+
+  // เขียนเฉพาะฟิลด์ที่ Classroom เปลี่ยน (ชื่อคอลัมน์มาจาก WATCHED_FIELDS ที่ตายตัว ต่อ SQL ได้ปลอดภัย)
+  // ทั้งสองฝั่งแก้ฟิลด์เดียวกัน = Classroom ชนะ  เช่น เปลี่ยนแค่ due_date -> SET due_date = ... ส่วน title ที่ผู้ใช้แก้เองไม่ถูกแตะ
+  const setClauses = changed.map((field) => `${field} = @${field}`);
+  const values = { id: task.id, last_updated: fresh.last_seen_updated, now: new Date().toISOString() };
+  for (const field of changed) values[field] = fresh[field];
+
+  db.transaction(() => {
+    // updated_at ตั้งเหมือนการแก้ task ปกติ เพื่อให้ cloud sync ส่งขึ้น Supabase (§18.2)
+    db.prepare(`UPDATE tasks SET ${setClauses.join(', ')}, classroom_last_updated = @last_updated, updated_at = @now WHERE id = @id`).run(values);
+    snapshot.run(snapshotValues);
+  })();
+
+  const info = { task_id: task.id, title: fresh.title, changed };
+  if (changed.includes('due_date')) info.due_date = { from: task.due_date, to: fresh.due_date }; // from = ค่าที่ผู้ใช้เห็นอยู่ใน task
+  return info;
+}
+
+// ---------------------------------------------------------------------------
 // เชื่อมต่อ / สถานะ (ข้อ 6.2, 6.3)
 // ---------------------------------------------------------------------------
 
@@ -110,46 +188,64 @@ function disconnect() {
 // fetch (ข้อ 6.4, 6.6)
 // ---------------------------------------------------------------------------
 
-// ขั้นตอน §13.5 ข้อ 1-4: ดึงงานทุกวิชา -> เอาเฉพาะ ASSIGNMENT -> ตัดที่สร้างก่อน cutoff -> ข้ามที่เคยเห็น -> บันทึกใหม่เป็น pending
+// ขั้นตอน §13.5 ข้อ 1-4: ดึงงานทุกวิชา -> เอาเฉพาะ ASSIGNMENT -> ที่เคยเห็นแล้วเทียบกับ snapshot (v0.21) -> ที่ยังไม่เคยเห็นตัดที่สร้างก่อน cutoff -> บันทึกใหม่เป็น pending
 async function fetchNew() {
   const cutoff = getSettings().classroom_cutoff_date;
   if (!cutoff) throw new Error('ตั้งวัน cutoff ก่อน (import งานที่สร้างตั้งแต่วันไหน) ใน Settings');
 
   const api = classroom({ version: 'v1', auth: googleAuth.getAuthClient() });
-  // OR IGNORE: assignment ที่มีแถวอยู่แล้ว (pending/imported/ignored/excluded) ถูกข้ามเอง ไม่แตะแถวเดิมเลย (§13.5 ข้อ 3)
-  const insert = getDb().prepare(
+  const db = getDb();
+  const findKnown = db.prepare('SELECT * FROM classroom_sync_state WHERE classroom_assignment_id = ?');
+  const insert = db.prepare(
     `INSERT OR IGNORE INTO classroom_sync_state
        (classroom_assignment_id, course_name, last_seen_updated, state, title, due_date, notes)
      VALUES (@id, @course_name, @last_seen_updated, 'pending', @title, @due_date, @notes)`
   );
 
   let newItems = 0;
+  let updatedCount = 0; // จำนวนงานที่ task ถูกอัปเดตตาม Classroom ในรอบนี้
   try {
     const courses = await listAll((p) => api.courses.list(p), { studentId: 'me', courseStates: ['ACTIVE'] }, 'courses');
     for (const course of courses) {
       const works = await listAll((p) => api.courses.courseWork.list(p), { courseId: course.id, courseWorkStates: ['PUBLISHED'] }, 'courseWork');
       for (const work of works) {
         if (work.workType !== 'ASSIGNMENT') continue;
-        if (new Date(work.creationTime) < new Date(cutoff)) continue; // สร้างก่อนวัน cutoff
 
-        const result = insert.run({
-          id: `${course.id}:${work.id}`, // เช่น '1111:9001'
-          course_name: course.name,
+        const id = `${course.id}:${work.id}`; // เช่น '1111:9001'
+        const fresh = {
           last_seen_updated: work.updateTime ?? work.creationTime,
           title: work.title,
           due_date: toDueDate(work),
           notes: toNotes(work),
-        });
-        newItems += result.changes; // 1 = แถวใหม่, 0 = มีอยู่แล้วถูกข้าม
+        };
+
+        // เคยเห็นแล้ว: ไม่สร้างแถวใหม่ เทียบกับ snapshot แล้วอัปเดตตาม state (§13.3, §13.5) cutoff ไม่ใช้กับงานที่รู้จักแล้ว
+        const known = findKnown.get(id);
+        if (known) {
+          const info = updateKnownAssignment(db, known, fresh);
+          if (info) {
+            unseenUpdates.push(info);
+            updatedCount += 1;
+          }
+          continue;
+        }
+
+        if (new Date(work.creationTime) < new Date(cutoff)) continue; // งานใหม่ที่สร้างก่อนวัน cutoff
+
+        const result = insert.run({ id, course_name: course.name, ...fresh });
+        newItems += result.changes; // 1 = แถวใหม่
       }
     }
   } catch (err) {
     throw explainGoogleError(err);
+  } finally {
+    // งานที่อัปเดตไปแล้วก่อนเกิด error ก็ต้องบอกผู้ใช้ (แถวถูก commit แล้ว)
+    if (updatedCount > 0) sendTasksUpdated();
   }
 
   setSetting('classroom_last_synced_at', new Date().toISOString());
   if (newItems > 0) sendPendingChanged();
-  return { new_items: newItems, pending: countPending() };
+  return { new_items: newItems, pending: countPending(), updated: updatedCount };
 }
 
 // fetch ที่กำลังวิ่งอยู่ (ถ้ามี) เปิดแอปแล้วกด Sync ทันทีจะใช้ผลเดียวกัน ไม่ยิง Google ซ้อน
@@ -271,4 +367,5 @@ module.exports = {
   syncNow,
   getPendingItems,
   decideItem,
+  takeUpdates,
 };
