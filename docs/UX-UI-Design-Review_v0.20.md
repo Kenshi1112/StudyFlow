@@ -1,10 +1,20 @@
 # UI/UX Design Review
-### Academic Task Manager — based on PROJECT_v0.16.md
+### Academic Task Manager — based on PROJECT_v0.20.md
 **Reviewer stance:** Senior Product / UX / Desktop App Designer
-**Scope:** Presentation layer only. No features added, removed, or redefined. Every recommendation below maps to something already confirmed in PROJECT_v0.16.md (cited by section).
+**Scope:** Presentation layer only. No features added, removed, or redefined. Every recommendation below maps to something already confirmed in PROJECT_v0.20.md (cited by section).
 **Target:** Desktop (Windows, Electron, HTML/CSS/JS). Deliverable-ready for Figma.
 
 ---
+
+## Revision Note — v0.20 changes (applied on top of the v0.16 pass below)
+
+PROJECT_v0.17, v0.18 and v0.19 changed nothing visible in the app's screens, so this document stayed at v0.16. PROJECT_v0.20 changes the same Settings control again:
+
+| PROJECT_v0.20 change | Where it affects this document |
+|---|---|
+| The upcoming-deadline reminder is one choice among 7, 3, 2 and 1 days (default 1), not a set of ticked days. From that many days before the due date until the task is Due Today the user is reminded once a day (Sections 11.1, 11.4) | **Section 5 (Settings)** — the row of four checkboxes becomes a row of four radio buttons; the "last box cannot be unticked" rule disappears (a radio group always has one selected); the helper line changes to describe the daily reminder; "Include" list says radio buttons |
+| LINE follows the same choice and lists the tasks in the window in its daily message (Section 14.4) | **Section 5 (Settings)** — no new control; the existing "Also sent to LINE" helper line still covers it |
+| Progress cannot be edited while a task is Completed; the stored value is still shown, and moving the task back to Not Started or In Progress makes it editable again. Marking a task Completed sets progress to 100 %; moving it back leaves the value unchanged, so it stays at 100 % (Section 12) | **Section 2 (Task Board)** — in the task's detail, the progress slider is **disabled** when the task is Completed: same dimmed look and `not-allowed` cursor as the other disabled buttons (Start Working and Mark as Completed on a Completed task), the value label stays at full contrast, and no toast or message is added. The card's progress bar is unchanged. After "Mark as Completed" is confirmed, the slider and the label jump to 100 % together with the lock — no extra message. Enabled again as soon as the status is changed back, with no confirmation, still showing 100 % |
 
 ## Revision Note — v0.16 changes (applied on top of the v0.14 pass below)
 
@@ -595,7 +605,7 @@ Configuration only — connecting/disconnecting Classroom, adjusting notificatio
 Three clear categories:
 
 1. **Account & Connections** — **(Changed in the v0.12 pass)** two independent cards, **Google Classroom** (Section 13.1: connect/disconnect, OAuth status, mandatory import cutoff date) and **LINE** (Section 14.2: connect/disconnect). Still one category, so Settings stays at three.
-2. **Notifications** (Section 11.1) — three default rules shown as toggles, with the upcoming-deadline reminder days (7 / 3 / 2 / 1, default 1) as a row of four checkboxes under the third toggle.
+2. **Notifications** (Section 11.1) — three default rules shown as toggles, with the upcoming-deadline reminder window (7 / 3 / 2 / 1 days, one choice, default 1) as a row of four radio buttons under the third toggle.
 3. **Sync & Backup** (Section 17) — cloud sync status display.
 
 ### How Google Classroom connection should be presented
@@ -622,7 +632,7 @@ A second status card under the Classroom card, built the same way so the user le
 Three toggles, each labeled in plain language:
 - "Notify me when something is due today"
 - "Notify me when something becomes overdue"
-- "Remind me about upcoming deadlines" — with a row of four checkboxes inline: **7 days**, **3 days**, **2 days**, **1 day** (before the due date). Only "1 day" is ticked by default. The user can tick several (for example 3 and 1: an early heads-up and a last nudge). While the toggle is on, the last ticked box cannot be unticked (show it disabled); turning the toggle off dims the row and keeps the choice. One quiet helper line under the row: "You get one reminder for each box you tick." No free number field, so there is nothing to validate (Section 11.4).
+- "Remind me about upcoming deadlines" — with a row of four radio buttons inline: **7 days**, **3 days**, **2 days**, **1 day** (before the due date). "1 day" is selected by default. Only one can be selected: choosing another replaces the choice, so there is no way to end up with none or with two, and nothing needs to be disabled. Turning the toggle off dims the row and keeps the choice. One quiet helper line under the row: "You get a reminder every day, starting this many days before the deadline." The line matters because a user who picks "7 days" should expect a notification each day for a week, not a single one. No free number field, so there is nothing to validate (Section 11.4).
 
 **(New in the v0.12 pass) No LINE-specific notification controls.** The same three rules also drive LINE pushes (Sections 11.1, 14.4). When LINE is connected, add one quiet helper line under the toggles ("Also sent to LINE"). Don't add a second set of toggles. A user with the app open and LINE connected may receive both a desktop notification and a LINE push for the same change; that is accepted (Section 14.4), so don't try to hide it in the UI.
 
@@ -630,7 +640,7 @@ Three toggles, each labeled in plain language:
 A quiet status line, not a control panel. Show: last successful sync time, and a simple state (Synced / Syncing… / Retrying).
 
 ### Components to include / avoid
-**Include:** status cards with clear state colors, simple toggles, one row of four day checkboxes, one simple date picker, and **(New in v0.9)** the "not connected" banner described above (shown only when applicable). **(Changed in v0.10)** No "Sync now" button — that control now lives on Task Board only.
+**Include:** status cards with clear state colors, simple toggles, one row of four day radio buttons, one simple date picker, and **(New in v0.9)** the "not connected" banner described above (shown only when applicable). **(Changed in v0.10)** No "Sync now" button — that control now lives on Task Board only.
 **Avoid:** a generic settings "wall of switches," nested sub-menus, exposing database/sync internals, **(New in the v0.12 pass)** a LINE first-run prompt or "not connected" banner, and any LINE-only notification options. Also avoid any control inside Settings that duplicates the Classroom Review Popup or the First-Run Prompt — the banner should link into the *same* existing "Connect Google Classroom" button/flow, not open a third, separate connect surface.
 
 ### Reducing cognitive load & clicks
