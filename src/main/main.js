@@ -2,7 +2,7 @@
 // หน้าที่: entry point ของ Electron main process — เปิด DB, ลงทะเบียน IPC, เปิดหน้าต่างหลัก
 'use strict';
 
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
 const path = require('path');
 const { initDatabase, closeDatabase } = require('./db/database');
 const { registerAllIpc } = require('./ipc');
@@ -53,6 +53,9 @@ app.whenReady().then(() => {
     app.quit();
     return;
   }
+
+  // ซ่อนเมนูบาร์ default ของ Electron (File / Edit / View / Window) ให้เหลือแต่เนื้อหาแอป
+  Menu.setApplicationMenu(null);
 
   createMainWindow();
 
