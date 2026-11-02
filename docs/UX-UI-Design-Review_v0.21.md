@@ -1,10 +1,19 @@
 # UI/UX Design Review
-### Academic Task Manager — based on PROJECT_v0.20.md
+### Academic Task Manager — based on PROJECT_v0.21.md
 **Reviewer stance:** Senior Product / UX / Desktop App Designer
-**Scope:** Presentation layer only. No features added, removed, or redefined. Every recommendation below maps to something already confirmed in PROJECT_v0.20.md (cited by section).
+**Scope:** Presentation layer only. No features added, removed, or redefined. Every recommendation below maps to something already confirmed in PROJECT_v0.21.md (cited by section).
 **Target:** Desktop (Windows, Electron, HTML/CSS/JS). Deliverable-ready for Figma.
 
 ---
+
+## Revision Note — v0.21 changes (applied on top of the v0.20 pass below)
+
+PROJECT_v0.21 changes one thing the student can see: a task imported from Classroom follows later edits to the assignment.
+
+| PROJECT_v0.21 change | Where it affects this document |
+|---|---|
+| Every fetch updates already-imported tasks whose assignment was edited in Classroom (title, due date, description); the student is told with one short, non-blocking message (Sections 13.3, 13.5) | **Section 2 (Task Board)** — new "Classroom update message" below the Classroom Review Popup: a toast, no popup, no confirmation step, shown after the launch fetch and after Sync Now. The Sync Now empty-result toast now says "No new items from Classroom" only when nothing was updated either |
+| The detail panel has two boxes: Description (`tasks.notes`) and a local-only Notes box (Section 12) | **Section 2 (Task Board)** — no layout change; the Classroom update message names only what a fetch can change (title, due date, description), never the Notes box |
 
 ## Revision Note — v0.20 changes (applied on top of the v0.16 pass below)
 
@@ -387,6 +396,16 @@ This is the presentation-layer treatment of PROJECT.md Section 13.5's review ste
 - **Group by course, not by fetch window.**
 - **Style as a modal, not a page.**
 - **(New in v0.13) No Priority control in this popup.** Classroom import does not set Priority (Section 9.3); adding a third decision to a one-click-per-item step would undo the point of keeping it lightweight. The user can set it later from the card's detail panel.
+
+### Classroom update message (New in v0.21)
+
+This is the presentation-layer treatment of PROJECT.md Section 13.5's "Update feedback". When a fetch changes an already-imported task because the teacher edited the assignment, the student must be able to see that the app's data just changed, above all a moved deadline, because a silent change of a due date is more harmful than no update at all.
+
+- **A toast, not a popup.** It takes no decision, so it needs no button and no confirmation step. It follows the same non-blocking toast already used for the empty Sync Now result.
+- **One line per changed task, with what changed.** For example: "Updated from Classroom: Lab 3, due date 5 Nov → 7 Nov". When a title or description changed, say so in words ("title changed", "description changed"), without showing the whole text. When several tasks changed in one fetch, group them in one toast (the first two lines and "and 3 more"), not one toast per task.
+- **Show it after both triggers.** The launch fetch and Sync Now both show it. If the same fetch also found new items to review, the review popup opens as before and the update message does not compete with it: show the message after the popup is closed or, if that is awkward, in the same place as the other toasts.
+- **The task list refreshes itself.** The card shows the new due date and sits in its new Deadline State bucket without the student reloading the page; no extra animation or "updated" badge on the card (consistent with Section 6, item 3 and with the no-badge rule for reordering).
+- **Never mentions the Notes box.** A fetch cannot change it (PROJECT.md Section 12).
 
 ### Components to include / avoid
 **Include:**

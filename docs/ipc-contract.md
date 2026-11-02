@@ -193,10 +193,12 @@ login Google กับ token อยู่ฝั่ง main ทั้งหมด
 | `classroom:get-status` | ไม่มี | `Status` |
 | `classroom:connect` | ไม่มี | `Status` (เปิดเบราว์เซอร์ให้ login แล้วรอจนจบ ไม่เกิน 3 นาที) |
 | `classroom:disconnect` | ไม่มี | `Status` |
-| `classroom:sync-now` | ไม่มี | `{ new_items, pending }` |
+| `classroom:sync-now` | ไม่มี | `{ new_items, pending, updated }` |
 | `classroom:get-pending` | ไม่มี | `[{ id, title, course_name, due_date }]` |
 | `classroom:decide` | `{ id, decision }` (`'import'` \| `'ignore'`) | `{ id, decision }` |
+| `classroom:take-updates` | ไม่มี | `[{ task_id, title, changed, due_date? }]` (spec v0.21, อ่านแล้วล้าง) |
 | event `classroom:pending-changed` | - | `{ pending_count }` |
+| event `classroom:tasks-updated` | - | `{ count }` (spec v0.21) |
 
 ```js
 // Status
@@ -211,7 +213,7 @@ await window.api.invoke('classroom:decide', { id: '1111:9001', decision: 'import
 
 - **cutoff (§13.1):** `connect` ไม่บังคับตั้ง cutoff แต่ `sync-now` จะ reject ("ตั้งวัน cutoff ก่อน") จนกว่าจะตั้ง ส่วน fetch ตอนเปิดแอปจะข้ามเงียบ ๆ
 - **connect / disconnect:** เชื่อมอยู่แล้วเรียก `connect` ซ้ำ = คืน status เดิม ไม่เปิดเบราว์เซอร์ (รองรับบัญชีเดียว) ผู้ใช้กดไม่อนุญาต / ติ๊กสิทธิ์ไม่ครบ / ไม่ login ใน 3 นาที = reject `disconnect` ลบ token กับล้าง cutoff (`cutoff_date` กลับเป็น `null` ตอน connect ใหม่จึงต้องเลือกวันอีกรอบ) ไม่ลบ task ที่ import แล้ว และไม่ล้างรายการที่เคย import/ignore (§13.4)
-- **`sync-now`:** reject ถ้ายังไม่เชื่อมบัญชี / ยังไม่ตั้ง cutoff / ต่อ Google ไม่ได้ ถ้า token หมดอายุ (`invalid_grant`) จะลบ token และ reject พร้อมข้อความให้ Connect ใหม่ (consent screen ที่ยังเป็น Testing ทำให้ token อายุ 7 วัน) `new_items` = จำนวนที่เพิ่งเจอรอบนี้ `pending` = ที่รอตัดสินใจทั้งหมด ถ้า `new_items` เป็น 0 หน้าจอเป็นคนตัดสินว่าจะแสดง toast (§13.5) เอง
+- **`sync-now`:** reject ถ้ายังไม่เชื่อมบัญชี / ยังไม่ตั้ง cutoff / ต่อ Google ไม่ได้ ถ้า token หมดอายุ (`invalid_grant`) จะลบ token และ reject พร้อมข้อความให้ Connect ใหม่ (consent screen ที่ยังเป็น Testing ทำให้ token อายุ 7 วัน) `new_items` = จำนวนที่เพิ่งเจอรอบนี้ `pending` = ที่รอตัดสินใจทั้งหมด `updated` = จำนวน task ที่ถูกอัปเดตตาม Classroom รอบนี้ (v0.21) ถ้า `new_items` เป็น 0 หน้าจอเป็นคนตัดสินว่าจะแสดง toast (§13.5) เอง: `updated > 0` ให้แสดงข้อความอัปเดตแทน "No new items from Classroom"
 - **`id`:** รูป `courseId:courseWorkId` เช่น `1111:9001` (§19)
 - **`get-pending`:** อ่านจาก DB (ไม่ยิง Google) ใช้ออฟไลน์ได้ เรียงตาม `due_date` งานไม่มี due ไว้ท้าย ยังไม่เชื่อมบัญชี = `[]`
 - **`decide`:** payload ต้องมีแค่ `id` กับ `decision` และ `id` ต้องเป็นรายการ `pending` ไม่งั้น reject ทั้งสองแบบถาวร (§13.5)
@@ -220,6 +222,15 @@ await window.api.invoke('classroom:decide', { id: '1111:9001', decision: 'import
 - **`notes` ของ task ที่ import:** `<คำอธิบายงาน>` เว้นบรรทัด `ลิงก์งานใน Classroom:` ขึ้นบรรทัดใหม่แล้วตามด้วย URL ไม่มีคำอธิบายจะเหลือแค่ส่วนลิงก์ เป็นข้อความธรรมดา ต้องให้หน้าจอทำเองถ้าต้องการให้กดได้
 - **`due_date`:** แปลงจาก UTC ของ Classroom เป็น ISO เช่น 2 พ.ย. 16:59 UTC = `2026-11-02T16:59:00.000Z` มีวันแต่ไม่มีเวลา = 23:59 เวลาเครื่อง ไม่มีวัน = `null`
 - **event `classroom:pending-changed`:** ส่งให้ทุกหน้าต่างเฉพาะตอน fetch เจอรายการใหม่ (ทั้งตอนเปิดแอปและ Sync now) ไม่ส่งหลัง `decide` main ไม่เปิด popup เอง หน้าจอเป็นคนตัดสินว่าจะเด้ง popup หรือแสดงตัวบอกเงียบ ๆ ถ้ากำลังจับเวลา Pomodoro (§13.5 Interruption-safe) โดยเรียก `pomodoro:get-state` เช็คเอง (หน้าจอต้องเช็คตอนเข้า Task Board ด้วย เพราะตอนนั้นไม่มี event)
+- **อัปเดตงานที่ import แล้วตาม Classroom (spec v0.21 §13.3-13.5):** ทุก fetch (ตอนเปิดแอปและ Sync now) เทียบ `title` / `due_date` / `notes` ของ assignment ที่รู้จักแล้วกับ snapshot ใน `classroom_sync_state` (ไม่ใช่เทียบกับ task) ฟิลด์ที่ Classroom เปลี่ยนจะถูกเขียนลง task (Classroom ชนะถ้าผู้ใช้แก้ฟิลด์เดียวกัน) ฟิลด์ที่ Classroom ไม่เปลี่ยนไม่ถูกแตะ ข้ามงาน Completed กับงานที่ลบ (ไม่เขียน snapshot เลย จึงตามทันตอนย้อนสถานะ) ส่วนรายการ `pending` แค่รีเฟรช snapshot ให้ popup ใช้ค่าล่าสุด `ignored` ไม่ทำอะไร `status` / `progress_percentage` / `priority` ไม่เปลี่ยน `updated_at` ถูกตั้งเหมือนแก้ task ปกติ จึง sync ขึ้น Supabase เอง
+- **`classroom:take-updates`:** คืนรายการที่ fetch อัปเดตแล้วแต่หน้าจอยังไม่ได้บอกผู้ใช้ แล้วล้างทิ้ง (เก็บในหน่วยความจำของ main ไม่ใช่ใน DB) เรียกซ้ำได้ ครั้งที่สองได้ `[]` หน้าจอเรียกตอนเข้า Task Board เพราะ fetch ตอนเปิดแอปมักเสร็จก่อนผู้ใช้เข้าหน้านี้ และเรียกเมื่อได้ event `classroom:tasks-updated`
+  แต่ละรายการ: `task_id`, `title` (ชื่อใหม่), `changed` (`'title'` \| `'due_date'` \| `'notes'` อย่างน้อยหนึ่ง) และ `due_date: { from, to }` เฉพาะตอน `changed` มี `'due_date'` (`from` = ค่าที่ผู้ใช้เห็นอยู่ใน task, `to` = ค่าใหม่ ISO หรือ `null` = ไม่มี deadline แล้ว)
+  ```js
+  await window.api.invoke('classroom:take-updates')
+  // [{ task_id: 'f3a1...', title: 'Lab 3', changed: ['due_date'],
+  //    due_date: { from: '2026-11-05T16:59:00.000Z', to: '2026-11-07T16:59:00.000Z' } }]
+  ```
+- **event `classroom:tasks-updated`:** ส่งให้ทุกหน้าต่างเมื่อ fetch อัปเดต task อย่างน้อยหนึ่งงาน (ทั้งตอนเปิดแอปและ Sync now) `count` = จำนวนที่ยังไม่ถูกอ่าน หน้าจอแสดง toast ตาม UX Review "Classroom update message" แล้วโหลด `tasks:list` ใหม่ ข้อความไม่พูดถึงกล่อง Notes (เก็บใน localStorage ของเครื่อง ไม่ถูก fetch แตะ spec §12)
 
 ## Cloud sync (ข้อ 7, เบลตัดสิน 2026-10-31)
 
