@@ -606,8 +606,9 @@
   let reviewDialog = null;
   let toastTimer = null;
   let offPending = null;
+  let offUpdated = null;
 
-  function toast(text) {
+  function toast(text, ms = 3000) {
     const box = $('#tb-toast');
     if (!box) return;
     box.textContent = text;
@@ -615,7 +616,51 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => {
       if (root) $('#tb-toast').hidden = true;
-    }, 3000);
+    }, ms);
+  }
+
+  // ---------- ข้อความ "อัปเดตจาก Classroom" (spec v0.21 §13.5 Update feedback, UX Review หัวข้อ 2) ----------
+  // classroom:take-updates -> [{ task_id, title, changed: ['title' | 'due_date' | 'notes'], due_date?: { from, to } }] (อ่านแล้วล้าง)
+  // ไม่ใช่ป๊อปอัป ไม่ต้องกดอะไร: toast เดียวสรุป 2 งานแรก + "and N more" ถ้ามีป๊อปอัปรีวิวเปิดอยู่ รอให้ปิดก่อนแล้วค่อยแสดง
+  let heldUpdates = [];
+
+  function dueLabel(iso) {
+    return iso ? `${formatLong(iso)} \u00b7 ${formatTime(iso)}` : 'no deadline';
+  }
+
+  // ตัวอย่าง: Lab 3: due date Nov 5, 2026 · 23:59 → Nov 7, 2026 · 23:59   (เปลี่ยนชื่อ/คำอธิบายบอกเป็นคำ ไม่โชว์ข้อความเต็ม ไม่พูดถึงกล่อง Notes)
+  function describeUpdate(u) {
+    const parts = [];
+    if (u.changed.includes('due_date') && u.due_date) parts.push(`due date ${dueLabel(u.due_date.from)} \u2192 ${dueLabel(u.due_date.to)}`);
+    if (u.changed.includes('title')) parts.push('title changed');
+    if (u.changed.includes('notes')) parts.push('description changed');
+    return `${u.title}: ${parts.join(', ')}`;
+  }
+
+  function updatesText(list) {
+    const lines = list.slice(0, 2).map(describeUpdate);
+    if (list.length > 2) lines.push(`and ${list.length - 2} more`);
+    return `Updated from Classroom\n${lines.join('\n')}`;
+  }
+
+  function flushHeldUpdates() {
+    if (!heldUpdates.length) return;
+    const list = heldUpdates;
+    heldUpdates = [];
+    toast(updatesText(list), 6000);
+  }
+
+  async function showClassroomUpdates() {
+    let list;
+    try {
+      list = await api.invoke('classroom:take-updates');
+    } catch (err) {
+      return; // อ่านไม่ได้: ข้อความนี้แค่แจ้งให้ทราบ ไม่ต้องขึ้น error
+    }
+    if (!alive || !Array.isArray(list) || !list.length) return;
+    if (reviewDialog && reviewDialog.open) heldUpdates = heldUpdates.concat(list);
+    else toast(updatesText(list), 6000);
+    refreshQuietly(); // การ์ดโชว์วัน deadline ใหม่และย้ายไปอยู่กลุ่ม Deadline State ใหม่เอง
   }
 
   function formatSync(iso) {
@@ -702,6 +747,10 @@
       onClose: () => {
         reviewDialog = null;
         if (alive) refreshPendingLink(); // ยังเหลือ pending (เลือกไม่ครบ / ล้มบางรายการ): แสดงลิงก์เงียบ ๆ
+        if (alive) {
+          flushHeldUpdates(); // ข้อความอัปเดตที่รอป๊อปอัปปิด (v0.21)
+          refreshQuietly();
+        }
       },
     });
   }
@@ -720,9 +769,11 @@
     btn.disabled = true;
     showError('');
     try {
-      await api.invoke('classroom:sync-now');
+      const result = await api.invoke('classroom:sync-now'); // { new_items, pending, updated }
       await loadSyncStatus();
-      await checkPending(true);
+      // ไม่มีงานใหม่แต่มีงานที่อัปเดต: ข้อความอัปเดตแทน "No new items from Classroom" (v0.21 §13.5)
+      await checkPending(!(result && result.updated > 0));
+      await showClassroomUpdates();
     } catch (err) {
       if (alive) showError(`Sync ไม่สำเร็จ: ${message(err)} (เชื่อม Google Classroom ได้ที่หน้า Settings)`);
     } finally {
@@ -757,12 +808,19 @@
       } catch (err) {
         offPending = null;
       }
+      try {
+        // Backend แจ้งเมื่อ fetch อัปเดต task ตาม Classroom (v0.21) แล้วเรามาอ่านรายการเอง
+        if (window.api && typeof window.api.on === 'function') offUpdated = window.api.on('classroom:tasks-updated', () => showClassroomUpdates());
+      } catch (err) {
+        offUpdated = null;
+      }
       window.addEventListener('focus', refreshQuietly);
       document.addEventListener('visibilitychange', refreshQuietly);
       refreshTimer = setInterval(refreshQuietly, REFRESH_MS);
-      load().then(() => {
+      load().then(async () => {
         loadSyncStatus();
-        checkPending(false);
+        await checkPending(false);
+        showClassroomUpdates(); // fetch ตอนเปิดแอปอาจเสร็จก่อนเข้าหน้านี้ ข้อความจึงรออยู่ฝั่ง main
       });
     },
     unmount() {
@@ -773,6 +831,9 @@
       document.removeEventListener('visibilitychange', refreshQuietly);
       if (offPending) offPending();
       offPending = null;
+      if (offUpdated) offUpdated();
+      offUpdated = null;
+      heldUpdates = [];
       clearTimeout(toastTimer);
       if (reviewDialog) {
         const d = reviewDialog;
