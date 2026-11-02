@@ -610,6 +610,12 @@
   cursor: pointer;
 }
 
+/* งาน Completed: ล็อก slider หน้าตาเดียวกับปุ่ม disabled (.dt__btn:disabled) ตัวเลข % ยังชัดเหมือนเดิม */
+.dt-range:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .dt-range::-webkit-slider-runnable-track {
   height: calc(var(--u) * 21.8);
   border-radius: calc(var(--u) * 30);

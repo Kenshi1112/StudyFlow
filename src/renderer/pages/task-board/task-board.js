@@ -316,7 +316,8 @@
     return updated;
   }
 
-  function progressBox(task, onCommit) {
+  // งาน Completed = slider ถูกล็อก (disabled) โชว์ค่าที่เก็บไว้เฉยๆ ไม่ผูก onCommit (§12 v0.20)
+  function progressBox(task, completed, onCommit) {
     const percent = Math.max(0, Math.min(100, Number(task.progress_percentage) || 0));
     const value = el('p', { class: 'dt-box__value', text: `${percent}%` });
     const range = el('input', { type: 'range', class: 'dt-range', min: '0', max: '100', step: '1', 'aria-label': 'Progress percentage' });
@@ -325,8 +326,11 @@
       range.style.setProperty('--p', range.value);
       value.textContent = `${range.value}%`;
     };
-    range.addEventListener('input', paint);
-    range.addEventListener('change', () => onCommit(Number(range.value)));
+    range.disabled = completed;
+    if (!completed) {
+      range.addEventListener('input', paint);
+      range.addEventListener('change', () => onCommit(Number(range.value)));
+    }
     paint();
     return el(
       'div',
@@ -422,7 +426,7 @@
           el('p', { class: 'dt-box__label', text: 'Description' }),
           el('p', task.notes ? { class: 'dt-box__text', text: task.notes } : { class: 'dt-box__text dt-box__text--empty', text: 'No description' }),
         ),
-        progressBox(task, (value) =>
+        progressBox(task, completed, (value) =>
           guarded(async () => {
             const updated = await updateTask(task.id, { progress_percentage: value });
             if (dialog && alive) refreshDetails(updated);
