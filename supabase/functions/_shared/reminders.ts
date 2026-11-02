@@ -1,6 +1,6 @@
 // Owner: Backend
-// หน้าที่: กฎ Upcoming reminder ล่วงหน้า 7/3/2/1 วัน ฝั่ง Edge Function (§11.4) เขียนซ้ำจาก notification.service.js ฝั่ง desktop
-//   (decideReminders / daysUntilDue / parseSent) ให้ผลตรงกัน (§17.2, §20 duplicated logic)
+// หน้าที่: กฎ Upcoming reminder เป็น "ช่วง" 7/3/2/1 วันก่อน due ฝั่ง Edge Function (§11.4 v0.20) เขียนซ้ำจาก notification.service.js ฝั่ง desktop
+//   (daysUntilDue / isInReminderWindow) ให้ผลตรงกัน (§17.2, §20 duplicated logic)
 // ถ้าแก้กฎฝั่ง Electron ต้องมาแก้ที่นี่ด้วย แล้วรัน tests/reminders-parity.test.mjs
 // ต่างจากฝั่ง Electron จุดเดียว: "วันนี้" นับตามเวลาไทย (+07:00) คงที่ เพราะ Edge Function รันเป็น UTC (เหมือน deadline-state.ts)
 
@@ -21,29 +21,15 @@ export function daysUntilDue(dueDate: string, now: Date): number {
   return bangkokDayNumber(new Date(dueDate)) - bangkokDayNumber(now);
 }
 
-// reminders_sent เป็นข้อความ '7,3' <-> array [7, 3]
-export const parseSent = (text: string | null | undefined): number[] => (text ? text.split(',').map(Number) : []);
-
-// reminder_days จาก DB ต้องเป็น array ของ 7/3/2/1 ไม่งั้นใช้ default [1] (แถวเก่าก่อนมีคอลัมน์ได้ default {1} อยู่แล้ว)
-// [] = ผู้ใช้ปิดการเตือนล่วงหน้า ต้องคืน [] ตามเดิม ห้ามกลายเป็น [1]
-export function sanitizeDays(value: unknown): number[] {
-  if (!Array.isArray(value)) return [1];
-  return value.filter((n) => REMINDER_CHOICES.includes(n));
+// งานที่เป็น Upcoming อยู่ในช่วงเตือนไหม (§11.4): เหลืออีกไม่เกิน N วัน ตรรกะเดียวกับ isInReminderWindow ฝั่ง desktop เป๊ะ
+// ตัวอย่าง: due 10 พ.ย., N = 3 -> 6 พ.ย. เหลือ 4 = ไม่ใช่ / 7 พ.ย. เหลือ 3 = ใช่ / 9 พ.ย. เหลือ 1 = ใช่
+export function isInReminderWindow(daysLeft: number, windowDays: number): boolean {
+  return daysLeft <= windowDays;
 }
 
-export type ReminderInput = { daysLeft: number; ticked: number[]; sent: number[]; isFirstSight: boolean };
-
-// ตัดสิน Upcoming reminder ของ task 1 ตัว (§11.4) ฟังก์ชันล้วน ตรรกะเดียวกับ decideReminders ฝั่ง desktop เป๊ะ
-// ตัวอย่าง (ติ๊ก 7, 3, 1):
-//   เจอครั้งแรก daysLeft 5, sent []      -> { sent: [7],    notify: false }  7 ถึงแล้ว จดเงียบ ๆ
-//   ต่อมา daysLeft 3,       sent [7]     -> { sent: [7, 3], notify: true }   3 ถึงแล้ว เด้ง
-//   ค้างหลายค่า daysLeft 2, sent []      -> { sent: [7, 3], notify: true }   เด้งอันเดียว "อีก 2 วัน" จดทั้งคู่
-//   ย้าย due ไป daysLeft 10, sent [7, 3] -> { sent: [],     notify: false }  ลบทิ้ง เตือนใหม่ได้
-export function decideReminders(input: ReminderInput): { sent: number[]; notify: boolean } {
-  const kept = input.sent.filter((n) => input.daysLeft <= n);
-  const newlyReached = input.ticked.filter((n) => input.daysLeft <= n && !kept.includes(n));
-  return {
-    sent: [...kept, ...newlyReached].sort((a, b) => b - a),
-    notify: !input.isFirstSight && newlyReached.length > 0,
-  };
+// reminder_days จาก DB (§19.4 v0.20): เลข 7/3/2/1 หรือ null = ผู้ใช้ปิดการเตือนล่วงหน้า (ต้องคืน null ตามเดิม ห้ามกลายเป็น 1)
+// ค่าอื่นที่ไม่ใช่ 4 ค่านี้ (เช่นลิสต์เก่าก่อนรัน migration, undefined) -> 1 = default
+export function sanitizeDays(value: unknown): number | null {
+  if (value === null) return null;
+  return REMINDER_CHOICES.includes(value as number) ? (value as number) : 1;
 }

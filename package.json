@@ -18,12 +18,15 @@
     "productName": "StudyFlow",
     "files": [
       "src/**/*",
+      ".env",
       "package.json"
     ],
     "win": {
       "target": "nsis",
       "icon": "build/icon.ico"
-    }
+    },
+    "npmRebuild": false,
+    "asar": false
   },
   "dependencies": {
     "@googleapis/classroom": "^19.1.0",

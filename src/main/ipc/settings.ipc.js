@@ -17,7 +17,7 @@ function registerSettingsIpc(ipcMain) {
   ipcMain.handle(IPC.SETTINGS.SET, (_event, payload) => {
     const result = settingsService.setSetting(payload?.key, payload?.value);
     // บันทึกในเครื่องสำเร็จแล้วค่อยบอก LINE แบบไม่รอ (ไม่ throw: ออฟไลน์ก็ไม่ให้บันทึก settings พัง §14.4)
-    // เช่น ติ๊ก 7 และ 1 -> reminder_days = [7, 1] -> LINE เตือนที่ 7 และ 1 วันเหมือนแอป
+    // เช่น เลือก 7 -> reminder_days = 7 -> LINE ใส่งานที่เหลือไม่เกิน 7 วันในสรุปทุกเช้าเหมือนแอป / ปิดสวิตช์ -> LINE ได้ null
     if (LINE_REMINDER_KEYS.includes(payload.key)) cloudSync.pushReminderDays();
     return result;
   });

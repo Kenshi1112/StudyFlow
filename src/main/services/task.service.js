@@ -251,8 +251,9 @@ function createTask(input) {
 }
 
 // แก้ task เฉพาะ field ใน UPDATE_FIELDS (ผิดข้อเดียว reject ทั้งคำขอ ไม่แก้บางส่วน)
-//   - เปลี่ยน status เป็น completed -> ตั้ง completed_at (ถ้าเสร็จอยู่แล้วคงค่าเดิม)
-//   - ย้อน status จาก completed -> ล้าง completed_at เป็น null
+//   - เปลี่ยน status เป็น completed -> ตั้ง completed_at (ถ้าเสร็จอยู่แล้วคงค่าเดิม) + progress_percentage = 100 (§12 v0.20)
+//   - ย้อน status จาก completed -> ล้าง completed_at เป็น null (progress คงค่าเดิม เช่น 100 ไม่ถูกแตะ)
+//   - งาน Completed แก้ progress ไม่ได้ (§12 v0.20) ดูกติกาด้านล่าง ไม่กระทบ cloud sync / import Classroom ที่เขียน DB ตรง
 //   - Not Started -> In Progress อัตโนมัติเป็นหน้าที่ของ Pomodoro เท่านั้น (§9.1) ผู้ใช้แก้ status เองได้ทุกเมื่อ
 //   - updated_at อัปเดตทุกครั้ง (ใช้กับ LWW sync เท่านั้น ไม่ใช่สัญญาณ activity §19)
 function updateTask(id, changes) {
@@ -263,9 +264,18 @@ function updateTask(id, changes) {
   }
 
   const db = getDb();
-  const existing = db.prepare('SELECT status FROM tasks WHERE id = ? AND deleted_at IS NULL').get(id);
+  const existing = db.prepare('SELECT status, progress_percentage FROM tasks WHERE id = ? AND deleted_at IS NULL').get(id);
   if (!existing) {
     throw new Error(`Task not found: ${id}`);
+  }
+
+  // §12: งาน Completed แก้ progress ไม่ได้ ยกเว้นย้าย status ออกจาก Completed ใน request เดียวกัน (ส่งค่าเดิมซ้ำไม่นับว่าแก้)
+  // เช่น Completed progress 40: { progress_percentage: 60 } -> reject
+  //      { status: 'in_progress', progress_percentage: 60 } -> ผ่าน   { progress_percentage: 40 } -> ผ่าน (ค่าเดิม)
+  const stillCompleted = existing.status === TASK_STATUS.COMPLETED && (clean.status === undefined || clean.status === TASK_STATUS.COMPLETED);
+  const progressChanged = clean.progress_percentage !== undefined && clean.progress_percentage !== existing.progress_percentage;
+  if (stillCompleted && progressChanged) {
+    throw new Error('progress_percentage cannot be changed while the task is Completed; move it back to Not Started or In Progress first');
   }
 
   const now = new Date().toISOString();
@@ -273,6 +283,9 @@ function updateTask(id, changes) {
 
   if (clean.status === TASK_STATUS.COMPLETED && existing.status !== TASK_STATUS.COMPLETED) {
     updates.completed_at = now;
+    // §12: กด Mark as Completed = ทำเสร็จ 100% (ทับค่าที่ส่งมาด้วย เช่น { status: 'completed', progress_percentage: 70 } -> 100)
+    // ตัวอย่าง: In Progress 40% -> Completed = 100%   แล้วย้อนเป็น In Progress -> ยังเป็น 100% (ไม่เก็บค่าเดิมไว้)
+    updates.progress_percentage = 100;
   } else if (clean.status !== undefined && clean.status !== TASK_STATUS.COMPLETED) {
     updates.completed_at = null;
   }

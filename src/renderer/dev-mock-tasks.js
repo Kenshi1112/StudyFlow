@@ -121,9 +121,17 @@
             if (!UPDATABLE.includes(key)) throw new Error(`field not allowed on update: ${key}`);
           }
           validate(changes);
+          // กติกาเดียวกับ task.service.js (§12 v0.20): งาน Completed แก้ progress ไม่ได้ เว้นแต่ย้าย status ออกพร้อมกัน
+          const stillCompleted = task.status === 'completed' && (changes.status === undefined || changes.status === 'completed');
+          if (stillCompleted && 'progress_percentage' in changes && changes.progress_percentage !== task.progress_percentage) {
+            throw new Error('progress_percentage cannot be changed while the task is Completed; move it back to Not Started or In Progress first');
+          }
+          const becomingCompleted = changes.status === 'completed' && task.status !== 'completed';
           Object.assign(task, changes);
           if ('title' in changes) task.title = task.title.trim();
           if ('status' in changes) task.completed_at = changes.status === 'completed' ? new Date().toISOString() : null;
+          // §12: กด Mark as Completed = 100% (เหมือน task.service.js) ย้อนกลับไม่แตะ progress
+          if (becomingCompleted) task.progress_percentage = 100;
           task.updated_at = new Date().toISOString();
           return Promise.resolve(view(task));
         }

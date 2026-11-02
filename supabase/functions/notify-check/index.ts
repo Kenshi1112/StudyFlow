@@ -1,7 +1,7 @@
 // Owner: Backend
 // หน้าที่: Edge Function ที่ pg_cron เรียกวันละครั้ง 08:00 เวลาไทย เพื่อ push ข้อความสรุปงาน (เลยกำหนด / ถึงกำหนดวันนี้ / Upcoming reminder) ไป LINE คนละ 1 ข้อความ
-// อ้างอิง: PROJECT_v0.19 §14.4 (สรุปวันละครั้ง, Overdue / Due Today ซ้ำทุกวัน, Upcoming ครั้งเดียว), §11.3-11.4 (กันซ้ำเฉพาะ Upcoming), §19.4 (line_account_links.reminder_days, line_notification_log), §20 (secrets)
-// ต้องรัน migration 20261101120000_reminder_days.sql ก่อน deploy ไฟล์นี้ (ไม่งั้น select reminder_days พัง)
+// อ้างอิง: PROJECT_v0.20 §14.4 (สรุปวันละครั้ง ทุกกลุ่มขึ้นทุกวัน ไม่จดอะไรว่าแจ้งแล้ว), §11.4 (Upcoming เป็นช่วง), §19.4 (line_account_links.reminder_days เป็นเลขเดียว / NULL = ปิด), §20 (secrets)
+// ต้องรัน migration 20261102003000_reminder_days_single.sql ก่อน deploy ไฟล์นี้ (reminder_days เปลี่ยนจากลิสต์เป็นเลขเดียว)
 // ตารางเวลาเปลี่ยนจากทุก 15 นาทีเป็นวันละครั้งด้วย migration 20261101210000_notify_daily_cron.sql
 // deploy ด้วย: supabase functions deploy notify-check --no-verify-jwt
 //   (pg_cron ไม่มี JWT ของ Supabase ความปลอดภัยอยู่ที่ header x-cron-secret เทียบกับ secret CRON_SECRET)
@@ -10,7 +10,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { buildDigest, pickPending } from '../_shared/notify-digest.ts';
-import type { LogRow, Pending, TaskRow } from '../_shared/notify-digest.ts';
+import type { TaskRow } from '../_shared/notify-digest.ts';
 import { sanitizeDays } from '../_shared/reminders.ts';
 
 const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? '';
@@ -31,42 +31,21 @@ async function pushToLine(to: string, text: string) {
   if (!response.ok) throw new Error(`LINE push ไม่สำเร็จ (${response.status}): ${await response.text()}`);
 }
 
-// แจ้ง 1 คน คืนจำนวนงานในข้อความรอบนี้ reminder_days คือค่าที่แอปเขียนมา (§14.4) [] = ผู้ใช้ปิดการเตือนล่วงหน้า
-// push สำเร็จแล้วค่อยจด log: push พลาด = ไม่จด (ไม่มี retry ในวัน รอบหน้าคือพรุ่งนี้ 08:00 §20) ถ้า push ผ่านแต่จด log พลาด Upcoming reminder อาจถูกแจ้งซ้ำ 1 ครั้ง ยอมรับได้
-// จด log เฉพาะ Upcoming reminder (record) Overdue / Due Today ไม่จด เพราะแจ้งซ้ำทุกวัน (v0.19)
-// แถว log ที่จดเงียบ (เจอ task ครั้งแรก §11.4) เขียนพร้อมกัน ไม่มีข้อความ
-async function notifyUser(link: { app_user_id: string; line_user_id: string; reminder_days: number[] | null }, now: Date): Promise<number> {
+// แจ้ง 1 คน คืนจำนวนงานในข้อความรอบนี้ reminder_days คือค่าที่แอปเขียนมา (§14.4) เลข 7/3/2/1 หรือ null = ผู้ใช้ปิดการเตือนล่วงหน้า
+// v0.20: ไม่อ่าน/ไม่เขียน line_notification_log เลย ทุกกลุ่มขึ้นสรุปทุกวัน push พลาด = ไม่มีอะไรเสีย พรุ่งนี้ 08:00 ขึ้นให้ใหม่ (ไม่มี retry ในวัน §20)
+async function notifyUser(link: { app_user_id: string; line_user_id: string; reminder_days: number | null }, now: Date): Promise<number> {
   // ดึงทีละคน (PostgREST คืนสูงสุดประมาณ 1000 แถวต่อ request ดึงรวมทุกคนอาจถูกตัดเงียบ ๆ)
   const { data: tasks, error } = await db
     .from('tasks').select('id, title, status, due_date')
     .eq('user_id', link.app_user_id).is('deleted_at', null).not('due_date', 'is', null);
   if (error) throw error;
 
-  const { data: logs, error: logError } = await db
-    .from('line_notification_log').select('task_id, last_notified_state, reminders_sent').eq('line_user_id', link.line_user_id);
-  if (logError) throw logError;
+  const pending = pickPending((tasks ?? []) as TaskRow[], sanitizeDays(link.reminder_days), now);
+  if (pending.length === 0) return 0;
 
-  const log = new Map<string, LogRow>(
-    (logs ?? []).map((row) => [row.task_id, { last_notified_state: row.last_notified_state, reminders_sent: row.reminders_sent ?? '' }]),
-  );
-  const { pending, silent } = pickPending((tasks ?? []) as TaskRow[], log, sanitizeDays(link.reminder_days), now);
-
-  let shown: Pending[] = [];
-  if (pending.length > 0) {
-    const digest = buildDigest(pending);
-    shown = digest.shown;
-    await pushToLine(link.line_user_id, digest.text);
-  }
-
-  const rows = [
-    ...shown.filter((p) => p.record).map((p) => ({ task_id: p.task_id, last_notified_state: p.state, reminders_sent: p.reminders_sent })),
-    ...silent,
-  ].map((row) => ({ ...row, line_user_id: link.line_user_id, notified_at: now.toISOString() }));
-  if (rows.length > 0) {
-    const { error: saveError } = await db.from('line_notification_log').upsert(rows, { onConflict: 'task_id,line_user_id' });
-    if (saveError) throw saveError;
-  }
-  return shown.length;
+  const digest = buildDigest(pending);
+  await pushToLine(link.line_user_id, digest.text);
+  return digest.shown.length;
 }
 
 Deno.serve(async (req) => {

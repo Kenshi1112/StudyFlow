@@ -4,7 +4,7 @@
 // ส่วนที่ Backend มีจริง: settings:get / settings:set (reminder_days, reminder_upcoming_enabled, pomodoro_focus_minutes, pomodoro_break_minutes, classroom_cutoff_date)
 // ปุ่ม Save Change ของ Pomodoro บันทึก Focus/Break ผ่าน settings:set ทีละ key (ใช้ตอนกด Start Working ของ batch ถัดไป)
 // LINE (§14.2) ใช้ line:get-status / line:generate-code / line:disconnect ตาม docs/ipc-contract.md
-// แจ้งเตือนล่วงหน้า (spec §11.4): สวิตช์ + checkbox 7/3/2/1 วัน บันทึกผ่าน settings:set (reminder_upcoming_enabled / reminder_days) LINE ตามค่าเดียวกันที่ฝั่ง Backend เอง
+// แจ้งเตือนล่วงหน้า (spec §11.4): สวิตช์ + radio 7/3/2/1 วัน (เลือกได้อันเดียว) บันทึกผ่าน settings:set (reminder_upcoming_enabled / reminder_days) LINE ตามค่าเดียวกันที่ฝั่ง Backend เอง
 // สวิตช์ "Session complete alert" ยังเป็น UI อย่างเดียว ยังไม่บันทึก
 
 'use strict';
@@ -94,18 +94,17 @@
     });
   }
 
-  // ---------- แจ้งเตือนล่วงหน้า (spec §11.4) ----------
-  // reminder_days = array ของ 7/3/2/1 (ไม่ว่าง) / reminder_upcoming_enabled = สวิตช์ ส่งทีละ key ผ่าน settings:set
-  // ตัวอย่าง: ติ๊ก 7 เพิ่มเมื่อมี [1] อยู่ -> ส่ง value [7, 1] / ปิดสวิตช์ส่งแค่ enabled: false (ไม่ล้าง reminder_days)
+  // ---------- แจ้งเตือนล่วงหน้า (spec §11.4 v0.20) ----------
+  // reminder_days = เลขเดียวจาก 7/3/2/1 (radio เลือกได้อันเดียว) / reminder_upcoming_enabled = สวิตช์ ส่งทีละ key ผ่าน settings:set
+  // ตัวอย่าง: เลือก 7 -> ส่ง value 7 / ปิดสวิตช์ส่งแค่ enabled: false (ไม่แตะ reminder_days ค่าที่เลือกยังอยู่)
   const REMINDER_CHOICES = [7, 3, 2, 1];
-  let reminder = { enabled: true, days: [1] };
+  let reminder = { enabled: true, days: 1 };
   let reminderSaving = false; // ระหว่างบันทึก ล็อกทุกช่อง กันกดรัวแล้วส่งซ้อนกัน
 
   // รับ object จาก settings:get / settings:set (ทุก key) เอาเฉพาะค่าที่รูปแบบถูก ไม่งั้นคงของเดิม
   function applyReminderSettings(res) {
     if (typeof res.reminder_upcoming_enabled === 'boolean') reminder.enabled = res.reminder_upcoming_enabled;
-    const days = res.reminder_days;
-    if (Array.isArray(days) && days.length > 0 && days.every((n) => REMINDER_CHOICES.includes(n))) reminder.days = days.slice();
+    if (REMINDER_CHOICES.includes(res.reminder_days)) reminder.days = res.reminder_days;
     renderReminder();
   }
 
@@ -116,12 +115,10 @@
     sw.setAttribute('aria-checked', String(reminder.enabled));
     sw.disabled = reminderSaving;
     $('#st-reminder-days').classList.toggle('is-off', !reminder.enabled);
-    root.querySelectorAll('#st-reminder-days input').forEach((box) => {
-      const n = Number(box.value);
-      const ticked = reminder.days.includes(n);
-      box.checked = ticked;
-      // ปิดสวิตช์ = แก้ไม่ได้ / ช่องสุดท้ายที่ติ๊กอยู่ห้ามเอาออก (ส่ง [] ไม่ได้)
-      box.disabled = reminderSaving || !reminder.enabled || (ticked && reminder.days.length === 1);
+    root.querySelectorAll('#st-reminder-days input').forEach((radio) => {
+      radio.checked = Number(radio.value) === reminder.days;
+      // ปิดสวิตช์ = แก้ไม่ได้ (ค่าที่เลือกยังโชว์จาง ๆ) radio ต้องมีอันที่เลือกอยู่เสมอ จึงไม่มีกฎ "ช่องสุดท้ายห้ามเอาออก" แล้ว
+      radio.disabled = reminderSaving || !reminder.enabled;
     });
     renderReminderLine();
   }
@@ -134,7 +131,7 @@
 
   // เปลี่ยนค่าแล้วบันทึก 1 key: โชว์ค่าใหม่ทันที ถ้า backend ปฏิเสธ/ล้มเหลวให้คืนค่าเดิมและขึ้นข้อความ
   async function saveReminder(key, value, next) {
-    const prev = { enabled: reminder.enabled, days: reminder.days.slice() };
+    const prev = { enabled: reminder.enabled, days: reminder.days };
     reminder = next;
     reminderSaving = true;
     note('');
@@ -157,18 +154,16 @@
     saveReminder('reminder_upcoming_enabled', enabled, { enabled, days: reminder.days });
   }
 
-  function onReminderBox(box) {
+  function onReminderRadio(radio) {
     if (reminderSaving) return;
-    const n = Number(box.value);
-    const days = box.checked ? [...reminder.days, n] : reminder.days.filter((d) => d !== n);
-    days.sort((a, b) => b - a); // มากไปน้อย เหมือนที่ main เก็บ
-    if (days.length === 0) return renderReminder(); // กันไว้อีกชั้น ช่องสุดท้ายถูก disable อยู่แล้ว
+    const days = Number(radio.value);
+    if (days === reminder.days) return; // เลือกอันเดิมซ้ำ ไม่ต้องบันทึก
     saveReminder('reminder_days', days, { enabled: reminder.enabled, days });
   }
 
   function bindReminder() {
     listen($('#st-reminder-switch'), 'click', onReminderSwitch);
-    root.querySelectorAll('#st-reminder-days input').forEach((box) => listen(box, 'change', () => onReminderBox(box)));
+    root.querySelectorAll('#st-reminder-days input').forEach((radio) => listen(radio, 'change', () => onReminderRadio(radio)));
     renderReminder();
   }
 

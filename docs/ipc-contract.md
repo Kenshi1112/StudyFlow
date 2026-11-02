@@ -45,6 +45,9 @@ await window.api.invoke('tasks:delete', { id: task.id });
   task จาก Classroom ผ่าน `classroom:decide` และจาก LINE ผ่าน Edge Function ไม่ผ่าน channel นี้
 - `tasks:update`: แก้ได้เฉพาะ 7 field ที่ตารางด้านล่างเขียนว่า "ได้" ส่ง field อื่นมา = reject ถ้าเปลี่ยนเป็น `completed` main ตั้ง `completed_at` ให้
   ผู้ใช้แก้ `status` เองได้ทุกเมื่อ (Not Started → In Progress อัตโนมัติเกิดจาก Pomodoro เท่านั้น §9.1)
+  เปลี่ยน status เป็น `completed` จากสถานะอื่น main ตั้ง `progress_percentage = 100` ให้ด้วย (ทับค่าที่ส่งมาใน request เดียวกัน) ย้อน status ออกจาก `completed` ไม่แตะ progress (ค้าง 100) (§12 v0.20)
+  งานที่ `completed` แล้วแก้ `progress_percentage` ไม่ได้ (§12 v0.20): ถ้าค่าต่างจากที่เก็บและ status ยังเป็น `completed` = reject ด้วยข้อความ
+  `progress_percentage cannot be changed while the task is Completed; ...` ส่งค่าเดิมซ้ำผ่าน และส่ง `status` ที่ไม่ใช่ `completed` พร้อม progress ใน request เดียวกันผ่าน
 - `tasks:delete`: soft delete (ตั้ง `deleted_at`) และไม่ทำให้ item Classroom เดิมถูกดึงกลับมาอีก (§13.5)
 
 ## หน้าตาของ `Task`
@@ -79,23 +82,23 @@ field ตรงกับตาราง `tasks` ใน spec §19 ทั้งห
 
 ---
 
-## `settings:*` (ข้อ 2, เบลตัดสิน 2026-10-06, ข้อ 3 เพิ่ม 2 key, ข้อ 6 เพิ่ม 1 key, v0.16 แทน `reminder_window_days` ด้วย 2 key)
+## `settings:*` (ข้อ 2, เบลตัดสิน 2026-10-06, ข้อ 3 เพิ่ม 2 key, ข้อ 6 เพิ่ม 1 key, v0.16 แทน `reminder_window_days` ด้วย 2 key, v0.20 `reminder_days` เป็นเลขเดียว + เพิ่ม `last_upcoming_round_on`)
 
-เก็บใน table `settings` (local only ไม่ sync §19) มี 7 key (`reminder_days` / `reminder_upcoming_enabled` เป็นของ spec v0.16 §11.4, §19, 2 key Pomodoro เพิ่มในข้อ 3, `classroom_last_synced_at` เพิ่มในข้อ 6)
+เก็บใน table `settings` (local only ไม่ sync §19) มี 8 key (`reminder_days` / `reminder_upcoming_enabled` เป็นของ spec v0.16 §11.4, §19, `last_upcoming_round_on` เพิ่มใน v0.20, 2 key Pomodoro เพิ่มในข้อ 3, `classroom_last_synced_at` เพิ่มในข้อ 6)
 
 | channel | ส่งไป | ได้กลับ |
 |---|---|---|
-| `settings:get` | ไม่มี | object ครบทั้ง 7 key (key ที่ยังไม่เคยตั้ง = ค่า default) |
-| `settings:set` | `{ key, value }` ทีละ key | object ครบทั้ง 7 key หลังอัปเดต |
+| `settings:get` | ไม่มี | object ครบทั้ง 8 key (key ที่ยังไม่เคยตั้ง = ค่า default) |
+| `settings:set` | `{ key, value }` ทีละ key | object ครบทั้ง 8 key หลังอัปเดต |
 
 ```js
 await window.api.invoke('settings:get')
 // { has_seen_first_run_prompt: false, classroom_cutoff_date: null, classroom_last_synced_at: null,
-//   reminder_days: [1], reminder_upcoming_enabled: true, pomodoro_focus_minutes: 25, pomodoro_break_minutes: 5 }
-await window.api.invoke('settings:set', { key: 'reminder_days', value: [1, 7, 3] })   // ส่งลำดับไหนก็ได้
-// { ..., reminder_days: [7, 3, 1], reminder_upcoming_enabled: true, ... }            // main เก็บและคืนเรียงมากไปน้อย
+//   reminder_days: 1, last_upcoming_round_on: null, reminder_upcoming_enabled: true, pomodoro_focus_minutes: 25, pomodoro_break_minutes: 5 }
+await window.api.invoke('settings:set', { key: 'reminder_days', value: 7 })          // เลือกได้อันเดียว: 7, 3, 2 หรือ 1
+// { ..., reminder_days: 7, reminder_upcoming_enabled: true, ... }
 await window.api.invoke('settings:set', { key: 'reminder_upcoming_enabled', value: false })
-// { ..., reminder_days: [7, 3, 1], reminder_upcoming_enabled: false, ... }           // ปิด toggle: ค่าที่ติ๊กยังอยู่
+// { ..., reminder_days: 7, reminder_upcoming_enabled: false, ... }                   // ปิด toggle: ค่าที่เลือกยังอยู่
 ```
 
 | key | type | default | ที่มา |
@@ -103,20 +106,23 @@ await window.api.invoke('settings:set', { key: 'reminder_upcoming_enabled', valu
 | `has_seen_first_run_prompt` | boolean | `false` | §19, §13.1 |
 | `classroom_cutoff_date` | ISO 8601 วัน+เวลา \| `null` (เช่น `2026-08-01T00:00:00.000Z`) | `null` | §13.1 |
 | `classroom_last_synced_at` | ISO 8601 วัน+เวลา \| `null` | `null` | §13.1 (ข้อ 6 ตั้งให้เองทุกครั้งที่ sync สำเร็จ หน้า Settings แค่แสดง ไม่ต้องตั้งเอง) |
-| `reminder_days` | array ของ `7` / `3` / `2` / `1` ไม่ว่าง ไม่ซ้ำ (เช่น `[7, 3, 1]`) | `[1]` | §11.4, §19 (v0.16 แทน `reminder_window_days`) |
+| `reminder_days` | จำนวนเต็มเดียว `7` / `3` / `2` / `1` (v0.20 เลิกใช้ array) | `1` | §11.4, §19 (ความยาวช่วงเตือน: เตือนวันละครั้งตั้งแต่ก่อน due N วัน) |
+| `last_upcoming_round_on` | `YYYY-MM-DD` \| `null` | `null` | §11.4, §19 (v0.20) **main เขียนเองทุกครั้งที่แจ้งรอบ Upcoming** หน้าจอไม่ต้องตั้งเอง ถูกล้างเป็น `null` อัตโนมัติเมื่อเปลี่ยน `reminder_days` หรือเปิดสวิตช์ |
 | `reminder_upcoming_enabled` | boolean | `true` | §11.1, §11.4, §19 (toggle "Remind me about upcoming deadlines" แยกจาก `reminder_days`) |
 | `pomodoro_focus_minutes` | จำนวนเต็ม ≥ 1 (นาที) | `25` | §15.3 (ชื่อ key และค่า default เป็นการตัดสินของเรา spec ไม่ได้ระบุ) |
 | `pomodoro_break_minutes` | จำนวนเต็ม ≥ 1 (นาที) | `5` | §15.3 (เหมือนด้านบน) |
 
 - key ไม่อยู่ในตารางนี้ หรือ value ผิดชนิด = reject (ชื่อ key `classroom_cutoff_date` / `reminder_days` / `reminder_upcoming_enabled` เป็นชื่อที่เราตั้งเอง spec ไม่ได้ระบุชื่อ key)
 - **`reminder_window_days` เลิกใช้แล้ว** `settings:set` ด้วย key นี้จะ reject (`Unknown setting`) ค่าเก่าที่ค้างในไฟล์ SQLite ไม่ถูกอ่าน และไม่แปลงค่าให้
-- **`reminder_days` (สำหรับหน้า Settings)**
-  - เป็น checkbox 4 ช่อง (7 / 3 / 2 / 1 วัน) ส่งทั้ง array ทุกครั้งที่ติ๊ก/เอาออก เช่น ติ๊ก 1 กับ 7 -> `value: [7, 1]`
-  - ห้ามส่ง `[]` (reject) ตาม §11.4 ต้องติ๊กอย่างน้อย 1 ช่อง ขณะ toggle เปิดอยู่ให้ disable ช่องสุดท้ายที่ติ๊กไว้ (UX §5)
-  - ปิด toggle ให้ส่ง `reminder_upcoming_enabled: false` อย่างเดียว **ห้ามล้าง `reminder_days`** (spec ให้เก็บค่าที่ติ๊กไว้) ช่อง checkbox แสดงเป็นสีจาง
-  - ข้อความ helper ใต้แถว: "You get one reminder for each box you tick." และเมื่อผูก LINE: "Also sent to LINE"
+- **`reminder_days` (สำหรับหน้า Settings, v0.20)**
+  - เป็น radio 4 ช่อง (7 / 3 / 2 / 1 วัน) เลือกได้อันเดียว ส่งเลขเดียวทุกครั้งที่เลือก เช่น เลือก 7 -> `value: 7` (ส่ง array = reject)
+  - radio มีอันที่เลือกอยู่เสมอ จึงไม่มีกฎ "ช่องสุดท้ายห้ามเอาออก" และไม่มีเคส "ไม่ได้เลือกอะไร"
+  - ค่าเก่า v0.16-v0.19 ที่เป็นลิสต์ (เช่น `[7, 3, 1]`) ที่ค้างในไฟล์ SQLite ถูกอ่านเป็นค่ามากสุด (= `7`) ตอน `settings:get` ไม่ต้อง migrate
+  - ปิด toggle ให้ส่ง `reminder_upcoming_enabled: false` อย่างเดียว **ห้ามล้าง `reminder_days`** (spec ให้เก็บค่าที่เลือกไว้) radio แสดงเป็นสีจาง
+  - ข้อความ helper ใต้แถว: "You get a reminder every day, starting this many days before the deadline." และเมื่อผูก LINE: "Also sent to LINE"
+  - เปลี่ยนค่า (ไม่นับเลือกอันเดิมซ้ำ) หรือเปิดสวิตช์จากปิดเป็นเปิด -> main ล้าง `last_upcoming_round_on` ให้เอง รอบเช็กถัดไป (ไม่เกิน 15 นาที) แจ้งรอบ Upcoming ทันที
 - **LINE ตามค่านี้ (§14.4) โดยฝั่ง Backend ทำเอง** หลัง `settings:set` ของ 2 key นี้สำเร็จ main เขียนค่าไป Supabase ทางเดียว (ไม่รอผล ออฟไลน์ก็ไม่ทำให้บันทึกพัง) หน้าจอไม่ต้องเรียกอะไรเพิ่ม และไม่ต้องรอผลของการเขียน
-- ข้อความแจ้งเตือน (OS notification) ที่ main สร้างเอง: Upcoming `อีก N วันถึงกำหนด: ชื่องาน` / รอบเดียวเกิน 3 อัน `มี N งานใกล้ถึงกำหนด` / Due Today `ถึงกำหนดวันนี้: ...` / Overdue `เลยกำหนดแล้ว: ...` (หน้าจอไม่ต้องทำ)
+- ข้อความแจ้งเตือน (OS notification) ที่ main สร้างเอง: Upcoming (วันละรอบ รวมเป็นอันเดียว) งานเดียว `ใกล้ถึงกำหนด: ชื่องาน · อีก N วัน` / หลายงาน `ใกล้ถึงกำหนด N งาน · เร็วสุดอีก M วัน` / Due Today `ถึงกำหนดวันนี้: ...` / Overdue `เลยกำหนดแล้ว: ...` (หน้าจอไม่ต้องทำ)
 - `classroom_cutoff_date` ต้องมีวัน+เวลา (ไม่รับ `2026-08-01` เฉย ๆ) เหมือน `due_date`
 - การบังคับให้ตั้ง cutoff ก่อน fetch ครั้งแรก (§13.1) เป็นหน้าที่ของ `classroom:*` (ข้อ 6) ไม่ใช่ channel นี้
 

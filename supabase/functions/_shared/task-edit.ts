@@ -103,11 +103,19 @@ export function buildActionMenu(task: EditTask): Message {
   return textMessage(`${cut(task.title, MAX_TITLE)}${courseOf(task, MAX_COURSE)}\nตอนนี้: ${current}\nจะทำอะไรกับงานนี้?`, buttons);
 }
 
-// ค่าที่ต้อง UPDATE เมื่อเปลี่ยนสถานะ (กฎเดียวกับ task.service.js §9.1): ไป completed -> completed_at = ตอนนี้ (ถ้าเสร็จอยู่แล้วคงค่าเดิม ไม่ใส่ key)
-// ไปสถานะอื่น -> ล้าง completed_at / ไม่แตะ progress_percentage และ first_started_at (first_started_at มาจากปุ่ม Start Working เท่านั้น §10.3)
-// ตัวอย่าง: not_started -> completed => { status, completed_at: now } / completed -> in_progress => { status, completed_at: null }
-export function statusPatch(prev: string, next: EditStatus, now: Date = new Date()): { status: EditStatus; completed_at?: string | null } {
-  if (next === 'completed') return prev === 'completed' ? { status: next } : { status: next, completed_at: now.toISOString() };
+// ค่าที่ต้อง UPDATE เมื่อเปลี่ยนสถานะ (กฎเดียวกับ task.service.js §9.1 / §12): ไป completed -> completed_at = ตอนนี้ + progress_percentage = 100
+// (ถ้าเสร็จอยู่แล้วไม่ใส่ key อะไรเลย คงค่าเดิม) ไปสถานะอื่น -> ล้าง completed_at / ไม่แตะ progress_percentage และ first_started_at
+// (first_started_at มาจากปุ่ม Start Working เท่านั้น §10.3) ปุ่ม "ย้อนกลับ" จึงคืนแค่ status ส่วน progress ค้างที่ 100
+// ตัวอย่าง: in_progress (40%) -> completed => { status, completed_at: now, progress_percentage: 100 }
+//          completed -> in_progress => { status, completed_at: null } (progress ยัง 100)   completed -> completed => { status }
+export function statusPatch(
+  prev: string,
+  next: EditStatus,
+  now: Date = new Date(),
+): { status: EditStatus; completed_at?: string | null; progress_percentage?: number } {
+  if (next === 'completed') {
+    return prev === 'completed' ? { status: next } : { status: next, completed_at: now.toISOString(), progress_percentage: 100 };
+  }
   return { status: next, completed_at: null };
 }
 
